@@ -1,0 +1,28 @@
+#!/usr/bin/env python3
+
+import unittest
+import requests
+from container import Container
+from time import sleep
+
+class Tests(unittest.TestCase):
+    def test_docker_run(self):
+        c = Container('nginx:alpine', 'test_docker_run', {'80/tcp': '8080/tcp'})
+        c.run()
+        sleep(5)
+        r = requests.get('http://localhost:8080')
+        self.assertEqual(r.status_code, 200)
+        r.raise_for_status()
+        c.stop()
+
+    def test_docker_run_and_wait_for_log(self):
+        c = Container('nginx:alpine', 'test_docker_run_and_wait_for_log',
+                      {'80/tcp': '8081/tcp'})
+        c.run_and_wait_for_log('start worker process')
+        r = requests.get('http://localhost:8081')
+        self.assertEqual(r.status_code, 200)
+        r.raise_for_status()
+        c.stop()
+
+if __name__ == '__main__':
+    unittest.main()
