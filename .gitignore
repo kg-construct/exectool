@@ -1,5 +1,6 @@
 # Project specific ignores
-bench_executor/data/out*
+bench_executor/data/rmlmapper/out*
+bench_executor/data/postgresql/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

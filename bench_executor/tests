@@ -6,6 +6,7 @@ import requests
 import warnings
 from container import Container
 from rmlmapper import RMLMapper
+from postgresql import PostgreSQL
 from time import sleep
 from rdflib import Graph
 
@@ -32,7 +33,7 @@ class Tests(unittest.TestCase):
         c.stop()
 
     def test_rmlmapper(self):
-        rmlmapper = RMLMapper(os.path.join(os.getcwd(), 'data'))
+        rmlmapper = RMLMapper(os.path.join(os.getcwd(), 'data', 'rmlmapper'))
         rmlmapper.execute(['-m', '/data/mapping.rml.ttl', '-s', 'nquads',
                            '-o', '/data/out.nq'])
         self.assertTrue(os.path.exists('data/out.nq'))
@@ -40,6 +41,11 @@ class Tests(unittest.TestCase):
         g.parse('data/out.nq', format='nquads')
         self.assertEqual(len(g), 3)
         rmlmapper.stop()
+
+    def test_postgresql(self):
+        postgresql = PostgreSQL(os.path.join(os.getcwd(), 'data', 'postgresql'))
+        postgresql.run_and_wait_for_log('port 5432')
+        postgresql.stop()
 
 
 if __name__ == '__main__':
