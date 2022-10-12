@@ -27,11 +27,14 @@ class Container():
         return self._container.logs(stream=True)
 
     def run_and_wait_for_log(self, log_line: str, command: str =''):
-        print(f'Starting "{self._name}" ({self._container_name}): "{command}"')
+        if command != '':
+            print(f'Starting "{self._name}" ({self._container_name}): "{command}"')
+        else:
+            print(f'Starting "{self._name}" ({self._container_name})')
         self.run(command)
 
         for line in self.logs():
-            line = str(line.strip())
+            line = line.strip().decode()
             print(line)
             if log_line in line:
                 sleep(WAIT_TIME)
