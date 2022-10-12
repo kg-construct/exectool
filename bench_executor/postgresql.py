@@ -4,7 +4,7 @@ from container import Container
 
 class PostgreSQL(Container):
     def __init__(self, data_path: str):
-        super().__init__('postgres:14.5-alpine', 'PostgreSQL',
+        super().__init__('postgres:14.5-bullseye', 'PostgreSQL',
                          ports={'5432': '5432'},
                          environment={'POSTGRES_PASSWORD': 'root',
                                       'POSTGRES_USER': 'root',
