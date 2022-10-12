@@ -10,7 +10,10 @@ class PostgreSQL(Container):
                                       'POSTGRES_USER': 'root',
                                       'POSTGRES_DB': 'db',
                                       'POSTGRES_HOST_AUTH_METHOD': 'trust'},
-                         volumes=[f'{data_path}:/var/lib/postgresql/data'])
+                         volumes=[f'{data_path}/postgresql:/var/lib/postgresql/data'])
+
+    def wait_until_ready(self, command=''):
+        self.run_and_wait_for_log('port 5432', command=command)
 
     def load(self):
         pass
