@@ -12,6 +12,7 @@ from postgresql import PostgreSQL
 from mysql import MySQL
 from virtuoso import Virtuoso
 from morphkgc import MorphKGC
+from sdmrdfizer import SDMRDFizer
 from time import sleep
 from rdflib import Graph
 
@@ -41,21 +42,30 @@ class Tests(unittest.TestCase):
 
     def test_rmlmapper_file(self):
         rmlmapper = RMLMapper(DATA_DIR)
-        rmlmapper.execute_mapping('/data/mapping.rml.ttl', '/data/out.nq', 'nquads')
-        self.assertTrue(os.path.exists(os.path.join(DATA_DIR, 'rmlmapper', 'out.nq')))
+        rmlmapper.execute_mapping('/data/mapping.rml.ttl', '/data/out.nt', 'ntriples')
+        self.assertTrue(os.path.exists(os.path.join(DATA_DIR, 'rmlmapper', 'out.nt')))
         g = Graph()
-        g.parse(os.path.join(DATA_DIR, 'rmlmapper', 'out.nq'), format='nquads')
+        g.parse(os.path.join(DATA_DIR, 'rmlmapper', 'out.nt'), format='ntriples')
         self.assertEqual(len(g), 3)
         rmlmapper.stop()
 
     def test_morphkgc_file(self):
         morphkgc = MorphKGC(DATA_DIR)
-        morphkgc.execute_mapping('/data/mapping.rml.ttl','/data/out.nq', 'nquads')
-        self.assertTrue(os.path.exists(os.path.join(DATA_DIR, 'morphkgc', 'out.nq')))
+        morphkgc.execute_mapping('/data/mapping.rml.ttl','/data/out.nt', 'ntriples')
+        self.assertTrue(os.path.exists(os.path.join(DATA_DIR, 'morphkgc', 'out.nt')))
         g = Graph()
-        g.parse(os.path.join(DATA_DIR, 'morphkgc', 'out.nq'), format='nquads')
+        g.parse(os.path.join(DATA_DIR, 'morphkgc', 'out.nt'), format='ntriples')
         self.assertEqual(len(g), 3)
         morphkgc.stop()
+
+    def test_sdmrdfizer_file(self):
+        sdmrdfizer = SDMRDFizer(DATA_DIR)
+        sdmrdfizer.execute_mapping('/data/mapping.rml.ttl','/data/out.nt', 'ntriples')
+        self.assertTrue(os.path.exists(os.path.join(DATA_DIR, 'sdmrdfizer', 'out.nt')))
+        g = Graph()
+        g.parse(os.path.join(DATA_DIR, 'sdmrdfizer', 'out.nt'), format='ntriples')
+        self.assertEqual(len(g), 3)
+        sdmrdfizer.stop()
 
     def test_postgresql(self):
         postgresql = PostgreSQL(DATA_DIR)

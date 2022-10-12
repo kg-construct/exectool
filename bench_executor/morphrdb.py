@@ -28,8 +28,8 @@ class MorphRDB(Container):
         elif serialization == 'ntriples':
             serialization = 'N-TRIPLE'
         else:
-            raise NotImplemented(f'Unsupported serialization:'
-                                 f'"{serialization}"')
+            raise NotImplementedError('Unsupported serialization: '
+                                      f'"{serialization}"')
 
         # Generate INI configuration file since no CLI is available
         config = configparser.ConfigParser()
