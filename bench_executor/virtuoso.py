@@ -9,7 +9,10 @@ class Virtuoso(Container):
         super().__init__(f'openlink/virtuoso-opensource-7:{VERSION}', 'Virtuoso',
                          ports={'8890':'8890', '1111':'1111'},
                          environment={'DBA_PASSWORD':'root'},
-                         volumes=[f'{data_path}:/database'])
+                         volumes=[f'{data_path}/virtuoso:/database'])
+
+    def wait_until_ready(self, command=''):
+        self.run_and_wait_for_log('Server online at', command=command)
 
     def load(self):
         pass
