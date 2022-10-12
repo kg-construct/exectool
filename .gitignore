@@ -3,6 +3,8 @@ bench_executor/data/rmlmapper/out*
 bench_executor/data/postgresql/
 bench_executor/data/virtuoso/
 bench_executor/data/mysql/data
+bench_executor/data/morphkgc/config.ini
+bench_executor/data/morphkgc/out*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

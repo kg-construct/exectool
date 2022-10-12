@@ -4,11 +4,14 @@ import os
 import unittest
 import requests
 import warnings
+import psycopg2
+import pymysql
 from container import Container
 from rmlmapper import RMLMapper
 from postgresql import PostgreSQL
 from mysql import MySQL
 from virtuoso import Virtuoso
+from morphkgc import MorphKGC
 from time import sleep
 from rdflib import Graph
 
@@ -36,26 +39,56 @@ class Tests(unittest.TestCase):
         r.raise_for_status()
         c.stop()
 
-    def test_rmlmapper(self):
+    def test_rmlmapper_file(self):
         rmlmapper = RMLMapper(DATA_DIR)
-        rmlmapper.execute(['-m', '/data/mapping.rml.ttl', '-s', 'nquads',
-                           '-o', '/data/out.nq'])
-        self.assertTrue(os.path.exists('data/out.nq'))
+        rmlmapper.execute_mapping('/data/mapping.rml.ttl', '/data/out.nq', 'nquads')
+        self.assertTrue(os.path.exists(os.path.join(DATA_DIR, 'rmlmapper', 'out.nq')))
         g = Graph()
-        g.parse('data/out.nq', format='nquads')
+        g.parse(os.path.join(DATA_DIR, 'rmlmapper', 'out.nq'), format='nquads')
         self.assertEqual(len(g), 3)
         rmlmapper.stop()
+
+    def test_morphkgc_file(self):
+        morphkgc = MorphKGC(DATA_DIR)
+        morphkgc.execute_mapping('/data/mapping.rml.ttl','/data/out.nq', 'nquads')
+        self.assertTrue(os.path.exists(os.path.join(DATA_DIR, 'morphkgc', 'out.nq')))
+        g = Graph()
+        g.parse(os.path.join(DATA_DIR, 'morphkgc', 'out.nq'), format='nquads')
+        self.assertEqual(len(g), 3)
+        morphkgc.stop()
 
     def test_postgresql(self):
         postgresql = PostgreSQL(DATA_DIR)
         postgresql.wait_until_ready()
-        # Perform query?
+        connection = psycopg2.connect(host='localhost', database='db',
+                                      user='root', password='root')
+        cursor = connection.cursor()
+
+        # Test valid query
+        cursor.execute('SELECT 1;')
+
+        # Test invalid query
+        with self.assertRaises(psycopg2.errors.UndefinedTable):
+            cursor.execute('SELECT * FROM INVALID_TABLE;')
+
+        connection.close()
         postgresql.stop()
 
     def test_mysql(self):
         mysql = MySQL(DATA_DIR)
         mysql.wait_until_ready()
-        # Perform query?
+        connection = pymysql.connect(host='localhost', user='root',
+                                     password='root', db='db')
+        cursor = connection.cursor()
+
+        # Test valid query
+        cursor.execute('SELECT 1;')
+
+        # Test invalid query
+        with self.assertRaises(pymysql.err.ProgrammingError):
+            cursor.execute('SELECT * FROM INVALID_TABLE;')
+
+        connection.close()
         mysql.stop()
 
     def test_virtuoso(self):
@@ -64,6 +97,11 @@ class Tests(unittest.TestCase):
 
         # Check if web interface is up
         r = requests.get('http://localhost:8890')
+        self.assertEqual(r.status_code, 200)
+        r.raise_for_status()
+
+        # Check if SPARQL endpoint works
+        r = requests.get('http://localhost:8890/sparql/?default-graph-uri=&query=CONSTRUCT+WHERE+%7B%0D%0A++%3Fs+%3Fp+%3Fo.%0D%0A%7D%0D%0ALIMIT+100&format=text%2Fplain')
         self.assertEqual(r.status_code, 200)
         r.raise_for_status()
 

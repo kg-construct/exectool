@@ -10,7 +10,33 @@ class RMLMapper(Container):
                          volumes=[f'{data_path}/rmlmapper:/data'])
 
     def execute(self, arguments):
-        # Example: [ '-m' 'mapping.rml.ttl' ]
         self.run(f'java -jar rmlmapper/rmlmapper.jar {" ".join(arguments)}')
         for line in self.logs():
-            print(str(line.strip()))
+            print(line.strip().decode())
+
+    def execute_mapping(self, mapping_file, output_file, serialization,
+                        rdb_username: str = None, rdb_password: str = None,
+                        rdb_host: str = None, rdb_port: str = None,
+                        rdb_name: str = None, rdb_type: str = None):
+        arguments = ['-m', mapping_file,
+                     '-s', serialization,
+                     '-o', output_file]
+        if rdb_username is not None and rdb_password is not None \
+            and rdb_host is not None and rdb_port is not None \
+            and rdb_name is not None and rdb_type is not None:
+            arguments.append('-u')
+            arguments.append(rdb_username)
+            arguments.append('-p')
+            arguments.append(rdb_password)
+            if rdb_type == 'MySQL':
+                protocol = 'jdbc:mysql'
+            elif rdb_type == 'PostgreSQL':
+                protocol = 'jdbc:postgresql'
+            else:
+                raise ValueError(f'Unknown RDB type: "{rdf_type}"')
+            rdb_dsn = f'{protocol}://{rdb_host}:{rdb_port}/{rdb_name}'
+            arguments.append('-dsn')
+            arguments.append(rdb_dsn)
+
+        self.execute(arguments)
+
