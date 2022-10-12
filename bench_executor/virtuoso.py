@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 
-from docker import Docker
+from container import Container
 
-class Virtuoso(Docker):
-    def __init__(self):
-        super().__init__()
+VERSION = '7.2.7'
+
+class Virtuoso(Container):
+    def __init__(self, data_path: str):
+        super().__init__(f'openlink/virtuoso-opensource-7:{VERSION}', 'Virtuoso',
+                         ports={'8890':'8890', '1111':'1111'},
+                         environment={'DBA_PASSWORD':'root'},
+                         volumes=[f'{data_path}:/database'])
 
     def load(self):
         pass

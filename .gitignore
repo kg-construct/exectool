@@ -1,6 +1,7 @@
 # Project specific ignores
 bench_executor/data/rmlmapper/out*
 bench_executor/data/postgresql/
+bench_executor/data/virtuoso/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

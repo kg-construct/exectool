@@ -7,6 +7,7 @@ import warnings
 from container import Container
 from rmlmapper import RMLMapper
 from postgresql import PostgreSQL
+from virtuoso import Virtuoso
 from time import sleep
 from rdflib import Graph
 
@@ -45,8 +46,26 @@ class Tests(unittest.TestCase):
     def test_postgresql(self):
         postgresql = PostgreSQL(os.path.join(os.getcwd(), 'data', 'postgresql'))
         postgresql.run_and_wait_for_log('port 5432')
+        # Perform query?
         postgresql.stop()
 
+    def test_virtuoso(self):
+        virtuoso = Virtuoso(os.path.join(os.getcwd(), 'data', 'virtuoso'))
+        virtuoso.run_and_wait_for_log('Server online at')
+
+        # Check if web interface is up
+        r = requests.get('http://localhost:8890')
+        self.assertEqual(r.status_code, 200)
+        r.raise_for_status()
+
+        # Check if iSQL is up, HTTP is unsupported on the iSQL port
+        # so the connection will be closed without a response
+        with self.assertRaises(requests.exceptions.ConnectionError) as e:
+            r = requests.get('http://localhost:1111')
+            r.raise_for_status()
+        self.assertTrue('Connection aborted' in str(e.exception))
+
+        virtuoso.stop()
 
 if __name__ == '__main__':
     unittest.main()
