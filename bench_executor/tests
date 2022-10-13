@@ -13,6 +13,7 @@ from mysql import MySQL
 from virtuoso import Virtuoso
 from morphkgc import MorphKGC
 from sdmrdfizer import SDMRDFizer
+from query import Query
 from time import sleep
 from rdflib import Graph
 
@@ -122,6 +123,14 @@ class Tests(unittest.TestCase):
             r.raise_for_status()
         self.assertTrue('Connection aborted' in str(e.exception))
 
+        virtuoso.stop()
+
+    def test_query(self):
+        virtuoso = Virtuoso(DATA_DIR)
+        virtuoso.wait_until_ready()
+        q = Query('CONSTRUCT WHERE { ?s ?p ?o. } LIMIT 100')
+        results = list(filter(None, q.execute(virtuoso.endpoint).split('\n')))
+        self.assertTrue(len(results) == 100)
         virtuoso.stop()
 
 if __name__ == '__main__':
