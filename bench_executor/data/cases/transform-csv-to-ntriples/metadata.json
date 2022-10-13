@@ -1,0 +1,18 @@
+{
+    "@id": "http://dylanvanassche.be/cases/transform-csv-to-ntriples",
+    "name": "transform-csv-to-ntriples",
+    "description": "Transform student.csv into N-Triples with RMLMapper",
+    "steps": [
+        {
+            "@id": "http://dylanvanassche.be/cases/transform-csv-to-ntriples#step1",
+            "name": "Transform",
+            "resource": "RMLMapper",
+            "command": "execute_mapping",
+            "parameters": {
+                "mapping_file": "/data/mapping.rml.ttl",
+                "output_file": "/data/out.nt",
+                "serialization": "nquads"
+            }
+        }
+    ]
+}

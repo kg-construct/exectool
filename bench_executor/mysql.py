@@ -11,11 +11,12 @@ class MySQL(Container):
                          environment={'MYSQL_ROOT_PASSWORD': 'root',
                                       'MYSQL_DATABASE': 'db'},
                          volumes=[f'{data_path}/mysql/data:/var/lib/mysql',
+                                  f'{data_path}/mysql/:/data',
                                   f'{data_path}/mysql/mysql-secure-file-prive.cnf:'
                                   '/etc/mysql/conf.d/mysql-secure-file-prive.cnf'])
 
     def wait_until_ready(self, command=''):
         self.run_and_wait_for_log('port: 3306  MySQL Community Server - GPL.', command=command)
 
-    def load(self):
+    def load(self, csv_file, name):
         pass

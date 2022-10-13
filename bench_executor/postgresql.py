@@ -15,5 +15,5 @@ class PostgreSQL(Container):
     def wait_until_ready(self, command=''):
         self.run_and_wait_for_log('port 5432', command=command)
 
-    def load(self):
+    def load(self, csv_file, name):
         pass

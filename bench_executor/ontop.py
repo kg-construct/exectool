@@ -4,7 +4,7 @@ import os
 import configparser
 from container import Container
 
-class Ontop(Container):
+class _Ontop(Container):
     def __init__(self, name, data_path):
         super().__init__(f'kg-construct/ontop:v{VERSION}', name,
                          ports={'8888':'8888'},
@@ -32,8 +32,8 @@ class Ontop(Container):
             and rdb_name is not None and rdb_type is not None:
             config = configparser.ConfigParser()
             config = {
-                'jdbc.user' = rdb_user,
-                'jdbc.password' = rdb_password
+                'jdbc.user': rdb_user,
+                'jdbc.password': rdb_password
             }
             if rdb_type == 'MySQL':
                 config['jdbc.url'] = 'jdbc:mysql://{rdb_host}:{rdb_port}/{rdb_name}'
@@ -48,7 +48,7 @@ class Ontop(Container):
 
         self.execute(mode, arguments)
 
-class OntopVirtualize(Ontop):
+class OntopVirtualize(_Ontop):
     def __init__(self, data_path: str):
         super().__init__('Ontop-Virtualize', data_path)
 
@@ -59,14 +59,14 @@ class OntopVirtualize(Ontop):
                         rdb_username: str = None, rdb_password: str = None,
                         rdb_host: str = None, rdb_port: str = None,
                         rdb_name: str = None, rdb_type: str = None):
-        config_file = f'{self._data_path}/ontopvirtualize/config.properties']
+        config_file = f'{self._data_path}/ontopvirtualize/config.properties'
         arguments = ['--cors-allowed-origins=*', '--port=8888']
         super().execute_mapping('endpoint', config_file, arguments,
                                 mapping_file, output_file, rdb_username,
                                 rdb_password, rdb_host, rdb_port, rdb_name,
                                 rdb_type)
 
-class OntopMaterialize(Ontop):
+class OntopMaterialize(_Ontop):
     def __init__(self, data_path: str):
         super().__init__('Ontop-Materialize', data_path)
 
@@ -77,7 +77,7 @@ class OntopMaterialize(Ontop):
                         rdb_username: str = None, rdb_password: str = None,
                         rdb_host: str = None, rdb_port: str = None,
                         rdb_name: str = None, rdb_type: str = None):
-        config_file = f'{self._data_path}/ontopmaterialize/config.properties']
+        config_file = f'{self._data_path}/ontopmaterialize/config.properties'
         arguments = [ '-f', serialization ]
         super().execute_mapping('materialize', config_file, arguments,
                                 mapping_file, output_file, rdb_username,

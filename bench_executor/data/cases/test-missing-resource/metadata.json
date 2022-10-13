@@ -1,0 +1,18 @@
+{
+    "@id": "http://dylanvanassche.be/cases/test-missing-resource",
+    "name": "test-missing-resource",
+    "description": "Test missing resource error",
+    "steps": [
+        {
+            "@id": "http://dylanvanassche.be/cases/test-missing-resource#step1",
+            "name": "Missing Resource",
+            "resource": "DOES_NOT_EXIST",
+            "command": "execute_mapping",
+            "parameters": {
+                "mapping_file": "/data/mapping.rml.ttl",
+                "output_file": "/data/out.nt",
+                "serialization": "nquads"
+            }
+        }
+    ]
+}

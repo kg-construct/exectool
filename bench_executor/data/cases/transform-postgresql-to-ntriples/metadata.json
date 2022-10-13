@@ -1,0 +1,28 @@
+{
+    "@id": "http://dylanvanassche.be/cases/transform-postgresql-to-ntriples",
+    "name": "transform-postgresql-to-ntriples",
+    "description": "Transform MySQL database into N-Triples with RMLMapper",
+    "steps": [
+        {
+            "@id": "http://dylanvanassche.be/cases/transform-postgresql-to-ntriples#step1",
+            "name": "Init PostgreSQL RDB",
+            "resource": "PostgreSQL",
+            "command": "load",
+            "parameters": {
+                "csv_file": "/data/student.csv",
+                "name": "student"
+            }
+        },
+        {
+            "@id": "http://dylanvanassche.be/cases/transform-postgresql-to-ntriples#step2",
+            "name": "Transform",
+            "resource": "RMLMapper",
+            "command": "execute_mapping",
+            "parameters": {
+                "mapping_file": "/data/mapping.rml.ttl",
+                "output_file": "/data/out.nt",
+                "serialization": "nquads"
+            }
+        }
+    ]
+}

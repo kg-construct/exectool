@@ -1,0 +1,18 @@
+{
+    "@id": "http://dylanvanassche.be/cases/test-error-command",
+    "name": "test-error-command",
+    "description": "Test error in command",
+    "steps": [
+        {
+            "@id": "http://dylanvanassche.be/cases/test-error-command#step1",
+            "name": "Error Command",
+            "resource": "RMLMapper",
+            "command": "DOES_NOT_EXIST",
+            "parameters": {
+                "mapping_file": "/data/mapping.rml.ttl",
+                "output_file": "/data/out.nt",
+                "serialization": "nquads"
+            }
+        }
+    ]
+}

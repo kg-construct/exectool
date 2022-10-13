@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
-from docker import Docker
+from container import Container
 
-class GraphDB(Docker):
+class GraphDB(Container):
     def __init__(self):
         super().__init__()
 
