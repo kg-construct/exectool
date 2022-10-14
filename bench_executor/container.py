@@ -3,9 +3,11 @@
 import sys
 import docker
 from time import time, sleep
-from typing import Optional
+from typing import Optional, List, Tuple
+
 WAIT_TIME = 1 # seconds
 TIMEOUT_TIME = 100 # seconds
+NETWORK_NAME = 'bench_executor'
 
 class Container():
     def __init__(self, container: str, name: str, ports: dict = {},
@@ -18,6 +20,12 @@ class Container():
         self._volumes = volumes
         self._environment = environment
 
+        # create network if not exist
+        try:
+            self._client.networks.get(NETWORK_NAME)
+        except docker.errors.NotFound:
+            self._client.networks.create(NETWORK_NAME)
+
     def run(self, command: str = '', detach=True) -> bool:
         try:
             self._container = self._client.containers.run(self._container_name,
@@ -27,6 +35,7 @@ class Container():
                                                           auto_remove=True,
                                                           remove=True,
                                                           ports=self._ports,
+                                                          network=NETWORK_NAME,
                                                           environment=self._environment,
                                                           volumes=self._volumes)
             return True
@@ -36,9 +45,25 @@ class Container():
         print(f'Starting container "{self._name}" failed!', file=sys.stderr)
         return False
 
-    def logs(self) -> Optional[str]:
+    def exec(self, command: str) -> Tuple[bool, List[str]]:
+        logs = None
+
         try:
-            return self._container.logs(stream=True)
+            exit_code, output = self._container.exec_run(command)
+            logs = output.decode().split('\n')
+            if self._verbose:
+                for line in logs:
+                    print(line)
+            if exit_code == 0:
+                return True, logs
+        except docker.errors.APIError as e:
+            print(e, file=sys.stderr)
+
+        return False, logs
+
+    def logs(self, stream=True) -> Optional[str]:
+        try:
+            return self._container.logs(stream=stream)
         except docker.errors.APIError as e:
             print(e, file=sys.stderr)
 
@@ -72,6 +97,7 @@ class Container():
         try:
             if self._container is not None:
                 self._container.stop()
+                self._container.remove()
             return True
         # Containers which are already stopped will raise an error which we can
         # ignore

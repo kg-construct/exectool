@@ -167,9 +167,9 @@ class Executor:
             return
 
         if success:
-            print(f'      ==> {name : <62} {"[ PASS ]" : >9}')
+            print(f'      ✅ {name : <70}')
         else:
-            print(f'      ==> {name : <62} {"[ FAIL ]" : >9}')
+            print(f'      ❌ {name : <70}')
 
     def run(self, case: dict) -> Tuple[bool, float]:
         success = True
@@ -200,6 +200,16 @@ class Executor:
                 self._print_step(step['name'], success)
                 break
 
+            # Store logs
+            # Needs separate process for logs and metrics collecting
+            #if hasattr(resource, 'logs'):
+            #    with open(os.path.join(data_path, f'{step["resource"]}.txt'), 'w') as f:
+            #        logs = resource.logs()
+            #        for line in logs:
+            #            line = line.decode()
+            #            f.write(line)
+            #            print(line.strip())
+
             # Step complete
             self._print_step(step['name'], success)
 
@@ -210,6 +220,7 @@ class Executor:
         for r in used_resources:
             if r is not None and hasattr(r, 'stop'):
                 r.stop()
+        self._print_step('Clean up resources', success)
 
         return success, diff
 

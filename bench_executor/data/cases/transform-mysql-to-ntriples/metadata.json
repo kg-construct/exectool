@@ -9,7 +9,7 @@
             "resource": "MySQL",
             "command": "load",
             "parameters": {
-                "csv_file": "/data/shared/student.csv",
+                "csv_file": "student.csv",
                 "name": "student"
             }
         },
@@ -21,7 +21,13 @@
             "parameters": {
                 "mapping_file": "/data/shared/mapping.rml.ttl",
                 "output_file": "/data/shared/out.nt",
-                "serialization": "nquads"
+                "serialization": "nquads",
+                "rdb_host": "MySQL",
+                "rdb_port": "3306",
+                "rdb_username": "root",
+                "rdb_password": "root",
+                "rdb_type": "MySQL",
+                "rdb_name": "db"
             }
         }
     ]

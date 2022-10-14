@@ -18,6 +18,9 @@ class RMLMapper(Container):
             arguments.append('-vvvvvvvvvvv')
         success = self.run(f'java -jar rmlmapper/rmlmapper.jar {" ".join(arguments)}')
 
+        #for line in self.logs():
+        #    print(line)
+
         return success
 
     def execute_mapping(self, mapping_file, output_file, serialization,
