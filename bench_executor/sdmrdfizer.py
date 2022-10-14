@@ -11,7 +11,8 @@ class SDMRDFizer(Container):
         self._data_path = os.path.abspath(data_path)
         self._verbose = verbose
         super().__init__(f'kg-construct/sdm-rdfizer:v{VERSION}', 'SDM-RDFizer',
-                         volumes=[f'{self._data_path}/sdmrdfizer:/data'])
+                         volumes=[f'{self._data_path}/sdmrdfizer:/data',
+                                  f'{self._data_path}/shared:/data/shared'])
 
     def execute(self, arguments) -> bool:
         return self.run(f'python3 sdm-rdfizer/rdfizer/run_rdfizer.py '

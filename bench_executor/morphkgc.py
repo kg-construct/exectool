@@ -11,7 +11,8 @@ class MorphKGC(Container):
         self._data_path = os.path.abspath(data_path)
         self._verbose = verbose
         super().__init__(f'kg-construct/morph-kgc:v{VERSION}', 'Morph-KGC',
-                         volumes=[f'{self._data_path}/morphkgc:/data'])
+                         volumes=[f'{self._data_path}/morphkgc:/data',
+                                  f'{self._data_path}/shared:/data/shared'])
 
     def execute(self, arguments) -> bool:
         return self.run(f'python3 -m morph_kgc /data/config.ini')

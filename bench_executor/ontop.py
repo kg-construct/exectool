@@ -5,12 +5,13 @@ import configparser
 from container import Container
 
 class _Ontop(Container):
-    def __init__(self, name, data_path: str, verbose: bool):
+    def __init__(self, name, data_path: str, verbose: bool, mode: str):
         self._data_path = os.path.abspath(data_path)
         self.verbose = verbose
         super().__init__(f'kg-construct/ontop:v{VERSION}', name,
                          ports={'8888':'8888'},
-                         volumes=[f'{self._data_path}/ontop:/data'])
+                         volumes=[f'{self._data_path}/ontop{mode}:/data',
+                                  f'{self._data_path}/shared:/data/shared'])
         self._data_path = data_path
 
     def execute(self, mode, arguments) -> bool:
@@ -52,7 +53,7 @@ class _Ontop(Container):
 
 class OntopVirtualize(_Ontop):
     def __init__(self, data_path: str, verbose: bool):
-        super().__init__('Ontop-Virtualize', data_path, verbose)
+        super().__init__('Ontop-Virtualize', data_path, verbose, 'virtualize')
 
     def execute(self, arguments) -> bool:
         return super().execute('endpoint', arguments)
@@ -70,7 +71,7 @@ class OntopVirtualize(_Ontop):
 
 class OntopMaterialize(_Ontop):
     def __init__(self, data_path: str, verbose: bool):
-        super().__init__('Ontop-Materialize', data_path, verbose)
+        super().__init__('Ontop-Materialize', data_path, verbose, 'materialize')
 
     def execute(self, arguments) -> bool:
         return super().execute('materialize', arguments)

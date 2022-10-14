@@ -142,7 +142,7 @@ class Executor:
                         if self._verbose:
                             print(f'{path}: Unkown parameter "{p}" for command '
                                   f'"{step["command"]}" of resource '
-                                  f'"{step["resource"]}', file=sys.stderr)
+                                  f'"{step["resource"]}"', file=sys.stderr)
                         return False
 
                 # Check if all required parameters are provided
@@ -206,9 +206,9 @@ class Executor:
         diff = time() - start
         sleep(WAIT_TIME)
 
-        # Shutdown resources
+        # Shutdown resources if necessary
         for r in used_resources:
-            if r is not None:
+            if r is not None and hasattr(r, 'stop'):
                 r.stop()
 
         return success, diff

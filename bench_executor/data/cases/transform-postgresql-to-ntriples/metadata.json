@@ -9,7 +9,7 @@
             "resource": "PostgreSQL",
             "command": "load",
             "parameters": {
-                "csv_file": "/data/student.csv",
+                "csv_file": "/data/shared/student.csv",
                 "name": "student"
             }
         },
@@ -19,8 +19,8 @@
             "resource": "RMLMapper",
             "command": "execute_mapping",
             "parameters": {
-                "mapping_file": "/data/mapping.rml.ttl",
-                "output_file": "/data/out.nt",
+                "mapping_file": "/data/shared/mapping.rml.ttl",
+                "output_file": "/data/shared/out.nt",
                 "serialization": "nquads"
             }
         }

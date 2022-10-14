@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import sys
 import unittest
 import requests
 import warnings
@@ -20,7 +21,7 @@ from rdflib import Graph
 
 DATA_DIR = os.path.join(os.getcwd(), 'data')
 
-class Tests(unittest.TestCase):
+class Unittests(unittest.TestCase):
     def setUp(self):
         warnings.filterwarnings(action="ignore", message="unclosed", category=ResourceWarning)
 
@@ -136,12 +137,15 @@ class Tests(unittest.TestCase):
         virtuoso.stop()
 
     def test_query(self):
-        virtuoso = Virtuoso(DATA_DIR, False)
-        self.assertTrue(virtuoso.wait_until_ready())
-        q = Query('CONSTRUCT WHERE { ?s ?p ?o. } LIMIT 100')
-        results = list(filter(None, q.execute(virtuoso.endpoint).split('\n')))
+        q = Query(DATA_DIR, False)
+        results = q.execute('CONSTRUCT WHERE { ?s ?p ?o. } LIMIT 100',
+                            'https://dbpedia.org/sparql')
+        results = list(filter(None, results.split('\n')))
         self.assertTrue(len(results) == 100)
-        virtuoso.stop()
+
+class Integrationtests(unittest.TestCase):
+    def setUp(self):
+        warnings.filterwarnings(action="ignore", message="unclosed", category=ResourceWarning)
 
     def test_executor_list(self):
         executor = Executor(os.path.join(DATA_DIR, 'cases'), False)
@@ -157,4 +161,11 @@ class Tests(unittest.TestCase):
             self.assertTrue(executor.run(case))
 
 if __name__ == '__main__':
-    unittest.main()
+    if len(sys.argv) > 1:
+        unittest.main()
+    else:
+        print('*' * 3 + ' UNIT TESTS ' + '*' * 3)
+        unittest.main(defaultTest='Unittests', exit=False)
+        print('*' * 3 + 'INTEGRATION TESTS' + '*' * 3)
+        unittest.main(defaultTest='Integrationtests')
+

@@ -15,7 +15,7 @@ class MySQL(Container):
                          environment={'MYSQL_ROOT_PASSWORD': 'root',
                                       'MYSQL_DATABASE': 'db'},
                          volumes=[f'{self._data_path}/mysql/data:/var/lib/mysql',
-                                  f'{self._data_path}/mysql/:/data',
+                                  f'{self._data_path}/shared/:/data/shared',
                                   f'{self._data_path}/mysql/mysql-secure-file-prive.cnf:'
                                   '/etc/mysql/conf.d/mysql-secure-file-prive.cnf'])
 

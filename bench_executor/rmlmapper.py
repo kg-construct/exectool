@@ -10,7 +10,8 @@ class RMLMapper(Container):
         self._verbose = verbose
         self._data_path = os.path.abspath(data_path)
         super().__init__(f'kg-construct/rmlmapper:v{VERSION}', 'RMLMapper',
-                         volumes=[f'{self._data_path}/rmlmapper:/data'])
+                         volumes=[f'{self._data_path}/rmlmapper:/data',
+                                  f'{self._data_path}/shared:/data/shared'])
 
     def execute(self, arguments: list) -> bool:
         if self._verbose:
