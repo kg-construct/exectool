@@ -26,7 +26,7 @@ class Tests(unittest.TestCase):
 
     def test_docker_run(self):
         c = Container('nginx:alpine', 'test_docker_run', {'80/tcp': '8080/tcp'})
-        c.run()
+        self.assertTrue(c.run())
         sleep(5)
         r = requests.get('http://localhost:8080')
         self.assertEqual(r.status_code, 200)
@@ -36,15 +36,15 @@ class Tests(unittest.TestCase):
     def test_docker_run_and_wait_for_log(self):
         c = Container('nginx:alpine', 'test_docker_run_and_wait_for_log',
                       {'80/tcp': '8081/tcp'})
-        c.run_and_wait_for_log('start worker process')
+        self.assertTrue(c.run_and_wait_for_log('start worker process'))
         r = requests.get('http://localhost:8081')
         self.assertEqual(r.status_code, 200)
         r.raise_for_status()
         c.stop()
 
     def test_rmlmapper_file(self):
-        rmlmapper = RMLMapper(DATA_DIR)
-        rmlmapper.execute_mapping('/data/mapping.rml.ttl', '/data/out.nt', 'ntriples')
+        rmlmapper = RMLMapper(DATA_DIR, False)
+        self.assertTrue(rmlmapper.execute_mapping('/data/mapping.rml.ttl', '/data/out.nt', 'ntriples'))
         self.assertTrue(os.path.exists(os.path.join(DATA_DIR, 'rmlmapper', 'out.nt')))
         g = Graph()
         g.parse(os.path.join(DATA_DIR, 'rmlmapper', 'out.nt'), format='ntriples')
@@ -52,8 +52,8 @@ class Tests(unittest.TestCase):
         rmlmapper.stop()
 
     def test_morphkgc_file(self):
-        morphkgc = MorphKGC(DATA_DIR)
-        morphkgc.execute_mapping('/data/mapping.rml.ttl','/data/out.nt', 'ntriples')
+        morphkgc = MorphKGC(DATA_DIR, False)
+        self.assertTrue(morphkgc.execute_mapping('/data/mapping.rml.ttl','/data/out.nt', 'ntriples'))
         self.assertTrue(os.path.exists(os.path.join(DATA_DIR, 'morphkgc', 'out.nt')))
         g = Graph()
         g.parse(os.path.join(DATA_DIR, 'morphkgc', 'out.nt'), format='ntriples')
@@ -61,8 +61,8 @@ class Tests(unittest.TestCase):
         morphkgc.stop()
 
     def test_sdmrdfizer_file(self):
-        sdmrdfizer = SDMRDFizer(DATA_DIR)
-        sdmrdfizer.execute_mapping('/data/mapping.rml.ttl','/data/out.nt', 'ntriples')
+        sdmrdfizer = SDMRDFizer(DATA_DIR, False)
+        self.assertTrue(sdmrdfizer.execute_mapping('/data/mapping.rml.ttl','/data/out.nt', 'ntriples'))
         self.assertTrue(os.path.exists(os.path.join(DATA_DIR, 'sdmrdfizer', 'out.nt')))
         g = Graph()
         g.parse(os.path.join(DATA_DIR, 'sdmrdfizer', 'out.nt'), format='ntriples')
@@ -70,8 +70,8 @@ class Tests(unittest.TestCase):
         sdmrdfizer.stop()
 
     def test_postgresql(self):
-        postgresql = PostgreSQL(DATA_DIR)
-        postgresql.wait_until_ready()
+        postgresql = PostgreSQL(DATA_DIR, False)
+        self.assertTrue(postgresql.wait_until_ready())
         connection = psycopg2.connect(host='localhost', database='db',
                                       user='root', password='root')
         cursor = connection.cursor()
@@ -83,12 +83,15 @@ class Tests(unittest.TestCase):
         with self.assertRaises(psycopg2.errors.UndefinedTable):
             cursor.execute('SELECT * FROM INVALID_TABLE;')
 
+        # Test load CSV
+        self.assertTrue(postgresql.load('CSV', 'name'))
+
         connection.close()
         postgresql.stop()
 
     def test_mysql(self):
-        mysql = MySQL(DATA_DIR)
-        mysql.wait_until_ready()
+        mysql = MySQL(DATA_DIR, False)
+        self.assertTrue(mysql.wait_until_ready())
         connection = pymysql.connect(host='localhost', user='root',
                                      password='root', db='db')
         cursor = connection.cursor()
@@ -100,12 +103,15 @@ class Tests(unittest.TestCase):
         with self.assertRaises(pymysql.err.ProgrammingError):
             cursor.execute('SELECT * FROM INVALID_TABLE;')
 
+        # Test load CSV
+        self.assertTrue(mysql.load('CSV', 'name'))
+
         connection.close()
         mysql.stop()
 
     def test_virtuoso(self):
-        virtuoso = Virtuoso(DATA_DIR)
-        virtuoso.wait_until_ready()
+        virtuoso = Virtuoso(DATA_DIR, False)
+        self.assertTrue(virtuoso.wait_until_ready())
 
         # Check if web interface is up
         r = requests.get('http://localhost:8890')
@@ -124,27 +130,29 @@ class Tests(unittest.TestCase):
             r.raise_for_status()
         self.assertTrue('Connection aborted' in str(e.exception))
 
+        # Test load RDF
+        self.assertTrue(virtuoso.load('RDF'))
+
         virtuoso.stop()
 
     def test_query(self):
-        virtuoso = Virtuoso(DATA_DIR)
-        virtuoso.wait_until_ready()
+        virtuoso = Virtuoso(DATA_DIR, False)
+        self.assertTrue(virtuoso.wait_until_ready())
         q = Query('CONSTRUCT WHERE { ?s ?p ?o. } LIMIT 100')
         results = list(filter(None, q.execute(virtuoso.endpoint).split('\n')))
         self.assertTrue(len(results) == 100)
         virtuoso.stop()
 
     def test_executor_list(self):
-        executor = Executor(os.path.join(DATA_DIR, 'cases'))
+        executor = Executor(os.path.join(DATA_DIR, 'cases'), False)
         cases = executor.list()
-        iris = [x['@id'] for x in cases]
+        iris = [x['data']['@id'] for x in cases]
         self.assertListEqual(['http://dylanvanassche.be/cases/transform-csv-to-ntriples',
                               'http://dylanvanassche.be/cases/transform-mysql-to-ntriples',
                               'http://dylanvanassche.be/cases/transform-postgresql-to-ntriples'], iris)
 
-
     def test_executor_run(self):
-        executor = Executor(os.path.join(DATA_DIR, 'cases'))
+        executor = Executor(os.path.join(DATA_DIR, 'cases'), False)
         for case in executor.list():
             self.assertTrue(executor.run(case))
 

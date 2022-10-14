@@ -5,28 +5,50 @@ import argparse
 from bench_executor import Executor
 
 VERSION = '0.1.0'
+EXIT_CODE_UNKNOWN_COMMAND = -1
+EXIT_CODE_NO_CASES = -2
+EXIT_CODE_FAILED_CASE = -3
 
 def print_cases(executor: Executor):
     cases = e.list()
 
     if not cases:
         print('No cases discovered!')
-        sys.exit(-2)
+        sys.exit(EXIT_CODE_NO_CASES)
 
-    print(f'{len(cases)} cases discovered:')
+    print(f'Discovering {len(cases)} cases:')
     for index, case in enumerate(cases):
-        print(f' {index+1}.{case["name"]}')
+        name = case['data']['name']
+        number_of_steps = f'[ {len(case["data"]["steps"])} steps ]'
+        print(f'{index+1 : >4}. {name : <65} {number_of_steps: >11}')
 
-def execute_cases(executor: Executor):
+def execute_cases(executor: Executor, fail_fast: bool = False):
+    failures = 0
     cases = e.list()
 
     if not cases:
         print('No cases discovered!')
-        sys.exit(-3)
+        sys.exit(EXIT_CODE_NO_CASES)
 
+    print(f'Executing {len(cases)} cases:')
     for index, case in enumerate(cases):
-        print(f'[{(100.0 * (index + 1)/len(cases)):5.1f}%] {case["name"]}')
-        e.run(case)
+        data = case['data']
+        p = int(100.0 * (index + 1)/len(cases))
+        percentage = f'[ {p : >3}% ]'
+
+        print(f'{index+1 : >4}. {data["name"] : <67} {percentage : <9}')
+        success, diff = e.run(case)
+
+        if not success:
+            failures += 1
+            if fail_fast:
+                break
+
+    # Exit with error code when we have a failed case
+    if failures > 0:
+        print(f'{failures}/{len(cases)} cases failed to execute!',
+              file=sys.stderr)
+        sys.exit(EXIT_CODE_FAILED_CASE)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Copyright by (c) Dylan Van Assche (2022), available under GPLv3 license',
@@ -39,21 +61,25 @@ if __name__ == '__main__':
     parser.add_argument('-r', '--root', dest='main_directory', default='.',
                         help='Root directory of all cases to execute, defaults to the current working directory',
                         type=str)
-    parser.add_argument('-v', '--verbose', dest='verbose',
+    parser.add_argument('--verbose', dest='verbose',
                         help='Turn on verbose output', action='store_true')
+    parser.add_argument('--fail-fast', dest='fail_fast',
+                        help='Immediately exit when a case fails', action='store_true')
     args = parser.parse_args()
 
     if args.verbose:
         print(f'{parser.prog} {VERSION}')
         print(f'Command: {args.command}')
         print(f'Root directory: {args.main_directory}')
+        print(f'Verbose enabled: {args.verbose}')
+        print(f'Fail fast enabled: {args.fail_fast}')
 
-    e = Executor(args.main_directory, args.verbose)
+    e = Executor(args.main_directory, verbose=args.verbose, cli=True)
 
     if args.command == 'list':
         print_cases(e)
     elif args.command == 'run':
-        execute_cases(e)
+        execute_cases(e, args.fail_fast)
     else:
         print(f'Unknown command: {args.command}', file=sys.stderr)
-        sys.exit(-1)
+        sys.exit(EXIT_CODE_UNKNOWN_COMMAND)

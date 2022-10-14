@@ -7,21 +7,20 @@ from container import Container
 VERSION = '3.12.5'
 
 class MorphRDB(Container):
-    def __init__(self, data_path: str):
+    def __init__(self, data_path: str, verbose: bool):
+        self._data_path = os.path.abspath(data_path)
+        self._verbose = verbose
         super().__init__(f'kg-construct/morph-rdb:v{VERSION}', 'Morph-RDB',
-                         volumes=[f'{data_path}/morphrdb:/data'])
-        self._data_path = data_path
+                         volumes=[f'{self._data_path}/morphrdb:/data'])
 
-    def execute(self, arguments):
-        self.run(f'bash run-docker.sh /data/config.properties')
-        for line in self.logs():
-            print(str(line.strip()))
+    def execute(self, arguments) -> bool:
+        return self.run(f'bash run-docker.sh /data/config.properties')
 
     def execute_mapping(self, mapping_file: str, output_file: str,
                         serialization: str, rdb_username: str = None,
                         rdb_password: str = None, rdb_host: str = None,
                         rdb_port: str = None, rdb_name: str = None,
-                        rdb_type: str = None):
+                        rdb_type: str = None) -> bool:
 
         if serialization == 'nquads':
             serialization = 'N-QUADS'
@@ -59,4 +58,4 @@ class MorphRDB(Container):
         with open(os.path.join(self._data_path, 'morphrdb', 'config.properties'), 'w') as f:
             config.write(f)
 
-        self.execute([])
+        return self.execute([])

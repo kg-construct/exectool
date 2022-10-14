@@ -1,23 +1,28 @@
 #!/usr/bin/env python3
 
+import os
 from container import Container
 
 VERSION = '6.0.0'
 
 class RMLMapper(Container):
-    def __init__(self, data_path):
+    def __init__(self, data_path: str, verbose: bool):
+        self._verbose = verbose
+        self._data_path = os.path.abspath(data_path)
         super().__init__(f'kg-construct/rmlmapper:v{VERSION}', 'RMLMapper',
-                         volumes=[f'{data_path}/rmlmapper:/data'])
+                         volumes=[f'{self._data_path}/rmlmapper:/data'])
 
-    def execute(self, arguments):
-        self.run(f'java -jar rmlmapper/rmlmapper.jar {" ".join(arguments)}')
-        for line in self.logs():
-            print(line.strip().decode())
+    def execute(self, arguments: list) -> bool:
+        if self._verbose:
+            arguments.append('-vvvvvvvvvvv')
+        success = self.run(f'java -jar rmlmapper/rmlmapper.jar {" ".join(arguments)}')
+
+        return success
 
     def execute_mapping(self, mapping_file, output_file, serialization,
                         rdb_username: str = None, rdb_password: str = None,
                         rdb_host: str = None, rdb_port: str = None,
-                        rdb_name: str = None, rdb_type: str = None):
+                        rdb_name: str = None, rdb_type: str = None) -> bool:
         arguments = ['-m', mapping_file,
                      '-s', serialization,
                      '-o', output_file]
@@ -38,5 +43,4 @@ class RMLMapper(Container):
             arguments.append('-dsn')
             arguments.append(rdb_dsn)
 
-        self.execute(arguments)
-
+        return self.execute(arguments)

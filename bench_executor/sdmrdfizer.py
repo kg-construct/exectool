@@ -7,22 +7,21 @@ from container import Container
 VERSION = '4.5.7.1'
 
 class SDMRDFizer(Container):
-    def __init__(self, data_path: str):
+    def __init__(self, data_path: str, verbose: bool):
+        self._data_path = os.path.abspath(data_path)
+        self._verbose = verbose
         super().__init__(f'kg-construct/sdm-rdfizer:v{VERSION}', 'SDM-RDFizer',
-                         volumes=[f'{data_path}/sdmrdfizer:/data'])
-        self._data_path = data_path
+                         volumes=[f'{self._data_path}/sdmrdfizer:/data'])
 
-    def execute(self, arguments):
-        self.run(f'python3 sdm-rdfizer/rdfizer/run_rdfizer.py '
-                 '/data/config.ini')
-        for line in self.logs():
-            print(str(line.strip()))
+    def execute(self, arguments) -> bool:
+        return self.run(f'python3 sdm-rdfizer/rdfizer/run_rdfizer.py '
+                        '/data/config.ini')
 
     def execute_mapping(self, mapping_file: str, output_file: str,
                         serialization: str, rdb_username: str = None,
                         rdb_password: str = None, rdb_host: str = None,
                         rdb_port: str = None, rdb_name: str = None,
-                        rdb_type: str = None):
+                        rdb_type: str = None) -> bool:
 
         name = os.path.splitext(os.path.basename(output_file))[0]
         config = configparser.ConfigParser()
@@ -63,4 +62,4 @@ class SDMRDFizer(Container):
         with open(os.path.join(self._data_path, 'sdmrdfizer', 'config.ini'), 'w') as f:
             config.write(f)
 
-        self.execute([])
+        return self.execute([])

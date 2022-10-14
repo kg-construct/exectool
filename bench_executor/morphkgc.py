@@ -7,15 +7,14 @@ from container import Container
 VERSION = '2.2.0'
 
 class MorphKGC(Container):
-    def __init__(self, data_path: str):
+    def __init__(self, data_path: str, verbose: bool):
+        self._data_path = os.path.abspath(data_path)
+        self._verbose = verbose
         super().__init__(f'kg-construct/morph-kgc:v{VERSION}', 'Morph-KGC',
-                         volumes=[f'{data_path}/morphkgc:/data'])
-        self._data_path = data_path
+                         volumes=[f'{self._data_path}/morphkgc:/data'])
 
-    def execute(self, arguments):
-        self.run(f'python3 -m morph_kgc /data/config.ini')
-        for line in self.logs():
-            print(str(line.strip()))
+    def execute(self, arguments) -> bool:
+        return self.run(f'python3 -m morph_kgc /data/config.ini')
 
     def execute_mapping(self, mapping_file: str, output_file: str,
                         serialization: str, rdb_username: str = None,
@@ -60,4 +59,4 @@ class MorphKGC(Container):
         with open(os.path.join(self._data_path, 'morphkgc', 'config.ini'), 'w') as f:
             config.write(f)
 
-        self.execute([])
+        return self.execute([])
