@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import sys
 import pymysql
 from csv import reader
 from container import Container
@@ -51,7 +52,7 @@ class MySQL(Container):
             cursor = connection.cursor()
 
             cursor.execute(f'DROP TABLE IF EXISTS {name};')
-            c = 'TEXT ,'.join(columns) + ' TEXT'
+            c = ' TEXT , '.join(columns) + ' TEXT'
             cursor.execute(f'CREATE TABLE {name} (k INT ZEROFILL NOT NULL '
                            f'AUTO_INCREMENT, {c}, PRIMARY KEY(k));')
             c = ','.join(columns)

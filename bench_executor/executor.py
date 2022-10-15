@@ -204,10 +204,7 @@ class Executor:
             # Needs separate process for logs and metrics collecting
             if hasattr(resource, 'logs'):
                 with open(os.path.join(data_path, f'{step["resource"]}.txt'), 'w') as f:
-                    logs = resource.logs(stream=True, follow=False)
-                    for line in logs:
-                        line = line.decode()
-                        f.write(line)
+                    f.writelines(resource.logs())
 
             # Step complete
             self._print_step(step['name'], success)

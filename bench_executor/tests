@@ -43,6 +43,20 @@ class Unittests(unittest.TestCase):
         r.raise_for_status()
         c.stop()
 
+    def test_docker_run_and_wait_for_exit(self):
+        c = Container('alpine:edge', 'test_docker_run_and_wait_for_exit',
+                      {'80/tcp': '8082/tcp'})
+        self.assertTrue(c.run_and_wait_for_exit('sleep 5'))
+        c.stop()
+
+    def test_docker_logs(self):
+        c = Container('nginx:alpine', 'test_docker_logs',
+                      {'80/tcp': '8083/tcp'})
+        self.assertTrue(c.run_and_wait_for_log('start worker process'))
+        self.assertIsNotNone(c.logs())
+        self.assertTrue(len(c.logs()) > 0)
+        c.stop()
+
     def test_rmlmapper_file(self):
         rmlmapper = RMLMapper(DATA_DIR, False)
         self.assertTrue(rmlmapper.execute_mapping('/data/mapping.rml.ttl', '/data/out.nt', 'ntriples'))
@@ -80,12 +94,18 @@ class Unittests(unittest.TestCase):
         # Test valid query
         cursor.execute('SELECT 1;')
 
+        # Test load CSV
+        self.assertTrue(postgresql.load('student.csv', 'student'))
+        cursor.execute('SELECT name, age FROM student;')
+        results = []
+        for record in cursor:
+            print(record)
+            results.append([record[0], record[1]])
+        self.assertListEqual(results, [['Jefke', '21'], ['Maria', '22'], ['Jos', '23']])
+
         # Test invalid query
         with self.assertRaises(psycopg2.errors.UndefinedTable):
             cursor.execute('SELECT * FROM INVALID_TABLE;')
-
-        # Test load CSV
-        self.assertTrue(postgresql.load('CSV', 'name'))
 
         connection.close()
         postgresql.stop()
@@ -100,12 +120,17 @@ class Unittests(unittest.TestCase):
         # Test valid query
         cursor.execute('SELECT 1;')
 
+        # Test load CSV
+        self.assertTrue(mysql.load('student.csv', 'student'))
+        cursor.execute('SELECT name, age FROM student;')
+        results = []
+        for record in cursor:
+            results.append([record[0], record[1]])
+        self.assertListEqual(results, [['Jefke', '21'], ['Maria', '22'], ['Jos', '23']])
+
         # Test invalid query
         with self.assertRaises(pymysql.err.ProgrammingError):
             cursor.execute('SELECT * FROM INVALID_TABLE;')
-
-        # Test load CSV
-        self.assertTrue(mysql.load('CSV', 'name'))
 
         connection.close()
         mysql.stop()
@@ -132,7 +157,14 @@ class Unittests(unittest.TestCase):
         self.assertTrue('Connection aborted' in str(e.exception))
 
         # Test load RDF
-        self.assertTrue(virtuoso.load('RDF'))
+        self.assertTrue(virtuoso.load('student.nt'))
+
+        # Verify loaded data
+        q = Query(DATA_DIR, False)
+        results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
+                            'http://localhost:8890/sparql')
+        results = list(filter(None, results.split('\n')))
+        self.assertTrue(len(results) == 3)
 
         virtuoso.stop()
 

@@ -25,13 +25,19 @@ class Virtuoso(Container):
 
         # Load directory with data
         success, logs = self.exec('isql -U dba -P root exec="ld_dir(\'/data/shared/\','
-                                  '\'out.nt\', \'http://example.com/graph\');"')
+                                  f'\'{rdf_file}\', \'http://example.com/graph\');"')
+        self._logs += logs
         success, logs = self.exec('isql -U dba -P root exec="rdf_loader_run();"')
+        self._logs += logs
 
-        # Re-enable checkpoints and scheduler
+        # Re-enable checkpoints and scheduler which are disabled automatically
+        # after loading RDF with rdf_loader_run()
         success, logs = self.exec('isql -U dba -P root exec="checkpoint;"')
+        self._logs += logs
         success, logs = self.exec('isql -U dba -P root exec="checkpoint_interval(60);"')
+        self._logs += logs
         success, logs = self.exec('isql -U dba -P root exec="scheduler_interval(10);"')
+        self._logs += logs
 
         return success
 

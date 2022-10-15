@@ -19,6 +19,7 @@ class Container():
         self._ports = ports
         self._volumes = volumes
         self._environment = environment
+        self._logs = []
 
         # create network if not exist
         try:
@@ -61,9 +62,12 @@ class Container():
 
         return False, logs
 
-    def logs(self, stream=True, follow=True) -> Optional[str]:
+    def logs(self) -> Optional[List[str]]:
         try:
-            return self._container.logs(stream=stream, follow=follow)
+            for line in self._container.logs(stream=True, follow=False):
+                self._logs.append(line.strip().decode())
+
+            return self._logs
         except docker.errors.APIError as e:
             print(e, file=sys.stderr)
 
@@ -75,9 +79,9 @@ class Container():
             return False
 
         start = time()
-        logs = self.logs(stream=True, follow=True)
+        logs = self._container.logs(stream=True, follow=True)
         if logs is not None:
-            for line in self.logs(stream=True, follow=True):
+            for line in logs:
                 line = line.strip().decode()
 
                 if time() - start > TIMEOUT_TIME:

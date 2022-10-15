@@ -30,8 +30,14 @@ class PostgreSQL(Container):
 
     def wait_until_ready(self, command: str = '') -> bool:
         success = self.run_and_wait_for_log('port 5432', command=command)
-        while not self.exec('pg_isready -q'):
-            print(f'PostgreSQL is not online yet... Trying again in 1s')
+        while True:
+            succces, logs = self.exec('pg_isready -q')
+            self._logs += logs
+            if succces:
+                break
+
+            print(f'PostgreSQL is not online yet... Trying again in 1s',
+                  file=sys.stderr)
             sleep(WAIT_TIME)
 
         return success
@@ -59,7 +65,7 @@ class PostgreSQL(Container):
             cursor = connection.cursor()
 
             cursor.execute(f'DROP TABLE IF EXISTS {name};')
-            c = 'VARCHAR ,'.join(columns) + ' VARCHAR'
+            c = ' VARCHAR , '.join(columns) + ' VARCHAR'
             cursor.execute(f'CREATE TABLE {name} (KEY SERIAL, {c}, '
                            'PRIMARY KEY(KEY))')
             c = ','.join(columns)
