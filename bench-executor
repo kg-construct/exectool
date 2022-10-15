@@ -23,7 +23,7 @@ def print_cases(executor: Executor):
         print(f'{index+1 : >4}. {name : <65} {number_of_steps: >11}')
 
 def execute_cases(executor: Executor, fail_fast: bool = False):
-    failures = 0
+    failures = []
     cases = e.list()
 
     if not cases:
@@ -40,14 +40,16 @@ def execute_cases(executor: Executor, fail_fast: bool = False):
         success, diff = e.run(case)
 
         if not success:
-            failures += 1
+            failures.append(data['name'])
             if fail_fast:
                 break
 
     # Exit with error code when we have a failed case
-    if failures > 0:
-        print(f'{failures}/{len(cases)} cases failed to execute!',
+    if failures:
+        print(f'{len(failures)}/{len(cases)} cases failed to execute:',
               file=sys.stderr)
+        for index, f in enumerate(failures):
+            print(f'{index+1 : >4}. {f : <76}')
         sys.exit(EXIT_CODE_FAILED_CASE)
 
 if __name__ == '__main__':

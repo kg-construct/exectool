@@ -32,8 +32,8 @@ class Container():
                                                           command,
                                                           name=self._name,
                                                           detach=detach,
-                                                          auto_remove=True,
-                                                          remove=True,
+                                                          #auto_remove=True,
+                                                          #remove=True,
                                                           ports=self._ports,
                                                           network=NETWORK_NAME,
                                                           environment=self._environment,
@@ -61,9 +61,9 @@ class Container():
 
         return False, logs
 
-    def logs(self, stream=True) -> Optional[str]:
+    def logs(self, stream=True, follow=True) -> Optional[str]:
         try:
-            return self._container.logs(stream=stream)
+            return self._container.logs(stream=stream, follow=follow)
         except docker.errors.APIError as e:
             print(e, file=sys.stderr)
 
@@ -75,9 +75,9 @@ class Container():
             return False
 
         start = time()
-        logs = self.logs()
+        logs = self.logs(stream=True, follow=True)
         if logs is not None:
-            for line in logs:
+            for line in self.logs(stream=True, follow=True):
                 line = line.strip().decode()
 
                 if time() - start > TIMEOUT_TIME:
@@ -91,6 +91,15 @@ class Container():
 
         print(f'Waiting for container "{self._name}" failed!',
               file=sys.stderr)
+        return False
+
+    def run_and_wait_for_exit(self, command: str = '') -> bool:
+        if not self.run(command):
+            return False
+
+        if self._container.wait()['StatusCode'] == 0:
+            return True
+
         return False
 
     def stop(self) -> bool:

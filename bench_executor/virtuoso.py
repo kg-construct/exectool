@@ -17,7 +17,7 @@ class Virtuoso(Container):
                                   f'{self._data_path}/shared:/data/shared'])
         self._endpoint = 'http://localhost:8890/sparql'
 
-    def wait_until_ready(self, command='') -> bool:
+    def wait_until_ready(self, command: str = '') -> bool:
         return self.run_and_wait_for_log('Server online at', command=command)
 
     def load(self, rdf_file: str) -> bool:

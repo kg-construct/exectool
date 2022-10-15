@@ -45,7 +45,7 @@
             "resource": "Query",
             "command": "execute_and_save",
             "parameters": {
-                "query": "CONSTRUCT WHERE { ?s ?p ?o. } LIMIT 100",
+                "query": "PREFIX foaf: <http://xmlns.com/foaf/0.1/> CONSTRUCT WHERE { ?s foaf:name ?o1 . }",
                 "sparql_endpoint": "http://localhost:8890/sparql",
                 "results_file_name": "results.nt"
             }

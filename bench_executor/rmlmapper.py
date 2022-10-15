@@ -16,11 +16,8 @@ class RMLMapper(Container):
     def execute(self, arguments: list) -> bool:
         if self._verbose:
             arguments.append('-vvvvvvvvvvv')
-        success = self.run(f'java -jar rmlmapper/rmlmapper.jar {" ".join(arguments)}')
 
-        #for line in self.logs():
-        #    print(line)
-
+        success = self.run_and_wait_for_exit(f'java -jar rmlmapper/rmlmapper.jar {" ".join(arguments)}')
         return success
 
     def execute_mapping(self, mapping_file, output_file, serialization,
@@ -33,17 +30,21 @@ class RMLMapper(Container):
         if rdb_username is not None and rdb_password is not None \
             and rdb_host is not None and rdb_port is not None \
             and rdb_name is not None and rdb_type is not None:
+
             arguments.append('-u')
             arguments.append(rdb_username)
             arguments.append('-p')
             arguments.append(rdb_password)
+
+            parameters = ''
             if rdb_type == 'MySQL':
                 protocol = 'jdbc:mysql'
+                parameters = '?allowPublicKeyRetrieval=true&useSSL=false'
             elif rdb_type == 'PostgreSQL':
                 protocol = 'jdbc:postgresql'
             else:
                 raise ValueError(f'Unknown RDB type: "{rdf_type}"')
-            rdb_dsn = f'{protocol}://{rdb_host}:{rdb_port}/{rdb_name}'
+            rdb_dsn = f'{protocol}://{rdb_host}:{rdb_port}/{rdb_name}{parameters}'
             arguments.append('-dsn')
             arguments.append(rdb_dsn)
 

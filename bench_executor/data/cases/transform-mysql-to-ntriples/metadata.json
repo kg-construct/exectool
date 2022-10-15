@@ -9,7 +9,7 @@
             "resource": "MySQL",
             "command": "load",
             "parameters": {
-                "csv_file": "student.csv",
+                "csv_file_name": "student.csv",
                 "name": "student"
             }
         },

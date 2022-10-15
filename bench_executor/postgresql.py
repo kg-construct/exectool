@@ -69,9 +69,18 @@ class PostgreSQL(Container):
             cursor.execute('COMMIT;')
 
             if self._verbose:
-                cursor.execute(f'SELECT * FROM {name};')
-                for record in cursor:
+                header = '| ID | ' + ' | '.join(columns) + ' |'
+                print(header)
+                print('-' * len(header))
+
+            cursor.execute(f'SELECT * FROM {name};')
+            number_of_records = 0
+            for record in cursor:
+                number_of_records += 1
+                if self._verbose:
                     print(record)
+            if number_of_records == 0:
+                success = False
         except Exception as e:
             print(f'Failed to load CSV: "{e}"')
             success = False

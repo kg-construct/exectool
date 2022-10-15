@@ -202,13 +202,12 @@ class Executor:
 
             # Store logs
             # Needs separate process for logs and metrics collecting
-            #if hasattr(resource, 'logs'):
-            #    with open(os.path.join(data_path, f'{step["resource"]}.txt'), 'w') as f:
-            #        logs = resource.logs()
-            #        for line in logs:
-            #            line = line.decode()
-            #            f.write(line)
-            #            print(line.strip())
+            if hasattr(resource, 'logs'):
+                with open(os.path.join(data_path, f'{step["resource"]}.txt'), 'w') as f:
+                    logs = resource.logs(stream=True, follow=False)
+                    for line in logs:
+                        line = line.decode()
+                        f.write(line)
 
             # Step complete
             self._print_step(step['name'], success)
