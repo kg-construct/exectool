@@ -26,6 +26,9 @@ class MySQL(Container):
                                   f'{self._data_path}/mysql/mysql-secure-file-prive.cnf:'
                                   '/etc/mysql/conf.d/mysql-secure-file-prive.cnf'])
 
+    def root_mount_directory(self) -> str:
+        return __name__.lower()
+
     def wait_until_ready(self, command: str = '') -> bool:
         return self.run_and_wait_for_log('port: 3306  MySQL Community Server - GPL.', command=command)
 

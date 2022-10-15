@@ -14,6 +14,9 @@ class MorphRDB(Container):
                          volumes=[f'{self._data_path}/shared:/data/shared',
                                   f'{self._data_path}/morphrdb:/data'])
 
+    def root_mount_directory(self) -> str:
+        return __name__.lower()
+
     def execute(self, arguments) -> bool:
         return self.run(f'bash run-docker.sh /data/config.properties')
 

@@ -188,9 +188,19 @@ class Integrationtests(unittest.TestCase):
                               'http://dylanvanassche.be/cases/transform-postgresql-to-ntriples'], iris)
 
     def test_executor_run(self):
-        executor = Executor(os.path.join(DATA_DIR, 'cases'), False)
+        path = os.path.join(DATA_DIR, 'cases')
+        executor = Executor(path, False)
         for case in executor.list():
             self.assertTrue(executor.run(case))
+            for step in case['data']['steps']:
+                name = case['data']['name']
+                resource = step['resource']
+                root_mount_directory = resource.lower().replace('_', '')
+                log_file = os.path.join(path, name, 'data',
+                                        root_mount_directory,
+                                        'logs.txt')
+                print(log_file)
+                self.assertTrue(os.path.exists(log_file))
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:

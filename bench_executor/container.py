@@ -51,7 +51,7 @@ class Container():
 
         try:
             exit_code, output = self._container.exec_run(command)
-            logs = output.decode().split('\n')
+            logs = output.decode()
             if self._verbose:
                 for line in logs:
                     print(line)
@@ -65,7 +65,7 @@ class Container():
     def logs(self) -> Optional[List[str]]:
         try:
             for line in self._container.logs(stream=True, follow=False):
-                self._logs.append(line.strip().decode())
+                self._logs.append(line.decode())
 
             return self._logs
         except docker.errors.APIError as e:

@@ -17,6 +17,9 @@ class Virtuoso(Container):
                                   f'{self._data_path}/shared:/data/shared'])
         self._endpoint = 'http://localhost:8890/sparql'
 
+    def root_mount_directory(self) -> str:
+        return __name__.lower()
+
     def wait_until_ready(self, command: str = '') -> bool:
         return self.run_and_wait_for_log('Server online at', command=command)
 

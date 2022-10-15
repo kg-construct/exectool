@@ -14,6 +14,9 @@ class _Ontop(Container):
                                   f'{self._data_path}/shared:/data/shared'])
         self._data_path = data_path
 
+    def root_mount_directory(self) -> str:
+        return __name__.lower().replace('_', '')
+
     def execute(self, mode, arguments) -> bool:
         return self.run(f'{mode} {" ".join(arguments)}')
 

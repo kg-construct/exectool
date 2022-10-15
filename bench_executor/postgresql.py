@@ -25,8 +25,11 @@ class PostgreSQL(Container):
                                       'POSTGRES_USER': USER,
                                       'POSTGRES_DB': DB,
                                       'POSTGRES_HOST_AUTH_METHOD': 'trust'},
-                         volumes=[f'{self._data_path}/postgresql:/var/lib/postgresql/data',
+                         volumes=[f'{self._data_path}/postgresql/data:/var/lib/postgresql/data',
                                   f'{self._data_path}/shared:/data/shared'])
+
+    def root_mount_directory(self) -> str:
+        return __name__.lower()
 
     def wait_until_ready(self, command: str = '') -> bool:
         success = self.run_and_wait_for_log('port 5432', command=command)

@@ -14,6 +14,9 @@ class MorphKGC(Container):
                          volumes=[f'{self._data_path}/morphkgc:/data',
                                   f'{self._data_path}/shared:/data/shared'])
 
+    def root_mount_directory(self) -> str:
+        return __name__.lower()
+
     def execute(self, arguments) -> bool:
         return self.run(f'python3 -m morph_kgc /data/config.ini')
 

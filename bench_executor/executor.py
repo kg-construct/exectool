@@ -203,7 +203,11 @@ class Executor:
             # Store logs
             # Needs separate process for logs and metrics collecting
             if hasattr(resource, 'logs'):
-                with open(os.path.join(data_path, f'{step["resource"]}.txt'), 'w') as f:
+                root_mount_directory = resource.root_mount_directory()
+                path = os.path.join(data_path,
+                                    root_mount_directory,
+                                    'logs.txt')
+                with open(path, 'w') as f:
                     f.writelines(resource.logs())
 
             # Step complete

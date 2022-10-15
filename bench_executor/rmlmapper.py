@@ -13,11 +13,18 @@ class RMLMapper(Container):
                          volumes=[f'{self._data_path}/rmlmapper:/data',
                                   f'{self._data_path}/shared:/data/shared'])
 
+    def root_mount_directory(self) -> str:
+        return __name__.lower()
+
     def execute(self, arguments: list) -> bool:
         if self._verbose:
             arguments.append('-vvvvvvvvvvv')
 
-        success = self.run_and_wait_for_exit(f'java -jar rmlmapper/rmlmapper.jar {" ".join(arguments)}')
+        self._logs.append(f'Executing RMLMapper with arguments '
+                          f'{" ".join(arguments)}\n')
+        success = self.run_and_wait_for_exit(f'java -jar '
+                                             f'rmlmapper/rmlmapper.jar '
+                                             f'{" ".join(arguments)}')
         return success
 
     def execute_mapping(self, mapping_file, output_file, serialization,
@@ -44,7 +51,8 @@ class RMLMapper(Container):
                 protocol = 'jdbc:postgresql'
             else:
                 raise ValueError(f'Unknown RDB type: "{rdf_type}"')
-            rdb_dsn = f'{protocol}://{rdb_host}:{rdb_port}/{rdb_name}{parameters}'
+            rdb_dsn = f'{protocol}://{rdb_host}:{rdb_port}/' + \
+                      f'{rdb_name}{parameters}'
             arguments.append('-dsn')
             arguments.append(rdb_dsn)
 
