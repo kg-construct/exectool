@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 import sys
 import argparse
 from bench_executor import Executor
@@ -52,6 +53,13 @@ def execute_cases(executor: Executor, fail_fast: bool = False):
             print(f'{index+1 : >4}. {f : <76}')
         sys.exit(EXIT_CODE_FAILED_CASE)
 
+def clean_cases(executor: Executor):
+    cases = e.list()
+
+    for case in cases:
+        e.clean(case)
+    print(f'Cleaned {len(cases)} cases')
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Copyright by (c) Dylan Van Assche (2022), available under GPLv3 license',
                                      epilog='Please cite our paper if you make use of this tool')
@@ -82,6 +90,8 @@ if __name__ == '__main__':
         print_cases(e)
     elif args.command == 'run':
         execute_cases(e, args.fail_fast)
+    elif args.command == 'clean':
+        clean_cases(e)
     else:
         print(f'Unknown command: {args.command}', file=sys.stderr)
         sys.exit(EXIT_CODE_UNKNOWN_COMMAND)

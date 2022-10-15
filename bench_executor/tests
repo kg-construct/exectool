@@ -99,7 +99,6 @@ class Unittests(unittest.TestCase):
         cursor.execute('SELECT name, age FROM student;')
         results = []
         for record in cursor:
-            print(record)
             results.append([record[0], record[1]])
         self.assertListEqual(results, [['Jefke', '21'], ['Maria', '22'], ['Jos', '23']])
 
@@ -190,17 +189,26 @@ class Integrationtests(unittest.TestCase):
     def test_executor_run(self):
         path = os.path.join(DATA_DIR, 'cases')
         executor = Executor(path, False)
+
         for case in executor.list():
+            # Clean previous checkpoints
+            executor.clean(case)
+
             self.assertTrue(executor.run(case))
             for step in case['data']['steps']:
                 name = case['data']['name']
                 resource = step['resource']
                 root_mount_directory = resource.lower().replace('_', '')
+
+                # Verify if log file exists
                 log_file = os.path.join(path, name, 'data',
                                         root_mount_directory,
                                         'logs.txt')
-                print(log_file)
                 self.assertTrue(os.path.exists(log_file))
+
+                # Verify if checkpoint exists
+                checkpoint_file = os.path.join(path, name, '.done')
+                self.assertTrue(os.path.exists(checkpoint_file))
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:

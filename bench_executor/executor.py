@@ -6,6 +6,7 @@ import json
 import jsonschema
 import importlib
 import inspect
+from datetime import datetime
 from time import time, sleep
 from typing import Tuple
 
@@ -171,6 +172,11 @@ class Executor:
         else:
             print(f'      ❌ {name : <70}')
 
+    def clean(self, case: dict):
+        checkpoint_file = os.path.join(case['directory'], '.done')
+        if os.path.exists(checkpoint_file):
+            os.remove(checkpoint_file)
+
     def run(self, case: dict) -> Tuple[bool, float]:
         success = True
         start = time()
@@ -178,6 +184,11 @@ class Executor:
         directory = case['directory']
         data_path = os.path.join(directory, 'data')
         used_resources = []
+        checkpoint_file = os.path.join(directory, '.done')
+
+        if os.path.exists(checkpoint_file):
+            print(f'      ⏩ SKIPPED')
+            return True, 0.0
 
         # Execute steps
         for step in data['steps']:
@@ -221,6 +232,10 @@ class Executor:
             if r is not None and hasattr(r, 'stop'):
                 r.stop()
         self._print_step('Clean up resources', success)
+
+        # Mark checkpoint
+        with open(checkpoint_file, 'w') as f:
+            f.write(f'{datetime.now().replace(microsecond=0).isoformat()}\n')
 
         return success, diff
 
