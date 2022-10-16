@@ -6,6 +6,7 @@ import json
 import jsonschema
 import importlib
 import inspect
+from glob import glob
 from datetime import datetime
 from time import time, sleep
 from typing import Tuple
@@ -211,9 +212,18 @@ class Executor:
             print(f'      ❌ {name : <70}')
 
     def clean(self, case: dict):
+        # Checkpoints
         checkpoint_file = os.path.join(case['directory'], '.done')
         if os.path.exists(checkpoint_file):
             os.remove(checkpoint_file)
+
+        # Log files
+        for log_file in glob(f'{case["directory"]}/*/*/*.txt'):
+            os.remove(log_file)
+
+        # Metrics measurements
+        for metrics_file in glob(f'{case["directory"]}/*/*/metrics.jsonl'):
+            os.remove(metrics_file)
 
     def run(self, case: dict, interval: float) -> Tuple[bool, float]:
         success = True

@@ -210,24 +210,48 @@ class Integrationtests(unittest.TestCase):
         executor = Executor(path, False)
 
         for case in executor.list():
-            # Clean previous checkpoints
+            # Clean case
             executor.clean(case)
 
-            self.assertTrue(executor.run(case, 0.5))
+            # Check if all files are removed
             for step in case['data']['steps']:
                 name = case['data']['name']
                 resource = step['resource']
                 root_mount_directory = resource.lower().replace('_', '')
-
-                # Verify if log file exists
-                log_file = os.path.join(path, name, 'data',
-                                        root_mount_directory,
+                log_file = os.path.join(path, name, 'data', root_mount_directory,
                                         'logs.txt')
-                self.assertTrue(os.path.exists(log_file))
-
-                # Verify if checkpoint exists
                 checkpoint_file = os.path.join(path, name, '.done')
+                metrics_file = os.path.join(path, name, 'data', root_mount_directory,
+                                            'metrics.jsonl')
+
+                self.assertFalse(os.path.exists(log_file))
+                self.assertFalse(os.path.exists(metrics_file))
+                self.assertFalse(os.path.exists(checkpoint_file))
+
+            # Run case
+            self.assertTrue(executor.run(case, 0.5))
+
+            # Check if all files are generated
+            for step in case['data']['steps']:
+                name = case['data']['name']
+                resource = step['resource']
+                root_mount_directory = resource.lower().replace('_', '')
+                log_file = os.path.join(path, name, 'data', root_mount_directory,
+                                        'logs.txt')
+                checkpoint_file = os.path.join(path, name, '.done')
+                metrics_file = os.path.join(path, name, 'data', root_mount_directory,
+                                            'metrics.jsonl')
+
+                # Verify if log, checkpoint, metrics files exists
+                self.assertTrue(os.path.exists(log_file))
+                with open(log_file) as f:
+                    self.assertTrue(len(f.readlines()) > 0)
+                self.assertTrue(os.path.exists(metrics_file))
+                with open(metrics_file) as f:
+                    self.assertTrue(len(f.readlines()) > 0)
                 self.assertTrue(os.path.exists(checkpoint_file))
+                with open(checkpoint_file) as f:
+                    self.assertTrue(len(f.readlines()) > 0)
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:
