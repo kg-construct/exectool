@@ -25,8 +25,7 @@ class PostgreSQL(Container):
                                       'POSTGRES_USER': USER,
                                       'POSTGRES_DB': DB,
                                       'POSTGRES_HOST_AUTH_METHOD': 'trust'},
-                         volumes=[f'{self._data_path}/postgresql/data:/var/lib/postgresql/data',
-                                  f'{self._data_path}/shared:/data/shared'])
+                         volumes=[f'{self._data_path}/shared:/data/shared'])
 
     def root_mount_directory(self) -> str:
         return __name__.lower()
@@ -45,11 +44,11 @@ class PostgreSQL(Container):
 
         return success
 
-    def load(self, csv_file_name: str, name: str) -> bool:
+    def load(self, csv_file: str, table: str) -> bool:
         success = True
         columns = None
-        name = name.lower()
-        path = os.path.join(self._data_path, 'shared', csv_file_name)
+        table = table.lower()
+        path = os.path.join(self._data_path, 'shared', csv_file)
 
         # Analyze and move CSV for loading
         if not os.path.exists(path):
@@ -67,13 +66,13 @@ class PostgreSQL(Container):
         try:
             cursor = connection.cursor()
 
-            cursor.execute(f'DROP TABLE IF EXISTS {name};')
+            cursor.execute(f'DROP TABLE IF EXISTS {table};')
             c = ' VARCHAR , '.join(columns) + ' VARCHAR'
-            cursor.execute(f'CREATE TABLE {name} (KEY SERIAL, {c}, '
+            cursor.execute(f'CREATE TABLE {table} (KEY SERIAL, {c}, '
                            'PRIMARY KEY(KEY))')
             c = ','.join(columns)
-            cursor.execute(f'COPY {name} ({c}) FROM '
-                           f'\'/data/shared/{csv_file_name}\' '
+            cursor.execute(f'COPY {table} ({c}) FROM '
+                           f'\'/data/shared/{csv_file}\' '
                            'DELIMITER \',\' NULL \'NULL\' CSV HEADER;')
             cursor.execute('COMMIT;')
 
@@ -82,7 +81,7 @@ class PostgreSQL(Container):
                 print(header)
                 print('-' * len(header))
 
-            cursor.execute(f'SELECT * FROM {name};')
+            cursor.execute(f'SELECT * FROM {table};')
             number_of_records = 0
             for record in cursor:
                 number_of_records += 1

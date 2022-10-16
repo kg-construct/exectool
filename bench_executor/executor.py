@@ -207,9 +207,9 @@ class Executor:
             return
 
         if success:
-            print(f'      ✅ {name : <70}')
+            print(f'        ✅ {name : <70}')
         else:
-            print(f'      ❌ {name : <70}')
+            print(f'        ❌ {name : <70}')
 
     def clean(self, case: dict):
         # Checkpoints
@@ -225,16 +225,25 @@ class Executor:
         for metrics_file in glob(f'{case["directory"]}/*/*/metrics.jsonl'):
             os.remove(metrics_file)
 
-    def run(self, case: dict, interval: float) -> Tuple[bool, float]:
+    def run_multiple(self, case: dict, interval: float,
+                     runs: int) -> Tuple[bool, float]:
+        for run in range(1, runs+1):
+            print(f'      Run {run}/{runs}')
+            success, diff = self.run(case, interval, run)
+        return True, 0.0 # TODO
+
+    def run(self, case: dict, interval: float,
+            run: int = 1) -> Tuple[bool, float]:
         success = True
         start = time()
         data = case['data']
         directory = case['directory']
         data_path = os.path.join(directory, 'data')
+        os.makedirs(data_path, exist_ok=True)
         checkpoint_file = os.path.join(directory, '.done')
 
         if os.path.exists(checkpoint_file):
-            print(f'      ⏩ SKIPPED')
+            print(f'        ⏩ SKIPPED')
             return True, 0.0
 
         # Launch metrics thread
@@ -255,9 +264,9 @@ class Executor:
 
             # Allow metrics thread to retrieve stats from container
             with condition:
-                path = os.path.join(data_path,
-                                    root_mount_directory,
-                                    'metrics.jsonl')
+                path = os.path.join(data_path, root_mount_directory)
+                os.makedirs(path, exist_ok=True)
+                path = os.path.join(path, 'metrics.jsonl')
                 f = open(path, 'w')
                 metrics = {
                             'type': METRIC_TYPE_START,

@@ -20,7 +20,8 @@ class Query():
         data = {
             'query': query,
             'format': 'text/plain', # N-Triples Virtuoso
-            'default-graph-uri': '' # Empty default graph Virtuoso
+            'default-graph-uri': '', # Empty default graph Virtuoso
+            'maxrows': 10000000 # Overwrite Virtuoso SPARQL limit
         }
         r = requests.post(sparql_endpoint, data=data)
         r.raise_for_status()
@@ -30,11 +31,11 @@ class Query():
         return self._logs
 
     def execute_and_save(self, query: str, sparql_endpoint: str,
-                         results_file_name: str) -> bool:
+                         results_file: str) -> bool:
         results = self.execute(query, sparql_endpoint)
         path = os.path.join(self._data_path, 'query')
         os.makedirs(path, exist_ok=True)
-        results_file = os.path.join(path, results_file_name)
+        results_file = os.path.join(path, results_file)
         with open(results_file, 'w') as f:
             f.write(results)
 

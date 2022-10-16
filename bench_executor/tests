@@ -243,6 +243,7 @@ class Integrationtests(unittest.TestCase):
                                             'metrics.jsonl')
 
                 # Verify if log, checkpoint, metrics files exists
+                print(log_file)
                 self.assertTrue(os.path.exists(log_file))
                 with open(log_file) as f:
                     self.assertTrue(len(f.readlines()) > 0)

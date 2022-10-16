@@ -9,8 +9,8 @@
             "resource": "PostgreSQL",
             "command": "load",
             "parameters": {
-                "csv_file_name": "student.csv",
-                "name": "student"
+                "csv_file": "student.csv",
+                "table": "student"
             }
         },
         {
@@ -19,8 +19,8 @@
             "resource": "RMLMapper",
             "command": "execute_mapping",
             "parameters": {
-                "mapping_file": "/data/shared/mapping.rml.ttl",
-                "output_file": "/data/shared/out.nt",
+                "mapping_file": "mapping.rml.ttl",
+                "output_file": "out.nt",
                 "serialization": "nquads",
                 "rdb_host": "PostgreSQL",
                 "rdb_port": "5432",
@@ -36,7 +36,7 @@
             "resource": "Virtuoso",
             "command": "load",
             "parameters": {
-                "rdf_file": "/data/shared/out.nt"
+                "rdf_file": "out.nt"
             }
         },
         {
@@ -47,7 +47,7 @@
             "parameters": {
                 "query": "PREFIX foaf: <http://xmlns.com/foaf/0.1/> CONSTRUCT WHERE { ?s foaf:name ?o1 . }",
                 "sparql_endpoint": "http://localhost:8890/sparql",
-                "results_file_name": "results.nt"
+                "results_file": "results.nt"
             }
         }
     ]
