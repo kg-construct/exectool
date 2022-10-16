@@ -9,11 +9,49 @@ import inspect
 from datetime import datetime
 from time import time, sleep
 from typing import Tuple
+from threading import Thread, Event, Condition
 
 METADATA_FILE = 'metadata.json'
 SCHEMA_FILE = 'metadata.schema'
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 WAIT_TIME = 5 # seconds
+METRIC_TYPE_MEASUREMENT = 'MEASUREMENT'
+METRIC_TYPE_START = 'START'
+METRIC_TYPE_STOP = 'STOP'
+
+def _collect_metrics(condition: Condition, stop_event: Event,
+                     active_resources: list, interval: float):
+    while not stop_event.wait(0):
+        # Protect active_resources variable with condition
+        with condition:
+            for r, f, name in active_resources:
+                if not hasattr(r, 'stats'):
+                    continue
+
+                metrics = r.stats(silence_failure=True)
+                if metrics is None:
+                    continue
+
+                # JSONL dump: replace all new lines and append a single new line at the
+                # end and dump it to the file
+                metrics['name'] = name
+                metrics['type'] = METRIC_TYPE_MEASUREMENT
+                m = json.dumps(metrics).replace('\n', '') + '\n'
+                f.write(m)
+            condition.notify_all()
+        sleep(interval)
+
+    with condition:
+        for r, f, name in active_resources:
+            metrics = {
+                        'type': METRIC_TYPE_STOP,
+                        'time': round(time(), 2),
+                        'name': name
+                      }
+            m = json.dumps(metrics).replace('\n', '') + '\n'
+            f.write(m)
+            f.flush()
+            f.close()
 
 class Executor:
     def __init__(self, main_directory: str, verbose: bool = False, cli: bool = False):
@@ -177,25 +215,49 @@ class Executor:
         if os.path.exists(checkpoint_file):
             os.remove(checkpoint_file)
 
-    def run(self, case: dict) -> Tuple[bool, float]:
+    def run(self, case: dict, interval: float) -> Tuple[bool, float]:
         success = True
         start = time()
         data = case['data']
         directory = case['directory']
         data_path = os.path.join(directory, 'data')
-        used_resources = []
         checkpoint_file = os.path.join(directory, '.done')
 
         if os.path.exists(checkpoint_file):
             print(f'      ⏩ SKIPPED')
             return True, 0.0
 
+        # Launch metrics thread
+        stop_event = Event()
+        condition = Condition()
+        active_resources = []
+        metrics_thread = Thread(target=_collect_metrics,
+                                args=(condition, stop_event, active_resources, interval),
+                                daemon=True)
+        metrics_thread.start()
+
         # Execute steps
         for step in data['steps']:
             module = self._class_module_mapping[step['resource']]
             resource = getattr(module, step['resource'])(data_path,
                                                          self._verbose)
-            used_resources.append(resource)
+            root_mount_directory = resource.root_mount_directory()
+
+            # Allow metrics thread to retrieve stats from container
+            with condition:
+                path = os.path.join(data_path,
+                                    root_mount_directory,
+                                    'metrics.jsonl')
+                f = open(path, 'w')
+                metrics = {
+                            'type': METRIC_TYPE_START,
+                            'time': round(time(), 2),
+                            'name': step['resource']
+                          }
+                m = json.dumps(metrics).replace('\n', '') + '\n'
+                f.write(m)
+                active_resources.append((resource, f, step['resource']))
+                condition.notify_all()
 
             # Containers may need to start up first before executing a command
             if hasattr(resource, 'wait_until_ready'):
@@ -214,7 +276,6 @@ class Executor:
             # Store logs
             # Needs separate process for logs and metrics collecting
             if hasattr(resource, 'logs'):
-                root_mount_directory = resource.root_mount_directory()
                 path = os.path.join(data_path,
                                     root_mount_directory,
                                     'logs.txt')
@@ -227,10 +288,18 @@ class Executor:
         diff = time() - start
         sleep(WAIT_TIME)
 
-        # Shutdown resources if necessary
-        for r in used_resources:
+        # Stop all metric measurement threads
+        stop_event.set()
+        metrics_thread.join()
+
+        for r, f, name in active_resources:
+            # Stop container
             if r is not None and hasattr(r, 'stop'):
                 r.stop()
+
+            # Close metrics measurement file
+            f.close()
+
         self._print_step('Clean up resources', success)
 
         # Mark checkpoint

@@ -38,7 +38,7 @@ def execute_cases(executor: Executor, fail_fast: bool = False):
         percentage = f'[ {p : >3}% ]'
 
         print(f'{index+1 : >4}. {data["name"] : <67} {percentage : <9}')
-        success, diff = e.run(case)
+        success, diff = e.run(case, 0.5)
 
         if not success:
             failures.append(data['name'])

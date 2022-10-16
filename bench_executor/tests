@@ -57,6 +57,25 @@ class Unittests(unittest.TestCase):
         self.assertTrue(len(c.logs()) > 0)
         c.stop()
 
+    def test_docker_stats(self):
+        c = Container('nginx:alpine', 'test_docker_stats',
+                      {'80/tcp': '8084/tcp'})
+        self.assertTrue(c.run_and_wait_for_log('start worker process'))
+        stats1 = c.stats()
+
+        # Trigger some activity
+        for i in range(5):
+            sleep(i)
+            r = requests.get('http://localhost:8084')
+            self.assertEqual(r.status_code, 200)
+            r.raise_for_status()
+
+        # Stats should be increased by now
+        stats2 = c.stats()
+        self.assertTrue(stats1['cpu']['total_cpu_time'] < stats2['cpu']['total_cpu_time'])
+
+        c.stop()
+
     def test_rmlmapper_file(self):
         rmlmapper = RMLMapper(DATA_DIR, False)
         self.assertTrue(rmlmapper.execute_mapping('/data/mapping.rml.ttl', '/data/out.nt', 'ntriples'))
@@ -194,7 +213,7 @@ class Integrationtests(unittest.TestCase):
             # Clean previous checkpoints
             executor.clean(case)
 
-            self.assertTrue(executor.run(case))
+            self.assertTrue(executor.run(case, 0.5))
             for step in case['data']['steps']:
                 name = case['data']['name']
                 resource = step['resource']
