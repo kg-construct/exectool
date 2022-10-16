@@ -6,6 +6,7 @@ import json
 import jsonschema
 import importlib
 import inspect
+import shutil
 from glob import glob
 from datetime import datetime
 from time import time, sleep
@@ -202,14 +203,14 @@ class Executor:
 
         return True
 
-    def _print_step(self, name: str, success: bool):
+    def _print_step(self, resource: str, name: str, success: bool):
         if not self._cli:
             return
 
         if success:
-            print(f'        ✅ {name : <70}')
+            print(f'        ✅ {resource : <20}: {name : <50}')
         else:
-            print(f'        ❌ {name : <70}')
+            print(f'        ❌ {resource : <20}: {name : <50}')
 
     def clean(self, case: dict):
         # Checkpoints
@@ -218,27 +219,20 @@ class Executor:
             os.remove(checkpoint_file)
 
         # Log files
-        for log_file in glob(f'{case["directory"]}/*/*/*.txt'):
+        for log_file in glob(f'{case["directory"]}/*/*/logs.txt'):
             os.remove(log_file)
 
         # Metrics measurements
         for metrics_file in glob(f'{case["directory"]}/*/*/metrics.jsonl'):
             os.remove(metrics_file)
 
-    def run_multiple(self, case: dict, interval: float,
-                     runs: int) -> Tuple[bool, float]:
-        for run in range(1, runs+1):
-            print(f'      Run {run}/{runs}')
-            success, diff = self.run(case, interval, run)
-        return True, 0.0 # TODO
-
-    def run(self, case: dict, interval: float,
-            run: int = 1) -> Tuple[bool, float]:
+    def run(self, case: dict, interval: float, run: int, checkpoint: bool) -> Tuple[bool, float]:
         success = True
         start = time()
         data = case['data']
         directory = case['directory']
         data_path = os.path.join(directory, 'data')
+        results_path = os.path.join(directory, 'results')
         os.makedirs(data_path, exist_ok=True)
         checkpoint_file = os.path.join(directory, '.done')
 
@@ -282,14 +276,14 @@ class Executor:
             if hasattr(resource, 'wait_until_ready'):
                 if not resource.wait_until_ready():
                     success = False
-                    self._print_step(step['name'], success)
+                    self._print_step(step['resource'], step['name'], success)
                     break
 
             # Execute command
             command = getattr(resource, step['command'])
             if not command(**step['parameters']):
                 success = False
-                self._print_step(step['name'], success)
+                self._print_step(step['resource'], step['name'], success)
                 break
 
             # Store logs
@@ -302,7 +296,7 @@ class Executor:
                     f.writelines(resource.logs())
 
             # Step complete
-            self._print_step(step['name'], success)
+            self._print_step(step['resource'], step['name'], success)
 
         diff = time() - start
         sleep(WAIT_TIME)
@@ -319,11 +313,31 @@ class Executor:
             # Close metrics measurement file
             f.close()
 
-        self._print_step('Clean up resources', success)
+        self._print_step('Cleaner', 'Clean up resources', success)
 
-        # Mark checkpoint
-        with open(checkpoint_file, 'w') as f:
-            f.write(f'{datetime.now().replace(microsecond=0).isoformat()}\n')
+        # Mark checkpoint if necessary
+        if checkpoint:
+            with open(checkpoint_file, 'w') as f:
+                f.write(f'{datetime.now().replace(microsecond=0).isoformat()}\n')
+
+        # Move results for a clean slate when doing multiple runs
+        results_run_path = os.path.join(results_path, str(run))
+        os.makedirs(results_run_path, exist_ok=True)
+        # Log files
+        for log_file in glob(f'{data_path}/*/logs.txt'):
+            subdir = log_file.replace(f'{data_path}/', '') \
+                    .replace('/logs.txt', '')
+            os.makedirs(os.path.join(results_run_path, subdir), exist_ok=True)
+            shutil.move(log_file, os.path.join(results_run_path, subdir,
+                                               'logs.txt'))
+
+        # Metrics measurements
+        for metrics_file in glob(f'{data_path}/*/metrics.jsonl'):
+            subdir = metrics_file.replace(f'{data_path}/', '') \
+                    .replace('/metrics.jsonl', '')
+            os.makedirs(os.path.join(results_run_path, subdir), exist_ok=True)
+            shutil.move(metrics_file, os.path.join(results_run_path, subdir,
+                                               'metrics.jsonl'))
 
         return success, diff
 

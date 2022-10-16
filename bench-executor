@@ -3,12 +3,21 @@
 import os
 import sys
 import argparse
+from signal import signal, SIGINT
 from bench_executor import Executor
 
 VERSION = '0.1.0'
 EXIT_CODE_UNKNOWN_COMMAND = -1
 EXIT_CODE_NO_CASES = -2
 EXIT_CODE_FAILED_CASE = -3
+EXIT_CODE_INTERRUPTED = -4
+stop = False
+
+def signal_handler(signum, frame):
+    global stop
+
+    print('Waiting for case to finish before exiting...')
+    stop = True
 
 def print_cases(executor: Executor):
     cases = e.list()
@@ -25,9 +34,12 @@ def print_cases(executor: Executor):
 
 def execute_cases(executor: Executor, interval: float, runs: int,
                   fail_fast: bool):
+    global stop
     failures = []
-    cases = e.list()
 
+    signal(SIGINT, signal_handler)
+
+    cases = e.list()
     if not cases:
         print('No cases discovered!')
         sys.exit(EXIT_CODE_NO_CASES)
@@ -39,12 +51,17 @@ def execute_cases(executor: Executor, interval: float, runs: int,
         percentage = f'[ {p : >3}% ]'
 
         print(f'{index+1 : >4}. {data["name"] : <67} {percentage : <9}')
-        success, diff = e.run_multiple(case, interval, runs)
+        for i in range(1, runs+1):
+            print(f'      ==> Run #{i} <==')
+            success, diff = e.run(case, interval, i, i == (runs+1))
 
-        if not success:
-            failures.append(data['name'])
-            if fail_fast:
-                break
+            if not success:
+                failures.append(data['name'])
+                if fail_fast:
+                    break
+
+            if stop:
+                sys.exit(EXIT_CODE_INTERRUPTED)
 
     # Exit with error code when we have a failed case
     if failures:
