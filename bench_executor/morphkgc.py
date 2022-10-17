@@ -18,7 +18,7 @@ class MorphKGC(Container):
         return __name__.lower()
 
     def execute(self, arguments) -> bool:
-        return self.run(f'python3 -m morph_kgc /data/config.ini')
+        return self.run_and_wait_for_exit(f'python3 -m morph_kgc /data/config.ini')
 
     def execute_mapping(self, mapping_file: str, output_file: str,
                         serialization: str, rdb_username: str = None,
@@ -47,10 +47,6 @@ class MorphKGC(Container):
         if rdb_username is not None and rdb_password is not None \
             and rdb_host is not None and rdb_port is not None \
             and rdb_name is not None and rdb_type is not None:
-            arguments.append('-u')
-            arguments.append(rdb_username)
-            arguments.append('-p')
-            arguments.append(rdb_password)
             if rdb_type == 'MySQL':
                 protocol = 'mysql+pymysql'
             elif rdb_type == 'PostgreSQL':
@@ -60,6 +56,7 @@ class MorphKGC(Container):
             rdb_dsn = f'{protocol}://{rdb_username}:{rdb_password}@{rdb_host}:{rdb_port}/{rdb_name}'
             config['DataSource0']['db_url'] = rdb_dsn
 
+        os.makedirs(os.path.join(self._data_path, 'morphkgc'), exist_ok=True)
         with open(os.path.join(self._data_path, 'morphkgc', 'config.ini'), 'w') as f:
             config.write(f)
 

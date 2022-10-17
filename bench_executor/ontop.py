@@ -1,65 +1,100 @@
 #!/usr/bin/env python3
 
 import os
+import sys
+import psutil
 import configparser
 from container import Container
 
+VERSION = '4.2.0'
+
 class _Ontop(Container):
     def __init__(self, name, data_path: str, verbose: bool, mode: str):
-        self._data_path = os.path.abspath(data_path)
         self.verbose = verbose
+
+        # Set Java heap to 1/2 of available memory instead of the default 1/4
+        max_heap = int(psutil.virtual_memory().total * (1/2))
+
         super().__init__(f'kg-construct/ontop:v{VERSION}', name,
                          ports={'8888':'8888'},
+                         environment={'ONTOP_JAVA_ARGS': f'-Xmx{max_heap}'},
                          volumes=[f'{self._data_path}/ontop{mode}:/data',
                                   f'{self._data_path}/shared:/data/shared'])
-        self._data_path = data_path
 
     def root_mount_directory(self) -> str:
         return __name__.lower().replace('_', '')
 
     def execute(self, mode, arguments) -> bool:
-        return self.run(f'{mode} {" ".join(arguments)}')
+        cmd = f'/ontop/ontop {mode} {" ".join(arguments)}'
+        if mode == 'endpoint':
+            success = self.run_and_wait_for_log('UNKNOWN', cmd)
+        elif mode == 'materialize':
+            success = self.run_and_wait_for_exit(cmd)
+        else:
+            print(f'Unknown Ontop mode "{mode}"', file=sys.stderr)
+            success = False
+
+        for l in self.logs():
+            print(l)
+
+        return success
 
     def execute_mapping(self, mode, config_file, arguments, mapping_file,
                         output_file, rdb_username: str = None,
                         rdb_password: str = None, rdb_host: str = None,
                         rdb_port: str = None, rdb_name: str = None,
                         rdb_type: str = None) -> bool:
-        arguments.append('-m')
-        arguments.append(mapping_file)
-        arguments.append('-o')
-        arguments.append(output_file)
-        arguments.append('-p')
-        arguments.append(config_file)
-
         # Generate INI configuration file since no CLI is available
         if rdb_username is not None and rdb_password is not None \
             and rdb_host is not None and rdb_port is not None \
             and rdb_name is not None and rdb_type is not None:
             config = configparser.ConfigParser()
-            config = {
-                'jdbc.user': rdb_user,
+            config['root'] = {
+                'jdbc.user': rdb_username,
                 'jdbc.password': rdb_password
             }
             if rdb_type == 'MySQL':
-                config['jdbc.url'] = 'jdbc:mysql://{rdb_host}:{rdb_port}/{rdb_name}'
-                config['jdbc.driver'] = 'com.mysql.cj.jdbc.Driver'
+                dsn = f'jdbc:mysql://{rdb_host}:{rdb_port}/{rdb_name}'
+                config['root']['jdbc.url'] = dsn
+                config['root']['jdbc.driver'] = 'com.mysql.cj.jdbc.Driver'
             elif rdb_type == 'PostgreSQL':
-                config['jdbc.url'] = 'jdbc:postgresql://{rdb_host}:{rdb_port}/{rdb_name}'
-                config['jdbc.driver'] = 'org.postgresql.Driver'
+                dsn = f'jdbc:postgresql://{rdb_host}:{rdb_port}/{rdb_name}'
+                config['root']['jdbc.url'] = dsn
+                config['root']['jdbc.driver'] = 'org.postgresql.Driver'
             else:
                 raise ValueError(f'Unknown RDB type: "{rdb_type}"')
+
+            path = os.path.join(self._data_path, f'ontop{mode}')
+            os.makedirs(path, exist_ok=True)
+            print(os.path.join(path, 'config.properties'))
+            with open(os.path.join(path, 'config.properties'), 'w') as f:
+                config.write(f, space_around_delimiters=False)
+
+            # .properties files are like .ini files but without a [HEADER]
+            # Use a [root] header and remove it after writing
+            with open(os.path.join(path, 'config.properties'), 'r') as f:
+                data = f.read()
+
+            with open(os.path.join(path, 'config.properties'), 'w') as f:
+                f.write(data.replace('[root]\n', ''))
         else:
             raise ValueError('Ontop only supports RDBs')
+
+        arguments.append('-m')
+        arguments.append(mapping_file)
+        arguments.append('-o')
+        arguments.append(output_file)
+        arguments.append('-p')
+        arguments.append('/data/config.properties')
 
         return self.execute(mode, arguments)
 
 class OntopVirtualize(_Ontop):
     def __init__(self, data_path: str, verbose: bool):
+        self._data_path = os.path.abspath(data_path)
+        os.makedirs(os.path.join(self._data_path, 'ontopvirtualize'),
+                    exist_ok=True)
         super().__init__('Ontop-Virtualize', data_path, verbose, 'virtualize')
-
-    def execute(self, arguments) -> bool:
-        return super().execute('endpoint', arguments)
 
     def execute_mapping(self, mapping_file, output_file, serialization,
                         rdb_username: str = None, rdb_password: str = None,
@@ -74,10 +109,10 @@ class OntopVirtualize(_Ontop):
 
 class OntopMaterialize(_Ontop):
     def __init__(self, data_path: str, verbose: bool):
+        self._data_path = os.path.abspath(data_path)
+        os.makedirs(os.path.join(self._data_path, 'ontopmaterialize'),
+                    exist_ok=True)
         super().__init__('Ontop-Materialize', data_path, verbose, 'materialize')
-
-    def execute(self, arguments) -> bool:
-        return super().execute('materialize', arguments)
 
     def execute_mapping(self, mapping_file, output_file, serialization,
                         rdb_username: str = None, rdb_password: str = None,

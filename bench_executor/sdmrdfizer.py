@@ -18,8 +18,12 @@ class SDMRDFizer(Container):
         return __name__.lower()
 
     def execute(self, arguments) -> bool:
-        return self.run(f'python3 sdm-rdfizer/rdfizer/run_rdfizer.py '
-                        '/data/config.ini')
+        s = self.run_and_wait_for_exit(f'python3 sdm-rdfizer/rdfizer/run_rdfizer.py '
+                                          '/data/config.ini')
+        for l in self.logs():
+            print(l)
+
+        return s
 
     def execute_mapping(self, mapping_file: str, output_file: str,
                         serialization: str, rdb_username: str = None,
@@ -28,7 +32,7 @@ class SDMRDFizer(Container):
                         rdb_type: str = None) -> bool:
 
         name = os.path.splitext(os.path.basename(output_file))[0]
-        config = configparser.ConfigParser()
+        config = configparser.ConfigParser(delimiters=':')
         config['default'] = {
             'main_directory': '/data'
         }
@@ -63,7 +67,8 @@ class SDMRDFizer(Container):
                 raise NotImplementedError('SDM-RDFizer does not support RDB '
                                           f'"{rdb_type}"')
 
+        os.makedirs(os.path.join(self._data_path, 'sdmrdfizer'), exist_ok=True)
         with open(os.path.join(self._data_path, 'sdmrdfizer', 'config.ini'), 'w') as f:
-            config.write(f)
+            config.write(f, space_around_delimiters=False)
 
         return self.execute([])

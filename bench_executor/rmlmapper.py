@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import psutil
 from container import Container
 
 VERSION = '6.0.0'
@@ -22,7 +23,12 @@ class RMLMapper(Container):
 
         self._logs.append(f'Executing RMLMapper with arguments '
                           f'{" ".join(arguments)}\n')
-        success = self.run_and_wait_for_exit(f'java -jar '
+
+        # Set Java heap to 1/2 of available memory instead of the default 1/4
+        max_heap = int(psutil.virtual_memory().total * (1/2))
+
+        # Execute command
+        success = self.run_and_wait_for_exit(f'java -Xmx{max_heap} -jar '
                                              f'rmlmapper/rmlmapper.jar '
                                              f'{" ".join(arguments)}')
         return success
