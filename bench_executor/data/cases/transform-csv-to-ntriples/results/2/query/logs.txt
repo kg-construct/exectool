@@ -1,2 +1,0 @@
-Executing query "PREFIX foaf: <http://xmlns.com/foaf/0.1/> CONSTRUCT WHERE { ?s foaf:name ?o1 . }" on endpoint "http://localhost:8890/sparql"
-Wrote query results to "/home/dylan/Projects/metrics-execution-tool/bench_executor/data/cases/transform-csv-to-ntriples/data/query/results.nt"

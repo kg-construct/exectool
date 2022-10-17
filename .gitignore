@@ -9,7 +9,10 @@ bench_executor/data/sdmrdfizer/out*
 bench_executor/data/sdmrdfizer/*stat*
 bench_executor/data/sdmrdfizer/config.ini
 bench_executor/data/cases/*/data
+bench_executor/data/cases/*/results
 *.done
+*logs.txt
+*metrics.jsonl
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

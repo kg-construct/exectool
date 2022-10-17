@@ -1,3 +1,0 @@
-{"type": "START", "time": 1665947152.21, "name": "RMLMapper"}
-{"time": 1665947154.56, "cpu": {"total_cpu_time": 0.469846, "user_cpu_time": 0.390144, "system_cpu_time": 0.079702}, "memory": {"total": 55.58272}, "io": {"/dev/nvme0n1": {"bytes_read": 43.204608, "bytes_write": 0.0, "bytes_discarded": 0.0, "number_of_reads": 486, "number_of_writes": 0, "number_of_discards": 0}, "/dev/dm-0": {"bytes_read": 43.204608, "bytes_write": 0.004096, "bytes_discarded": 0.0, "number_of_reads": 472, "number_of_writes": 1, "number_of_discards": 0}}, "network": {}, "name": "RMLMapper", "type": "MEASUREMENT"}
-{"type": "STOP", "time": 1665947160.57, "name": "RMLMapper"}

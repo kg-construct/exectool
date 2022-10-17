@@ -1,6 +1,0 @@
-Executing RMLMapper with arguments -m mapping.rml.ttl -s nquads -o out.nt -u root -p root -dsn jdbc:mysql://MySQL:3306/db?allowPublicKeyRetrieval=true&useSSL=false
-19:05:54.516 [main] ERROR be.ugent.rml.cli.Main               .main(436) - String index out of range: -1
-java.lang.StringIndexOutOfBoundsException: String index out of range: -1
-	at java.lang.String.substring(String.java:1967)
-	at be.ugent.rml.cli.Main.main(Main.java:197)
-	at be.ugent.rml.cli.Main.main(Main.java:45)
