@@ -54,6 +54,16 @@ class Container():
         else:
             print('CGroups not found, stats unsupported', file=sys.stderr)
 
+    def is_running(self):
+        if self._container is not None:
+            return self._container.status == 'running'
+        return False
+
+    def is_exited(self):
+        if self._container is not None:
+            return self._container.status == 'exited'
+        return False
+
     def run(self, command: str = '', detach=True) -> bool:
         try:
             self._container = self._client.containers.run(self._container_name,

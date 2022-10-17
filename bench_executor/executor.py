@@ -11,7 +11,7 @@ from glob import glob
 from datetime import datetime
 from time import time, sleep
 from typing import Tuple
-from threading import Thread, Event, Condition
+from threading import Thread, Event
 
 METADATA_FILE = 'metadata.json'
 SCHEMA_FILE = 'metadata.schema'
@@ -21,42 +21,43 @@ METRIC_TYPE_MEASUREMENT = 'MEASUREMENT'
 METRIC_TYPE_START = 'START'
 METRIC_TYPE_STOP = 'STOP'
 
-def _collect_metrics(condition: Condition, stop_event: Event,
-                     active_resources: list, interval: float):
+def _collect_metrics(stop_event: Event, active_resources: list,
+                     interval: float):
+    running_containers = []
     while not stop_event.wait(0):
-        # Protect active_resources variable with condition
-        with condition:
-            for r, f, name in active_resources:
-                if not hasattr(r, 'stats'):
-                    continue
-
-                metrics = r.stats(silence_failure=True)
-                if metrics is None:
-                    continue
-
-                # JSONL dump: replace all new lines and append a single new line at the
-                # end and dump it to the file
-                metrics['name'] = name
-                metrics['type'] = METRIC_TYPE_MEASUREMENT
-                m = json.dumps(metrics).replace('\n', '') + '\n'
-                f.write(m)
-            condition.notify_all()
-        sleep(interval)
-
-    with condition:
         for r, f, name in active_resources:
-            metrics = {
-                        'type': METRIC_TYPE_STOP,
-                        'time': round(time(), 2),
-                        'name': name
-                      }
+            if not hasattr(r, 'stats'):
+                continue
+
+            metrics = r.stats(silence_failure=True)
+            if metrics is None:
+                # Container was running and now not anymore, write stop metric
+                if name in running_containers and not f.closed:
+                    metrics = {
+                                'type': METRIC_TYPE_STOP,
+                                'time': round(time(), 2),
+                                'name': name
+                              }
+                    m = json.dumps(metrics).replace('\n', '') + '\n'
+                    f.write(m)
+                    f.flush()
+                    f.close()
+                continue
+
+            if name not in running_containers:
+                running_containers.append(name)
+
+            # JSONL dump: replace all new lines and append a single new line
+            # at the end and dump it to the file
+            metrics['name'] = name
+            metrics['type'] = METRIC_TYPE_MEASUREMENT
             m = json.dumps(metrics).replace('\n', '') + '\n'
             f.write(m)
-            f.flush()
-            f.close()
+        sleep(interval)
 
 class Executor:
-    def __init__(self, main_directory: str, verbose: bool = False, cli: bool = False):
+    def __init__(self, main_directory: str, verbose: bool = False,
+                 cli: bool = False):
         self._main_directory = main_directory
         self._schema = {}
         self._resources = None
@@ -242,10 +243,9 @@ class Executor:
 
         # Launch metrics thread
         stop_event = Event()
-        condition = Condition()
         active_resources = []
         metrics_thread = Thread(target=_collect_metrics,
-                                args=(condition, stop_event, active_resources, interval),
+                                args=(stop_event, active_resources, interval),
                                 daemon=True)
         metrics_thread.start()
 
@@ -257,20 +257,18 @@ class Executor:
             root_mount_directory = resource.root_mount_directory()
 
             # Allow metrics thread to retrieve stats from container
-            with condition:
-                path = os.path.join(data_path, root_mount_directory)
-                os.makedirs(path, exist_ok=True)
-                path = os.path.join(path, 'metrics.jsonl')
-                f = open(path, 'w')
-                metrics = {
-                            'type': METRIC_TYPE_START,
-                            'time': round(time(), 2),
-                            'name': step['resource']
-                          }
-                m = json.dumps(metrics).replace('\n', '') + '\n'
-                f.write(m)
-                active_resources.append((resource, f, step['resource']))
-                condition.notify_all()
+            path = os.path.join(data_path, root_mount_directory)
+            os.makedirs(path, exist_ok=True)
+            path = os.path.join(path, 'metrics.jsonl')
+            f = open(path, 'w')
+            metrics = {
+                        'type': METRIC_TYPE_START,
+                        'time': round(time(), 2),
+                        'name': step['resource']
+                      }
+            m = json.dumps(metrics).replace('\n', '') + '\n'
+            f.write(m)
+            active_resources.append((resource, f, step['resource']))
 
             # Containers may need to start up first before executing a command
             if hasattr(resource, 'wait_until_ready'):
@@ -309,9 +307,6 @@ class Executor:
             # Stop container
             if r is not None and hasattr(r, 'stop'):
                 r.stop()
-
-            # Close metrics measurement file
-            f.close()
 
         self._print_step('Cleaner', 'Clean up resources', success)
 

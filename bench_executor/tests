@@ -7,6 +7,7 @@ import requests
 import warnings
 import psycopg2
 import pymysql
+import subprocess
 from container import Container
 from rmlmapper import RMLMapper
 from postgresql import PostgreSQL
@@ -229,21 +230,21 @@ class Integrationtests(unittest.TestCase):
                 self.assertFalse(os.path.exists(checkpoint_file))
 
             # Run case
-            self.assertTrue(executor.run(case, 0.5))
+            self.assertTrue(executor.run(case, 0.25, 1, True))
 
             # Check if all files are generated
             for step in case['data']['steps']:
                 name = case['data']['name']
                 resource = step['resource']
                 root_mount_directory = resource.lower().replace('_', '')
-                log_file = os.path.join(path, name, 'data', root_mount_directory,
-                                        'logs.txt')
+                log_file = os.path.join(path, name, 'results', str(1),
+                                        root_mount_directory, 'logs.txt')
                 checkpoint_file = os.path.join(path, name, '.done')
-                metrics_file = os.path.join(path, name, 'data', root_mount_directory,
+                metrics_file = os.path.join(path, name, 'results', str(1),
+                                            root_mount_directory,
                                             'metrics.jsonl')
 
                 # Verify if log, checkpoint, metrics files exists
-                print(log_file)
                 self.assertTrue(os.path.exists(log_file))
                 with open(log_file) as f:
                     self.assertTrue(len(f.readlines()) > 0)
@@ -255,6 +256,16 @@ class Integrationtests(unittest.TestCase):
                     self.assertTrue(len(f.readlines()) > 0)
 
 if __name__ == '__main__':
+    # SELinux causes weird permission denied issues, warn users
+    try:
+        response = subprocess.check_output('getenforce')
+        if response.decode().strip() != 'Permissive':
+            print('SELinux must be set to "permissive" to allow containers '
+                  'accessing files in mounted directories', file=sys.stderr)
+            sys.exit(-1)
+    except subprocess.CalledProcessError:
+        pass
+
     if len(sys.argv) > 1:
         unittest.main()
     else:

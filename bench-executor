@@ -11,6 +11,7 @@ EXIT_CODE_UNKNOWN_COMMAND = -1
 EXIT_CODE_NO_CASES = -2
 EXIT_CODE_FAILED_CASE = -3
 EXIT_CODE_INTERRUPTED = -4
+EXIT_CODE_SELINUX = -5
 stop = False
 
 def signal_handler(signum, frame):
@@ -109,6 +110,16 @@ if __name__ == '__main__':
         print(f'Fail fast enabled: {args.fail_fast}')
         print(f'Number of runs: {args.number_of_runs}')
         print(f'Measurement sample interval: {args.interval}s')
+
+    # SELinux causes weird permission denied issues, warn users
+    try:
+        response = subprocess.check_output('getenforce')
+        if response.decode().strip() != 'Permissive':
+            print('SELinux must be set to "permissive" to allow containers '
+                  'accessing files in mounted directories', file=sys.stderr)
+            sys.exit(EXIT_CODE_SELINUX)
+    except subprocess.CalledProcessError:
+        pass
 
     e = Executor(args.main_directory, verbose=args.verbose, cli=True)
 

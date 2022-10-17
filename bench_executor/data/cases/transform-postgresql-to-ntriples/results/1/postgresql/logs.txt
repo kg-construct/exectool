@@ -31,26 +31,26 @@ You can change this by editing pg_hba.conf or using the option -A, or
 syncing data to disk ... ok
 Success. You can now start the database server using:
     pg_ctl -D /var/lib/postgresql/data -l logfile start
-waiting for server to start....2022-10-16 19:06:39.860 UTC [49] LOG:  starting PostgreSQL 14.5 (Debian 14.5-1.pgdg110+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 10.2.1-6) 10.2.1 20210110, 64-bit
-2022-10-16 19:06:39.865 UTC [49] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
-2022-10-16 19:06:39.879 UTC [50] LOG:  database system was shut down at 2022-10-16 19:06:36 UTC
-2022-10-16 19:06:39.897 UTC [49] LOG:  database system is ready to accept connections
+waiting for server to start....2022-10-17 06:52:17.290 UTC [50] LOG:  starting PostgreSQL 14.5 (Debian 14.5-1.pgdg110+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 10.2.1-6) 10.2.1 20210110, 64-bit
+2022-10-17 06:52:17.295 UTC [50] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2022-10-17 06:52:17.311 UTC [51] LOG:  database system was shut down at 2022-10-17 06:52:13 UTC
+2022-10-17 06:52:17.327 UTC [50] LOG:  database system is ready to accept connections
  done
 server started
 CREATE DATABASE
 /usr/local/bin/docker-entrypoint.sh: ignoring /docker-entrypoint-initdb.d/*
-waiting for server to shut down...2022-10-16 19:06:41.220 UTC [49] LOG:  received fast shutdown request
-.2022-10-16 19:06:41.226 UTC [49] LOG:  aborting any active transactions
-2022-10-16 19:06:41.232 UTC [49] LOG:  background worker "logical replication launcher" (PID 56) exited with exit code 1
-2022-10-16 19:06:41.233 UTC [51] LOG:  shutting down
-2022-10-16 19:06:41.285 UTC [49] LOG:  database system is shut down
+2022-10-17 06:52:19.267 UTC [50] LOG:  received fast shutdown request
+waiting for server to shut down....2022-10-17 06:52:19.271 UTC [50] LOG:  aborting any active transactions
+2022-10-17 06:52:19.277 UTC [50] LOG:  background worker "logical replication launcher" (PID 57) exited with exit code 1
+2022-10-17 06:52:19.278 UTC [52] LOG:  shutting down
+2022-10-17 06:52:19.339 UTC [50] LOG:  database system is shut down
  done
 server stopped
 PostgreSQL init process complete; ready for start up.
-2022-10-16 19:06:41.379 UTC [1] LOG:  starting PostgreSQL 14.5 (Debian 14.5-1.pgdg110+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 10.2.1-6) 10.2.1 20210110, 64-bit
-2022-10-16 19:06:41.379 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
-2022-10-16 19:06:41.379 UTC [1] LOG:  listening on IPv6 address "::", port 5432
-2022-10-16 19:06:41.385 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
-2022-10-16 19:06:41.393 UTC [63] LOG:  database system was shut down at 2022-10-16 19:06:41 UTC
-2022-10-16 19:06:41.400 UTC [1] LOG:  database system is ready to accept connections
-2022-10-16 19:06:42.641 UTC [76] FATAL:  database "root" does not exist
+2022-10-17 06:52:19.466 UTC [1] LOG:  starting PostgreSQL 14.5 (Debian 14.5-1.pgdg110+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 10.2.1-6) 10.2.1 20210110, 64-bit
+2022-10-17 06:52:19.467 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2022-10-17 06:52:19.467 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2022-10-17 06:52:19.476 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2022-10-17 06:52:19.490 UTC [64] LOG:  database system was shut down at 2022-10-17 06:52:19 UTC
+2022-10-17 06:52:19.509 UTC [1] LOG:  database system is ready to accept connections
+2022-10-17 06:52:20.919 UTC [77] FATAL:  database "root" does not exist
