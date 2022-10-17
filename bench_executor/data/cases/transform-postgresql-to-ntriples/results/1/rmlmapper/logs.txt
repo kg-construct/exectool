@@ -1,5 +1,5 @@
 Executing RMLMapper with arguments -m mapping.rml.ttl -s nquads -o out.nt -u root -p root -dsn jdbc:postgresql://PostgreSQL:5432/db
-06:52:26.282 [main] ERROR be.ugent.rml.cli.Main               .main(436) - String index out of range: -1
+07:13:25.128 [main] ERROR be.ugent.rml.cli.Main               .main(436) - String index out of range: -1
 java.lang.StringIndexOutOfBoundsException: String index out of range: -1
 	at java.lang.String.substring(String.java:1967)
 	at be.ugent.rml.cli.Main.main(Main.java:197)

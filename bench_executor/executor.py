@@ -32,6 +32,8 @@ def _collect_metrics(stop_event: Event, active_resources: list,
             metrics = r.stats(silence_failure=True)
             if metrics is None:
                 # Container was running and now not anymore, write stop metric
+                # This codepath is only triggered when the container exits on
+                # its own.
                 if name in running_containers and not f.closed:
                     metrics = {
                                 'type': METRIC_TYPE_STOP,
@@ -54,6 +56,21 @@ def _collect_metrics(stop_event: Event, active_resources: list,
             m = json.dumps(metrics).replace('\n', '') + '\n'
             f.write(m)
         sleep(interval)
+
+    # Some containers keep running throughout the whole case, write the stop
+    # metric once the metric measurement thread exists as the case is finished
+    # then anyway.
+    for r, f, name in active_resources:
+        if not f.closed:
+            metrics = {
+                        'type': METRIC_TYPE_STOP,
+                        'time': round(time(), 2),
+                        'name': name
+                      }
+            m = json.dumps(metrics).replace('\n', '') + '\n'
+            f.write(m)
+            f.flush()
+            f.close()
 
 class Executor:
     def __init__(self, main_directory: str, verbose: bool = False,
@@ -303,8 +320,8 @@ class Executor:
         stop_event.set()
         metrics_thread.join()
 
+        # Stop active containers
         for r, f, name in active_resources:
-            # Stop container
             if r is not None and hasattr(r, 'stop'):
                 r.stop()
 

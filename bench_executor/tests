@@ -245,15 +245,30 @@ class Integrationtests(unittest.TestCase):
                                             'metrics.jsonl')
 
                 # Verify if log, checkpoint, metrics files exists
+                # Log files are expected to contain at least 1 line,
+                # Metrics files at least 3: START, MEASUREMENT, STOP types, and
+                # Checkpoint files contain a single line with the timestamp
                 self.assertTrue(os.path.exists(log_file))
                 with open(log_file) as f:
                     self.assertTrue(len(f.readlines()) > 0)
                 self.assertTrue(os.path.exists(metrics_file))
                 with open(metrics_file) as f:
-                    self.assertTrue(len(f.readlines()) > 0)
+                    lines = f.readlines()
+                    # Query execution is not done with a Docker container so
+                    # no stats available about resource consumption
+                    if 'query' in metrics_file:
+                        self.assertTrue(len(lines) == 2)
+                        self.assertTrue('START' in lines[0])
+                        self.assertTrue('STOP' in lines[-1])
+                    else:
+                        self.assertTrue(len(lines) >= 3)
+                        self.assertTrue('START' in lines[0])
+                        self.assertTrue('MEASUREMENT' in lines[1])
+                        self.assertTrue('STOP' in lines[-1])
+
                 self.assertTrue(os.path.exists(checkpoint_file))
                 with open(checkpoint_file) as f:
-                    self.assertTrue(len(f.readlines()) > 0)
+                    self.assertTrue(len(f.readlines()) == 1)
 
 if __name__ == '__main__':
     # SELinux causes weird permission denied issues, warn users
