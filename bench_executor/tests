@@ -527,6 +527,10 @@ class Integrationtests(unittest.TestCase):
                         self.assertTrue(len(lines) >= 3)
                         self.assertTrue('START' in lines[0])
                         self.assertTrue('MEASUREMENT' in lines[1])
+                        self.assertTrue('cpu' in lines[1])
+                        self.assertTrue('memory' in lines[1])
+                        self.assertTrue('io' in lines[1])
+                        self.assertTrue('network' in lines[1])
                         self.assertTrue('STOP' in lines[-1])
 
                 self.assertTrue(os.path.exists(checkpoint_file))

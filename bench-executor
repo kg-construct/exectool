@@ -3,6 +3,7 @@
 import os
 import sys
 import argparse
+import subprocess
 from signal import signal, SIGINT
 from bench_executor import Executor
 
@@ -12,6 +13,7 @@ EXIT_CODE_NO_CASES = -2
 EXIT_CODE_FAILED_CASE = -3
 EXIT_CODE_INTERRUPTED = -4
 EXIT_CODE_SELINUX = -5
+EXIT_CODE_EVEN_RUNS = -6
 stop = False
 
 def signal_handler(signum, frame):
@@ -79,6 +81,19 @@ def clean_cases(executor: Executor):
         e.clean(case)
     print(f'Cleaned {len(cases)} cases')
 
+def generate_statistics(executor: Executor):
+    cases = e.list()
+
+    for case in cases:
+        success = e.stats(case)
+        if not success:
+            name = case['data']['name']
+            print(f'Could not generate statistics for case "{name}"',
+                  file=sys.stderr)
+            sys.exit(EXIT_CODE_FAILED_CASE)
+
+    print(f'Generated statistics for {len(cases)} cases')
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Copyright by (c) Dylan Van Assche (2022), available under GPLv3 license',
                                      epilog='Please cite our paper if you make use of this tool')
@@ -91,10 +106,10 @@ if __name__ == '__main__':
                         help='Root directory of all cases to execute, defaults to the current working directory',
                         type=str)
     parser.add_argument('--runs', dest='number_of_runs', default=3,
-                        help='Number of runs to execute a case. Default 3 runs',
+                        help='Number of runs to execute a case. The value must be uneven for generating stats. Default 3 runs',
                         type=int)
-    parser.add_argument('--interval', dest='interval', default=1.0,
-                        help='Measurement sample interval for metrics, default 1s',
+    parser.add_argument('--interval', dest='interval', default=0.1,
+                        help='Measurement sample interval for metrics, default 0.1s',
                         type=float)
     parser.add_argument('--verbose', dest='verbose',
                         help='Turn on verbose output', action='store_true')
@@ -110,6 +125,11 @@ if __name__ == '__main__':
         print(f'Fail fast enabled: {args.fail_fast}')
         print(f'Number of runs: {args.number_of_runs}')
         print(f'Measurement sample interval: {args.interval}s')
+
+    if args.interval % 2 == 0:
+        print('Number of runs must be uneven for generating statistics',
+              file=sys.stderr)
+        sys.exit(EXIT_CODE_EVEN_RUNS)
 
     # SELinux causes weird permission denied issues, warn users
     try:
@@ -129,6 +149,8 @@ if __name__ == '__main__':
         execute_cases(e, args.interval, args.number_of_runs, args.fail_fast)
     elif args.command == 'clean':
         clean_cases(e)
+    elif args.command == 'stats':
+        generate_statistics(e)
     else:
         print(f'Unknown command: {args.command}', file=sys.stderr)
         sys.exit(EXIT_CODE_UNKNOWN_COMMAND)

@@ -12,12 +12,14 @@ from datetime import datetime
 from time import time, sleep
 from typing import Tuple
 from threading import Thread, Event
+from statistics import mean, median
 
 METADATA_FILE = 'metadata.json'
 SCHEMA_FILE = 'metadata.schema'
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 WAIT_TIME = 5 # seconds
 METRIC_TYPE_MEASUREMENT = 'MEASUREMENT'
+METRIC_TYPE_INIT = 'INIT'
 METRIC_TYPE_START = 'START'
 METRIC_TYPE_STOP = 'STOP'
 
@@ -26,7 +28,7 @@ def _collect_metrics(stop_event: Event, active_resources: list,
     running_containers = []
     while not stop_event.wait(0):
         for r, f, name in active_resources:
-            if not hasattr(r, 'stats'):
+            if not hasattr(r, 'stats') or f.closed:
                 continue
 
             metrics = r.stats(silence_failure=True)
@@ -34,11 +36,12 @@ def _collect_metrics(stop_event: Event, active_resources: list,
                 # Container was running and now not anymore, write stop metric
                 # This codepath is only triggered when the container exits on
                 # its own.
-                if name in running_containers and not f.closed:
+                if name in running_containers:
                     metrics = {
                                 'type': METRIC_TYPE_STOP,
-                                'time': round(time(), 2),
-                                'name': name
+                                'time': time(),
+                                'name': name,
+                                'interval': interval
                               }
                     m = json.dumps(metrics).replace('\n', '') + '\n'
                     f.write(m)
@@ -47,12 +50,21 @@ def _collect_metrics(stop_event: Event, active_resources: list,
                 continue
 
             if name not in running_containers:
+                metrics_start = {
+                                  'type': METRIC_TYPE_INIT,
+                                  'time': time(),
+                                  'name': name,
+                                  'interval': interval
+                                }
+                m = json.dumps(metrics_start).replace('\n', '') + '\n'
+                f.write(m)
                 running_containers.append(name)
 
             # JSONL dump: replace all new lines and append a single new line
             # at the end and dump it to the file
             metrics['name'] = name
             metrics['type'] = METRIC_TYPE_MEASUREMENT
+            metrics['interval'] = interval
             m = json.dumps(metrics).replace('\n', '') + '\n'
             f.write(m)
         sleep(interval)
@@ -64,8 +76,9 @@ def _collect_metrics(stop_event: Event, active_resources: list,
         if not f.closed:
             metrics = {
                         'type': METRIC_TYPE_STOP,
-                        'time': round(time(), 2),
-                        'name': name
+                        'time': time(),
+                        'name': name,
+                        'interval': interval
                       }
             m = json.dumps(metrics).replace('\n', '') + '\n'
             f.write(m)
@@ -230,19 +243,135 @@ class Executor:
         else:
             print(f'        ❌ {resource : <20}: {name : <50}')
 
+    def _parse_metrics(self, results_path: str):
+        mapping = {}
+        for run_path in glob(f'{results_path}/run_*/'):
+            try:
+                run = os.path.split(os.path.dirname(run_path))[-1]
+                run = run.replace('run_', '')
+                run = int(run)
+            except ValueError:
+                print(f'Run "{run}" is not a number', file=sys.stderr)
+                return False, {}
+
+            # Get metrics for each run
+            for resource_path in glob(f'{run_path}/*'):
+                resource = os.path.split(resource_path)[-1]
+                metrics_file = os.path.join(resource_path, 'metrics.jsonl')
+                if not os.path.exists(metrics_file):
+                    print(f'Metrics for resource "{resource}" in run {run} of '
+                          f'case "{data["name"]}" does not exist',
+                          file=sys.stderr)
+                    return False, {}
+
+                # Parse JSONL file
+                metrics = []
+                with open(metrics_file, 'r') as f:
+                    start_time = None
+                    for index, line in enumerate(f.readlines()):
+                        m = json.loads(line)
+                        m['index'] = index + 1
+                        if m['type'] == METRIC_TYPE_INIT or \
+                           (m['name'] == 'Query' and m['type'] == METRIC_TYPE_START):
+                            start_time = m['time']
+                        elif start_time is not None:
+                            # In rare cases we may end up with -0.0 due to
+                            # floating point errors, filter them out
+                            m['diff'] = abs(round(m['time'] - start_time, 2))
+                        metrics.append(m)
+
+                # Store mapping to apply statistics on
+                if resource not in mapping:
+                    mapping[resource] = {}
+                mapping[resource][str(run)] = metrics
+
+        return True, mapping
+
+    def _stats_execution_time(self, resource: dict, metrics: dict):
+        diffs = []
+        for run in metrics[resource].keys():
+            execution_time = None
+            for entry in metrics[resource][run]:
+                if entry['type'] == METRIC_TYPE_STOP:
+                    execution_time = entry['diff']
+                    break
+
+            if execution_time is None:
+                print(f'Invalid metrics file in case "{data["name"]}"',
+                      file=sys.stderr)
+                return False
+
+            diffs.append(execution_time)
+
+        # We want a real datapoint as median value so only an uneven number of
+        # runs are allowed!
+        time_median = median(diffs)
+        index = diffs.index(time_median) + 1
+
+        return mean(diffs), time_median, index
+
+    def _stats_find_run(self, resource: dict, metrics: dict,
+                        time_median: float) -> dict:
+        for run in metrics[resource].keys():
+            execution_time = None
+            for entry in metrics[resource][run]:
+                if entry['type'] == METRIC_TYPE_STOP \
+                    and entry['diff'] == time_median:
+                        return metrics[resource][run]
+
+    def stats(self, case: dict) -> bool:
+        data = case['data']
+        directory = case['directory']
+        results_path = os.path.join(directory, 'results')
+
+        if not os.path.exists(results_path):
+            print(f'Results do not exist for case "{data["name"]}"',
+                  file=sys.stderr)
+            return False
+
+        # Parse JSONL metric files by resource name
+        success, metrics = self._parse_metrics(results_path)
+        if not success:
+            print(f'Cannot parse results for case "{data["name"]}"',
+                  file=sys.stderr)
+            return False
+
+        for resource in metrics.keys():
+            if len(metrics[resource].keys()) % 2 == 0:
+                print(f'Number of runs must be uneven to generate statistics',
+                      file=sys.stderr)
+                return False
+
+            # We guarantee that median is always calculated from uneven number
+            # of runs, the median is always a datapoint. Take the run matching
+            # with this median value as median and average run values
+            diff_mean, diff_median, run = self._stats_execution_time(resource,
+                                                                     metrics)
+            #print(diff_mean, diff_median, metrics[resource][str(run)])
+            aggregated_metrics = {}
+            aggregated_metrics['resource'] = resource
+            aggregated_metrics['measurements'] = metrics[resource][str(run)]
+            aggregated_metrics['diff_mean'] = diff_mean
+            aggregated_metrics['diff_median'] = diff_median
+
+            aggregated_metrics_path = os.path.join(directory,
+                                                   'results',
+                                                   resource,
+                                                   'metrics_aggregated.json')
+            os.makedirs(os.path.dirname(aggregated_metrics_path), exist_ok=True)
+            with open(aggregated_metrics_path, 'w') as f:
+                json.dump(aggregated_metrics, f, indent=True)
+        return True
+
     def clean(self, case: dict):
         # Checkpoints
         checkpoint_file = os.path.join(case['directory'], '.done')
         if os.path.exists(checkpoint_file):
             os.remove(checkpoint_file)
 
-        # Log files
-        for log_file in glob(f'{case["directory"]}/*/*/logs.txt'):
-            os.remove(log_file)
-
-        # Metrics measurements
-        for metrics_file in glob(f'{case["directory"]}/*/*/metrics.jsonl'):
-            os.remove(metrics_file)
+        # Results: log files, metric measurements
+        for result_dir in glob(f'{case["directory"]}/results'):
+            shutil.rmtree(result_dir)
 
     def run(self, case: dict, interval: float, run: int, checkpoint: bool) -> Tuple[bool, float]:
         success = True
@@ -280,8 +409,9 @@ class Executor:
             f = open(path, 'w')
             metrics = {
                         'type': METRIC_TYPE_START,
-                        'time': round(time(), 2),
-                        'name': step['resource']
+                        'time': time(),
+                        'name': step['resource'],
+                        'interval': interval
                       }
             m = json.dumps(metrics).replace('\n', '') + '\n'
             f.write(m)
@@ -333,7 +463,7 @@ class Executor:
                 f.write(f'{datetime.now().replace(microsecond=0).isoformat()}\n')
 
         # Move results for a clean slate when doing multiple runs
-        results_run_path = os.path.join(results_path, str(run))
+        results_run_path = os.path.join(results_path, f'run_{run}')
         os.makedirs(results_run_path, exist_ok=True)
         # Log files
         for log_file in glob(f'{data_path}/*/logs.txt'):

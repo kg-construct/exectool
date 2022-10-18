@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import re
 import os
 import sys
 import docker
@@ -214,19 +215,26 @@ class Container():
                     for raw in io_raw.split('\n'):
                         if raw == '':
                             continue
-                        raw = raw.split(' ')
+                        device_number = re.search(r"(\d*:\d*) ",
+                                                  raw).groups()[0]
                         device = os.path.realpath(os.path.join(DEV_BLOCK_DIR,
-                                                               raw[0]))
-                        bytes_read = int(raw[1].split('=')[1])
-                        bytes_write = int(raw[2].split('=')[1])
-                        number_of_reads = int(raw[3].split('=')[1])
-                        number_of_writes = int(raw[4].split('=')[1])
-                        bytes_discarded = int(raw[5].split('=')[1])
-                        number_of_discards = int(raw[6].split('=')[1])
+                                                               device_number))
+                        bytes_read = int(re.search(r"rbytes=(\d*)",
+                                                   raw).groups()[0])
+                        bytes_write = int(re.search(r"wbytes=(\d*)",
+                                                    raw).groups()[0])
+                        number_of_reads = int(re.search(r"rios=(\d*)",
+                                                        raw).groups()[0])
+                        number_of_writes = int(re.search(r"wios=(\d*)",
+                                                         raw).groups()[0])
+                        bytes_discarded = int(re.search(r"dbytes=(\d*)",
+                                                        raw).groups()[0])
+                        number_of_discards = int(re.search(r"dios=(\d*)",
+                                                           raw).groups()[0])
                         stats['io'][device] = {
-                            'bytes_read': bytes_read / (10**6),
-                            'bytes_write': bytes_write / (10**6),
-                            'bytes_discarded': bytes_discarded / (10**6),
+                            'total_size_read': bytes_read / (10**3),
+                            'total_size_write': bytes_write / (10**3),
+                            'total_size_discarded': bytes_discarded / (10**3),
                             'number_of_reads': number_of_reads,
                             'number_of_writes': number_of_writes,
                             'number_of_discards': number_of_discards
