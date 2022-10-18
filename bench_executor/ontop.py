@@ -36,9 +36,6 @@ class _Ontop(Container):
             print(f'Unknown Ontop mode "{mode}"', file=sys.stderr)
             success = False
 
-        for l in self.logs():
-            print(l)
-
         return success
 
     def execute_mapping(self, mode, config_file, arguments, mapping_file,
@@ -68,7 +65,6 @@ class _Ontop(Container):
 
             path = os.path.join(self._data_path, f'ontop{mode}')
             os.makedirs(path, exist_ok=True)
-            print(os.path.join(path, 'config.properties'))
             with open(os.path.join(path, 'config.properties'), 'w') as f:
                 config.write(f, space_around_delimiters=False)
 

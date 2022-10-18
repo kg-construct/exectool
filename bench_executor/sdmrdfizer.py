@@ -25,9 +25,6 @@ class SDMRDFizer(Container):
     def execute(self, arguments) -> bool:
         s = self.run_and_wait_for_exit(f'python3 sdm-rdfizer/rdfizer/run_rdfizer.py '
                                           '/data/config.ini')
-        for l in self.logs():
-            print(l)
-
         return s
 
     def execute_mapping(self, mapping_file: str, output_file: str,

@@ -16,13 +16,13 @@
   ];
 
   rr:subjectMap [ 
-    rr:template "http://example.com/{Name}" 
+    rr:template "http://example.com/{name}" 
   ]; 
 
   rr:predicateObjectMap [ 
     rr:predicate foaf:name; 
     rr:objectMap [
-      rml:reference "Name"
+      rml:reference "name"
     ]
   ]
 .
