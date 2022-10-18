@@ -280,7 +280,7 @@ class Unittests(unittest.TestCase):
         mysql.stop()
 
     def test_ontopmaterialize_postgresql(self):
-        postgresql = MySQL(DATA_DIR, False)
+        postgresql = PostgreSQL(DATA_DIR, False)
         self.assertTrue(postgresql.wait_until_ready())
         self.assertTrue(postgresql.load('student.csv', 'student'))
 
@@ -302,11 +302,55 @@ class Unittests(unittest.TestCase):
         ontop.stop()
         postgresql.stop()
 
-    def test_ontopvirtualize_mysql(self):
-        pass
+    def test_ontopendpoint_mysql(self):
+        mysql = MySQL(DATA_DIR, False)
+        self.assertTrue(mysql.wait_until_ready())
+        self.assertTrue(mysql.load('student.csv', 'student'))
 
-    def test_ontopvirtualize_postgresql(self):
-        pass
+        ontop = OntopVirtualize(DATA_DIR, True)
+        try:
+            os.remove(os.path.join(DATA_DIR, 'ontopendpoint', 'out.nt'))
+        except FileNotFoundError:
+            pass
+        self.assertTrue(ontop.execute_mapping('/data/mapping.r2rml.ttl',
+                                              '/data/out.nt', 'ntriples',
+                                              'root', 'root', 'MySQL',
+                                              '3306', 'db', 'MySQL'))
+        # Verify loaded data
+        q = Query(DATA_DIR, True)
+        results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
+                            'http://localhost:8888/sparql')
+        results = list(filter(None, results.split('\n')))
+        # Ontop does not support N-Triples and returns only Turtle and other formats
+        # For Turtle, 10 results are expect: 3 names and prefix definitions
+        self.assertTrue(len(results) == 10)
+
+        ontop.stop()
+        mysql.stop()
+
+    def test_ontopendpoint_postgresql(self):
+        postgresql = PostgreSQL(DATA_DIR, False)
+        self.assertTrue(postgresql.wait_until_ready())
+        self.assertTrue(postgresql.load('student.csv', 'student'))
+
+        ontop = OntopVirtualize(DATA_DIR, True)
+        try:
+            os.remove(os.path.join(DATA_DIR, 'ontopendpoint', 'out.nt'))
+        except FileNotFoundError:
+            pass
+        self.assertTrue(ontop.execute_mapping('/data/mapping.r2rml.ttl',
+                                              '/data/out.nt', 'ntriples',
+                                              'root', 'root', 'PostgreSQL',
+                                              '5432', 'db', 'PostgreSQL'))
+        # Verify loaded data
+        q = Query(DATA_DIR, False)
+        results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
+                            'http://localhost:8888/sparql')
+        results = list(filter(None, results.split('\n')))
+        self.assertTrue(len(results) == 10)
+
+        ontop.stop()
+        postgresql.stop()
 
     def test_morphrdb_mysql(self):
         mysql = MySQL(DATA_DIR, False)

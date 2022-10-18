@@ -5,7 +5,8 @@
 ################################################################################
 FROM ubuntu:22.04
 # Configure the SDM-RDFizer version to use
-ARG URL=https://github.com/SDM-TIB/SDM-RDFizer/archive/v4.5.7.1.zip
+#ARG URL=https://github.com/SDM-TIB/SDM-RDFizer/archive/v4.5.7.1.zip
+ARG URL=https://github.com/DylanVanAssche/SDM-RDFizer/archive/bb4170a0fc50c6a1a2c49bfcbd77d9c3ad808886.zip
 
 # Install latest updates and dependencies
 RUN apt-get update

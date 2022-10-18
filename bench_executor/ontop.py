@@ -27,7 +27,9 @@ class _Ontop(Container):
     def execute(self, mode, arguments) -> bool:
         cmd = f'/ontop/ontop {mode} {" ".join(arguments)}'
         if mode == 'endpoint':
-            success = self.run_and_wait_for_log('UNKNOWN', cmd)
+            log_line = 'OntopEndpointApplication - Started ' + \
+                       'OntopEndpointApplication'
+            success = self.run_and_wait_for_log(log_line, cmd)
         elif mode == 'materialize':
             success = self.run_and_wait_for_exit(cmd)
         else:
@@ -92,15 +94,15 @@ class _Ontop(Container):
 class OntopVirtualize(_Ontop):
     def __init__(self, data_path: str, verbose: bool):
         self._data_path = os.path.abspath(data_path)
-        os.makedirs(os.path.join(self._data_path, 'ontopvirtualize'),
+        os.makedirs(os.path.join(self._data_path, 'ontopendpoint'),
                     exist_ok=True)
-        super().__init__('Ontop-Virtualize', data_path, verbose, 'virtualize')
+        super().__init__('Ontop-Virtualize', data_path, verbose, 'endpoint')
 
     def execute_mapping(self, mapping_file, output_file, serialization,
                         rdb_username: str = None, rdb_password: str = None,
                         rdb_host: str = None, rdb_port: str = None,
                         rdb_name: str = None, rdb_type: str = None) -> bool:
-        config_file = f'{self._data_path}/ontopvirtualize/config.properties'
+        config_file = f'{self._data_path}/ontopendpoint/config.properties'
         arguments = ['--cors-allowed-origins=*', '--port=8888']
         return super().execute_mapping('endpoint', config_file, arguments,
                                        mapping_file, output_file, rdb_username,

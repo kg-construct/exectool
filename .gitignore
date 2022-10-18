@@ -8,6 +8,7 @@ bench_executor/data/morphkgc/out*
 bench_executor/data/sdmrdfizer/out*
 bench_executor/data/sdmrdfizer/*stat*
 bench_executor/data/sdmrdfizer/config.ini
+bench_executor/data/sdmrdfizer/*converted.rml.ttl
 bench_executor/data/cases/*/data
 bench_executor/data/cases/*/results
 *.done
