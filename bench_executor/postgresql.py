@@ -6,21 +6,20 @@ import psycopg2
 import tempfile
 from psycopg2 import sql
 from csv import reader
-from time import sleep, time
+from time import sleep
 from container import Container
 
 HOST = 'localhost'
 USER = 'root'
 PASSWORD = 'root'
 DB = 'db'
-WAIT_TIME = 1
+WAIT_TIME = 3
 
 class PostgreSQL(Container):
     def __init__(self, data_path: str, verbose: bool):
         self._data_path = os.path.abspath(data_path)
         self._verbose = verbose
-        tmp_dir = os.path.join(tempfile.gettempdir(), 'postgresql',
-                               str(time()))
+        tmp_dir = os.path.join(tempfile.gettempdir(), 'postgresql')
         os.makedirs(tmp_dir, exist_ok=True)
         self._tables = []
 
@@ -49,15 +48,7 @@ class PostgreSQL(Container):
 
     def wait_until_ready(self, command: str = '') -> bool:
         success = self.run_and_wait_for_log('port 5432', command=command)
-        while True:
-            success, logs = self.exec('pg_isready -q')
-            self._logs += logs
-            if success:
-                break
-
-            print(f'PostgreSQL is not online yet... Trying again in 1s',
-                  file=sys.stderr)
-            sleep(WAIT_TIME)
+        sleep(WAIT_TIME)
 
         return success
 

@@ -4,7 +4,6 @@ import os
 import sys
 import pymysql
 import tempfile
-from time import time
 from csv import reader
 from container import Container
 
@@ -19,8 +18,7 @@ class MySQL(Container):
         self._data_path = os.path.abspath(data_path)
         self._verbose = verbose
         self._tables = []
-        tmp_dir = os.path.join(tempfile.gettempdir(), 'postgresql',
-                               str(time()))
+        tmp_dir = os.path.join(tempfile.gettempdir(), 'mysql')
         os.makedirs(tmp_dir, exist_ok=True)
 
         super().__init__(f'mysql:{VERSION}-debian', 'MySQL',

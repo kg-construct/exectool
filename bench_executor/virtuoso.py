@@ -2,7 +2,6 @@
 
 import os
 import tempfile
-from time import time
 from container import Container
 
 VERSION = '7.2.7'
@@ -11,8 +10,7 @@ class Virtuoso(Container):
     def __init__(self, data_path: str, verbose: bool):
         self._data_path = os.path.abspath(data_path)
         self._verbose = verbose
-        tmp_dir = os.path.join(tempfile.gettempdir(), 'postgresql',
-                               str(time()))
+        tmp_dir = os.path.join(tempfile.gettempdir(), 'virtuoso')
         os.makedirs(tmp_dir, exist_ok=True)
         super().__init__(f'openlink/virtuoso-opensource-7:{VERSION}', 'Virtuoso',
                          ports={'8890':'8890', '1111':'1111'},
