@@ -206,7 +206,7 @@ class Container():
                 with open(os.path.join(path, 'memory.current'), 'r') as f:
                     # <value>
                     memory_raw = f.read()
-                    stats['memory']['total'] = int(memory_raw) / (10**6)
+                    stats['memory']['total'] = int(memory_raw) / (10**3)
 
                 with open(os.path.join(path, 'io.stat'), 'r') as f:
                     # <major:minor> rbytes=<value> wbytes=<value> rios=<value>
