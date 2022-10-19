@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import os
+import tempfile
+from time import time
 from container import Container
 
 VERSION = '7.2.7'
@@ -9,11 +11,26 @@ class Virtuoso(Container):
     def __init__(self, data_path: str, verbose: bool):
         self._data_path = os.path.abspath(data_path)
         self._verbose = verbose
+        tmp_dir = os.path.join(tempfile.gettempdir(), 'postgresql',
+                               str(time()))
+        os.makedirs(tmp_dir, exist_ok=True)
         super().__init__(f'openlink/virtuoso-opensource-7:{VERSION}', 'Virtuoso',
                          ports={'8890':'8890', '1111':'1111'},
                          environment={'DBA_PASSWORD':'root'},
-                         volumes=[f'{self._data_path}/shared:/usr/share/proj'])
+                         volumes=[f'{self._data_path}/shared:/usr/share/proj',
+                                  f'{tmp_dir}:/database'])
         self._endpoint = 'http://localhost:8890/sparql'
+
+    def initialization(self) -> bool:
+        # Virtuoso should start with a initialized database, start Virtuoso
+        # if not initialized to avoid the pre-run start during benchmark
+        # execution
+        success = self.wait_until_ready()
+        if not success:
+            return False
+        success = self.stop()
+
+        return success
 
     def root_mount_directory(self) -> str:
         return __name__.lower()
@@ -61,6 +78,18 @@ class Virtuoso(Container):
             return False
 
         return success
+
+    def stop(self) -> bool:
+        # Drop loaded triples
+        success, logs = self.exec('isql -U dba -P root exec="delete from DB.DBA.load_list;"')
+        self._logs += logs
+        if not success:
+            return False
+        success, logs = self.exec('isql -U dba -P root exec="rdf_global_reset();"')
+        self._logs += logs
+        if not success:
+            return False
+        return super().stop()
 
     @property
     def endpoint(self):

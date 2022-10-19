@@ -3,9 +3,10 @@
 import os
 import sys
 import psycopg2
+import tempfile
 from psycopg2 import sql
 from csv import reader
-from time import sleep
+from time import sleep, time
 from container import Container
 
 HOST = 'localhost'
@@ -18,6 +19,10 @@ class PostgreSQL(Container):
     def __init__(self, data_path: str, verbose: bool):
         self._data_path = os.path.abspath(data_path)
         self._verbose = verbose
+        tmp_dir = os.path.join(tempfile.gettempdir(), 'postgresql',
+                               str(time()))
+        os.makedirs(tmp_dir, exist_ok=True)
+        self._tables = []
 
         super().__init__('postgres:14.5-bullseye', 'PostgreSQL',
                          ports={'5432': '5432'},
@@ -25,7 +30,19 @@ class PostgreSQL(Container):
                                       'POSTGRES_USER': USER,
                                       'POSTGRES_DB': DB,
                                       'POSTGRES_HOST_AUTH_METHOD': 'trust'},
-                         volumes=[f'{self._data_path}/shared:/data/shared'])
+                         volumes=[f'{self._data_path}/shared:/data/shared',
+                                  f'{tmp_dir}:/var/lib/postgresql/data'])
+
+    def initialization(self) -> bool:
+        # PostgreSQL should start with a initialized database, start PostgreSQL
+        # if not initialized to avoid the pre-run start during benchmark
+        # execution
+        success = self.wait_until_ready()
+        if not success:
+            return False
+        success = self.stop()
+
+        return success
 
     def root_mount_directory(self) -> str:
         return __name__.lower()
@@ -33,9 +50,9 @@ class PostgreSQL(Container):
     def wait_until_ready(self, command: str = '') -> bool:
         success = self.run_and_wait_for_log('port 5432', command=command)
         while True:
-            succces, logs = self.exec('pg_isready -q')
+            success, logs = self.exec('pg_isready -q')
             self._logs += logs
-            if succces:
+            if success:
                 break
 
             print(f'PostgreSQL is not online yet... Trying again in 1s',
@@ -49,6 +66,8 @@ class PostgreSQL(Container):
         columns = None
         table = table.lower()
         path = os.path.join(self._data_path, 'shared', csv_file)
+
+        self._tables.append(table)
 
         # Analyze and move CSV for loading
         if not os.path.exists(path):
@@ -90,9 +109,21 @@ class PostgreSQL(Container):
             if number_of_records == 0:
                 success = False
         except Exception as e:
-            print(f'Failed to load CSV: "{e}"')
+            print(f'Failed to load CSV: "{e}"', file=sys.stderr)
             success = False
         finally:
             connection.close()
 
         return success
+
+    def stop(self) -> bool:
+        connection = psycopg2.connect(host=HOST, database=DB,
+                                      user=PASSWORD, password=PASSWORD)
+        cursor = connection.cursor()
+        for table in self._tables:
+            cursor.execute(f'DROP TABLE IF EXISTS {table};')
+            cursor.execute(f'COMMIT;')
+        self._tables = []
+        connection.close()
+
+        return super().stop()

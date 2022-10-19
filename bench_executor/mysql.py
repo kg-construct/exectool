@@ -3,6 +3,8 @@
 import os
 import sys
 import pymysql
+import tempfile
+from time import time
 from csv import reader
 from container import Container
 
@@ -16,6 +18,10 @@ class MySQL(Container):
     def __init__(self, data_path: str, verbose: bool):
         self._data_path = os.path.abspath(data_path)
         self._verbose = verbose
+        self._tables = []
+        tmp_dir = os.path.join(tempfile.gettempdir(), 'postgresql',
+                               str(time()))
+        os.makedirs(tmp_dir, exist_ok=True)
 
         super().__init__(f'mysql:{VERSION}-debian', 'MySQL',
                          ports={'3306':'3306'},
@@ -23,7 +29,19 @@ class MySQL(Container):
                                       'MYSQL_DATABASE': 'db'},
                          volumes=[f'{self._data_path}/shared/:/data/shared',
                                   f'{self._data_path}/mysql/mysql-secure-file-prive.cnf:'
-                                  '/etc/mysql/conf.d/mysql-secure-file-prive.cnf'])
+                                  '/etc/mysql/conf.d/mysql-secure-file-prive.cnf',
+                                  f'{tmp_dir}:/var/lib/mysql'])
+
+    def initialization(self) -> bool:
+        # MySQL should start with a initialized database, start MySQL
+        # if not initialized to avoid the pre-run start during benchmark
+        # execution
+        success = self.wait_until_ready()
+        if not success:
+            return False
+        success = self.stop()
+
+        return success
 
     def root_mount_directory(self) -> str:
         return __name__.lower()
@@ -36,6 +54,8 @@ class MySQL(Container):
         columns = None
         table = table.lower()
         path = os.path.join(self._data_path, 'shared', csv_file)
+
+        self._tables.append(table)
 
         # Analyze and move CSV for loading
         if not os.path.exists(path):
@@ -79,9 +99,21 @@ class MySQL(Container):
             if number_of_records == 0:
                 success = False
         except Exception as e:
-            print(f'Failed to load CSV: "{e}"')
+            print(f'Failed to load CSV: "{e}"', file=sys.stderr)
             success = False
         finally:
             connection.close()
 
         return success
+
+    def stop(self) -> bool:
+        connection = pymysql.connect(host=HOST, database=DB,
+                                     user=PASSWORD, password=PASSWORD)
+        cursor = connection.cursor()
+        for table in self._tables:
+            cursor.execute(f'DROP TABLE IF EXISTS {table};')
+            cursor.execute(f'COMMIT;')
+        self._tables = []
+        connection.close()
+
+        return super().stop()

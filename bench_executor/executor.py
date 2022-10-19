@@ -387,6 +387,17 @@ class Executor:
             print(f'        ⏩ SKIPPED')
             return True, 0.0
 
+        # Initialize resources if needed
+        # Some resources have to perform an initialization step such as
+        # configuring database users, storage, etc. which is only done once
+        for step in data['steps']:
+            module = self._class_module_mapping[step['resource']]
+            resource = getattr(module, step['resource'])(data_path,
+                                                         self._verbose)
+            if hasattr(resource, 'initialization'):
+                success = resource.initialization()
+                self._print_step('Initializing', step['resource'], success)
+
         # Launch metrics thread
         stop_event = Event()
         active_resources = []
