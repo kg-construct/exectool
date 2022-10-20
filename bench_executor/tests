@@ -8,6 +8,7 @@ import warnings
 import psycopg2
 import pymysql
 import subprocess
+import docker
 from container import Container
 from rmlmapper import RMLMapper
 from postgresql import PostgreSQL
@@ -17,6 +18,7 @@ from morphkgc import MorphKGC
 from morphrdb import MorphRDB
 from sdmrdfizer import SDMRDFizer
 from ontop import OntopMaterialize, OntopVirtualize
+from fuseki import Fuseki
 from query import Query
 from executor import Executor
 from time import sleep
@@ -24,9 +26,33 @@ from rdflib import Graph
 
 DATA_DIR = os.path.join(os.getcwd(), 'data')
 
+def _remove_all_containers():
+    client = docker.from_env()
+    stopped = False
+    removed = False
+
+    # Always stop and remove all containers even when tests are failing
+    for container in client.containers.list():
+        try:
+            container.stop()
+            stopped = True
+        except docker.errors.APIError:
+            pass
+        try:
+            container.remove()
+            removed = True
+        except docker.errors.APIError:
+            pass
+        print(f'{container.name}: stopped? {stopped} removed? {removed}')
+
+
 class UnitTests(unittest.TestCase):
     def setUp(self):
         warnings.filterwarnings(action='ignore', message='unclosed', category=ResourceWarning)
+
+    @classmethod
+    def tearDownClass(self):
+        _remove_all_containers()
 
     def test_docker_run(self):
         c = Container('nginx:alpine', 'test_docker_run', {'80/tcp': '8080/tcp'})
@@ -178,6 +204,10 @@ class FileTests(unittest.TestCase):
     def setUp(self):
         warnings.filterwarnings(action='ignore', message='unclosed', category=ResourceWarning)
 
+    @classmethod
+    def tearDownClass(self):
+        _remove_all_containers()
+
     def test_rmlmapper_file(self):
         rmlmapper = RMLMapper(DATA_DIR, False)
         try:
@@ -236,6 +266,7 @@ class RDBTests(unittest.TestCase):
     def tearDownClass(cls):
         cls._mysql.stop()
         cls._postgresql.stop()
+        _remove_all_containers()
 
     def test_rmlmapper_mysql(self):
         rmlmapper = RMLMapper(DATA_DIR, False)
@@ -462,6 +493,10 @@ class TriplestoreTests(unittest.TestCase):
     def setUp(self):
         warnings.filterwarnings(action='ignore', message='unclosed', category=ResourceWarning)
 
+    @classmethod
+    def tearDownClass(cls):
+        _remove_all_containers()
+
     def test_virtuoso(self):
         virtuoso = Virtuoso(DATA_DIR, False)
         self.assertTrue(virtuoso.initialization())
@@ -519,6 +554,45 @@ class TriplestoreTests(unittest.TestCase):
 
         virtuoso.stop()
 
+    def test_fuseki(self):
+        fuseki = Fuseki(DATA_DIR, False)
+        self.assertTrue(fuseki.initialization())
+        self.assertTrue(fuseki.wait_until_ready())
+
+        # Load RDF
+        self.assertTrue(fuseki.load('student.nt'))
+
+        # Verify loaded data
+        q = Query(DATA_DIR, False)
+        results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
+                            fuseki.endpoint)
+        results = list(filter(None, results.split('\n')))
+        self.assertTrue(len(results) == 3)
+
+        fuseki.stop()
+
+        # Verify removed data
+        fuseki = Fuseki(DATA_DIR, False)
+        self.assertTrue(fuseki.wait_until_ready())
+
+        q = Query(DATA_DIR, False)
+        results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
+                            fuseki.endpoint)
+        results = list(filter(None, results.split('\n')))
+        self.assertTrue(len(results) == 0)
+
+        # Test if we can now reload our RDF
+        self.assertTrue(fuseki.load('student.nt'))
+
+        # Verify loaded data
+        q = Query(DATA_DIR, False)
+        results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
+                            fuseki.endpoint)
+        results = list(filter(None, results.split('\n')))
+        self.assertTrue(len(results) == 3)
+
+        fuseki.stop()
+
     def test_query(self):
         q = Query(DATA_DIR, False)
         results = q.execute('CONSTRUCT WHERE { ?s ?p ?o. } LIMIT 100',
@@ -529,6 +603,10 @@ class TriplestoreTests(unittest.TestCase):
 class IntegrationTests(unittest.TestCase):
     def setUp(self):
         warnings.filterwarnings(action='ignore', message='unclosed', category=ResourceWarning)
+
+    @classmethod
+    def tearDownClass(cls):
+        _remove_all_containers()
 
     def test_executor_list(self):
         executor = Executor(os.path.join(DATA_DIR, 'cases'), False)

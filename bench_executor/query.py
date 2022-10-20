@@ -32,7 +32,13 @@ class Query():
 
     def execute_and_save(self, query: str, sparql_endpoint: str,
                          results_file: str) -> bool:
-        results = self.execute(query, sparql_endpoint)
+        try:
+            results = self.execute(query, sparql_endpoint)
+        except Exception as e:
+            print(f'Failed to execute query "{query}" on endpoint '
+                  f'"{sparql_endpoint}"', file=sys.stderr)
+            self._logs.append(f'{e}\n')
+            return False
         path = os.path.join(self._data_path, 'query')
         os.makedirs(path, exist_ok=True)
         results_file = os.path.join(path, results_file)
@@ -42,8 +48,10 @@ class Query():
         self._logs.append(f'Wrote query results to "{results_file}"\n')
 
         if self._verbose:
-            print('Query results:')
-            print(results)
+            self._logs.append('Query results:\n')
+            self._logs.append(f'{results}\n')
+            for line in self._logs:
+                print(line)
 
         # Check results output
         if len(results) and 'Empty' not in results:

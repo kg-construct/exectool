@@ -39,11 +39,6 @@ class Virtuoso(Container):
     def load(self, rdf_file: str) -> bool:
         success = True
 
-        success, logs = self.exec('ls /usr/share/proj/')
-        self._logs += logs
-        if not success:
-            return False
-
         success, logs = self.exec(f'ls /usr/share/proj/{rdf_file}')
         self._logs += logs
         if not success:

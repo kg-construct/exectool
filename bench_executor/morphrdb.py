@@ -24,7 +24,7 @@ class MorphRDB(Container):
         max_heap = int(psutil.virtual_memory().total * (1/2))
 
         # Execute command
-        return self.run_and_wait_for_exit(f'java -Xmx{max_heap} '
+        return self.run_and_wait_for_exit(f'java -Xmx{max_heap} -Xms{max_heap} '
                         f'-cp .:morph-rdb-dist-3.12.6.jar:dependency/* '
                         f'es.upm.fi.dia.oeg.morph.r2rml.rdb.engine.MorphRDBRunner '
                         f'/data config.properties')

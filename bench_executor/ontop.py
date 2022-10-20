@@ -17,7 +17,7 @@ class _Ontop(Container):
 
         super().__init__(f'kg-construct/ontop:v{VERSION}', name,
                          ports={'8888':'8888'},
-                         environment={'ONTOP_JAVA_ARGS': f'-Xmx{max_heap}'},
+                         environment={'ONTOP_JAVA_ARGS': f'-Xmx{max_heap} -Xms{max_heap}'},
                          volumes=[f'{self._data_path}/ontop{mode}:/data',
                                   f'{self._data_path}/shared:/data/shared'])
 

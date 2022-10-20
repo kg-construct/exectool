@@ -28,8 +28,8 @@ class RMLMapper(Container):
         max_heap = int(psutil.virtual_memory().total * (1/2))
 
         # Execute command
-        success = self.run_and_wait_for_exit(f'java -Xmx{max_heap} -jar '
-                                             f'rmlmapper/rmlmapper.jar '
+        success = self.run_and_wait_for_exit(f'java -Xmx{max_heap} -Xms{max_heap} '
+                                             f'-jar rmlmapper/rmlmapper.jar '
                                              f'{" ".join(arguments)}')
         return success
 
