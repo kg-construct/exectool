@@ -11,11 +11,13 @@ VERSION = '4.6.1'
 CMD_ARGS = '--tdb2 --update --loc /fuseki/databases/DB /ds'
 
 class Fuseki(Container):
-    def __init__(self, data_path: str, verbose: bool):
+    def __init__(self, data_path: str, config_path: str, verbose: bool):
         self._data_path = os.path.abspath(data_path)
+        self._config_path = os.path.abspath(config_path)
         self._verbose = verbose
         tmp_dir = os.path.join(tempfile.gettempdir(), 'fuseki')
         os.makedirs(tmp_dir, exist_ok=True)
+        os.makedirs(os.path.join(self._data_path, 'fuseki'), exist_ok=True)
 
         # Set Java heap to 1/2 of available memory instead of the default 1/4
         max_heap = int(psutil.virtual_memory().total * (1/2))
@@ -23,7 +25,7 @@ class Fuseki(Container):
         super().__init__(f'apache/fuseki:v{VERSION}', 'Fuseki',
                          ports={'3030':'3030'},
                          environment={'JAVA_OPTIONS':f'-Xmx{max_heap} -Xms{max_heap}'},
-                         volumes=[f'{self._data_path}/fuseki/log4j2.properties:/fuseki/log4j2.properties',
+                         volumes=[f'{self._config_path}/fuseki/log4j2.properties:/fuseki/log4j2.properties',
                                   f'{self._data_path}/shared:/data',
                                   f'{tmp_dir}:/fuseki/databases/DB'])
         self._endpoint = 'http://localhost:3030/ds/sparql'

@@ -1,15 +1,12 @@
 # Project specific ignores
-bench_executor/data/rmlmapper/out*
+bench_executor/data/rmlmapper/
 bench_executor/data/postgresql/
 bench_executor/data/virtuoso/
-bench_executor/data/mysql/data
-bench_executor/data/morphkgc/config.ini
-bench_executor/data/morphkgc/out*
-bench_executor/data/sdmrdfizer/out*
-bench_executor/data/sdmrdfizer/*stat*
-bench_executor/data/sdmrdfizer/config.ini
-bench_executor/data/sdmrdfizer/*converted.rml.ttl
-bench_executor/data/cases/*/data
+bench_executor/data/mysql/
+bench_executor/data/morphkgc/
+bench_executor/data/morphkgc/
+bench_executor/data/sdmrdfizer/
+bench_executor/data/test-cases/*/data
 bench_executor/data/cases/*/results
 *.done
 *logs.txt

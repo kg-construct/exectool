@@ -14,19 +14,21 @@ PASSWORD = 'root'
 DB = 'db'
 
 class MySQL(Container):
-    def __init__(self, data_path: str, verbose: bool):
+    def __init__(self, data_path: str, config_path: str, verbose: bool):
         self._data_path = os.path.abspath(data_path)
+        self._config_path = os.path.abspath(config_path)
         self._verbose = verbose
         self._tables = []
         tmp_dir = os.path.join(tempfile.gettempdir(), 'mysql')
         os.makedirs(tmp_dir, exist_ok=True)
+        os.makedirs(os.path.join(self._data_path, 'mysql'), exist_ok=True)
 
         super().__init__(f'mysql:{VERSION}-debian', 'MySQL',
                          ports={'3306':'3306'},
                          environment={'MYSQL_ROOT_PASSWORD': 'root',
                                       'MYSQL_DATABASE': 'db'},
                          volumes=[f'{self._data_path}/shared/:/data/shared',
-                                  f'{self._data_path}/mysql/mysql-secure-file-prive.cnf:'
+                                  f'{self._config_path}/mysql/mysql-secure-file-prive.cnf:'
                                   '/etc/mysql/conf.d/mysql-secure-file-prive.cnf',
                                   f'{tmp_dir}:/var/lib/mysql'])
 

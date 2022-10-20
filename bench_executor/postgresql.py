@@ -16,11 +16,13 @@ DB = 'db'
 WAIT_TIME = 3
 
 class PostgreSQL(Container):
-    def __init__(self, data_path: str, verbose: bool):
+    def __init__(self, data_path: str, config_path: str, verbose: bool):
         self._data_path = os.path.abspath(data_path)
+        self._config_path = os.path.abspath(config_path)
         self._verbose = verbose
         tmp_dir = os.path.join(tempfile.gettempdir(), 'postgresql')
         os.makedirs(tmp_dir, exist_ok=True)
+        os.makedirs(os.path.join(self._data_path, 'postgresql'), exist_ok=True)
         self._tables = []
 
         super().__init__('postgres:14.5-bullseye', 'PostgreSQL',

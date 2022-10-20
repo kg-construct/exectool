@@ -9,9 +9,11 @@ from container import Container
 VERSION = '3.12.5'
 
 class MorphRDB(Container):
-    def __init__(self, data_path: str, verbose: bool):
+    def __init__(self, data_path: str, config_path: str, verbose: bool):
         self._data_path = os.path.abspath(data_path)
+        self._config_path = os.path.abspath(config_path)
         self._verbose = verbose
+        os.makedirs(os.path.join(self._data_path, 'morphrdb'), exist_ok=True)
         super().__init__(f'kg-construct/morph-rdb:v{VERSION}', 'Morph-RDB',
                          volumes=[f'{self._data_path}/shared:/data/shared',
                                   f'{self._data_path}/morphrdb:/data'])
@@ -46,8 +48,10 @@ class MorphRDB(Container):
         # Generate INI configuration file since no CLI is available
         config = configparser.ConfigParser()
         config['root']= {
-            'mappingdocument.file.path': os.path.basename(mapping_file),
-            'output.file.path': os.path.basename(output_file),
+            'mappingdocument.file.path': os.path.join('shared',
+                                                      os.path.basename(mapping_file)),
+            'output.file.path': os.path.join('shared',
+                                             os.path.basename(output_file)),
             'output.rdflanguage': serialization,
         }
 

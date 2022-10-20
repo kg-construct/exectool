@@ -79,17 +79,18 @@ class _Ontop(Container):
             raise ValueError('Ontop only supports RDBs')
 
         arguments.append('-m')
-        arguments.append(mapping_file)
+        arguments.append(os.path.join('/data/shared/', mapping_file))
         arguments.append('-o')
-        arguments.append(output_file)
+        arguments.append(os.path.join('/data/shared/', output_file))
         arguments.append('-p')
         arguments.append('/data/config.properties')
 
         return self.execute(mode, arguments)
 
 class OntopVirtualize(_Ontop):
-    def __init__(self, data_path: str, verbose: bool):
+    def __init__(self, data_path: str, config_path: str, verbose: bool):
         self._data_path = os.path.abspath(data_path)
+        self._config_path = os.path.abspath(config_path)
         os.makedirs(os.path.join(self._data_path, 'ontopendpoint'),
                     exist_ok=True)
         super().__init__('Ontop-Virtualize', data_path, verbose, 'endpoint')
@@ -106,8 +107,9 @@ class OntopVirtualize(_Ontop):
                                        rdb_name, rdb_type)
 
 class OntopMaterialize(_Ontop):
-    def __init__(self, data_path: str, verbose: bool):
+    def __init__(self, data_path: str, config_path: str, verbose: bool):
         self._data_path = os.path.abspath(data_path)
+        self._config_path = os.path.abspath(config_path)
         os.makedirs(os.path.join(self._data_path, 'ontopmaterialize'),
                     exist_ok=True)
         super().__init__('Ontop-Materialize', data_path, verbose, 'materialize')

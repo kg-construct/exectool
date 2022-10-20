@@ -7,9 +7,11 @@ from container import Container
 VERSION = '6.0.0'
 
 class RMLMapper(Container):
-    def __init__(self, data_path: str, verbose: bool):
+    def __init__(self, data_path: str, config_path: str, verbose: bool):
         self._verbose = verbose
         self._data_path = os.path.abspath(data_path)
+        self._config_path = os.path.abspath(config_path)
+        os.makedirs(os.path.join(self._data_path, 'rmlmapper'), exist_ok=True)
         super().__init__(f'kg-construct/rmlmapper:v{VERSION}', 'RMLMapper',
                          volumes=[f'{self._data_path}/rmlmapper:/data',
                                   f'{self._data_path}/shared:/data/shared'])
@@ -31,15 +33,17 @@ class RMLMapper(Container):
         success = self.run_and_wait_for_exit(f'java -Xmx{max_heap} -Xms{max_heap} '
                                              f'-jar rmlmapper/rmlmapper.jar '
                                              f'{" ".join(arguments)}')
+
         return success
 
     def execute_mapping(self, mapping_file, output_file, serialization,
                         rdb_username: str = None, rdb_password: str = None,
                         rdb_host: str = None, rdb_port: str = None,
                         rdb_name: str = None, rdb_type: str = None) -> bool:
-        arguments = ['-m', mapping_file,
+        arguments = ['-m', os.path.join('/data/shared/', mapping_file),
                      '-s', serialization,
-                     '-o', output_file]
+                     '-o', os.path.join('/data/shared/', output_file)]
+
         if rdb_username is not None and rdb_password is not None \
             and rdb_host is not None and rdb_port is not None \
             and rdb_name is not None and rdb_type is not None:

@@ -12,9 +12,11 @@ RML = Namespace('http://semweb.mmlab.be/ns/rml#')
 D2RQ = Namespace('http://www.wiwiss.fu-berlin.de/suhl/bizer/D2RQ/0.1#')
 
 class SDMRDFizer(Container):
-    def __init__(self, data_path: str, verbose: bool):
+    def __init__(self, data_path: str, config_path: str, verbose: bool):
         self._data_path = os.path.abspath(data_path)
+        self._config_path = os.path.abspath(config_path)
         self._verbose = verbose
+        os.makedirs(os.path.join(self._data_path, 'sdmrdfizer'), exist_ok=True)
         super().__init__(f'kg-construct/sdm-rdfizer:v{VERSION}', 'SDM-RDFizer',
                          volumes=[f'{self._data_path}/sdmrdfizer:/data',
                                   f'{self._data_path}/shared:/data/shared'])
@@ -23,9 +25,8 @@ class SDMRDFizer(Container):
         return __name__.lower()
 
     def execute(self, arguments) -> bool:
-        s = self.run_and_wait_for_exit(f'python3 sdm-rdfizer/rdfizer/run_rdfizer.py '
+        return self.run_and_wait_for_exit(f'python3 sdm-rdfizer/rdfizer/run_rdfizer.py '
                                           '/data/config.ini')
-        return s
 
     def execute_mapping(self, mapping_file: str, output_file: str,
                         serialization: str, rdb_username: str = None,
@@ -37,11 +38,11 @@ class SDMRDFizer(Container):
         name = os.path.splitext(os.path.basename(output_file))[0]
         config = configparser.ConfigParser(delimiters=':')
         config['default'] = {
-            'main_directory': '/data'
+            'main_directory': '/data/shared'
         }
         config['datasets'] = {
             'number_of_datasets': 1,
-            'output_folder': '/data',
+            'output_folder': '/data/shared',
             'all_in_one_file': 'yes',
             'remove_duplicate': 'yes',
             'enrichment': 'yes',
@@ -51,7 +52,7 @@ class SDMRDFizer(Container):
         }
         config['dataset1'] = {
             'name': name,
-            'mapping': mapping_file
+            'mapping': '/data/mapping_converted.rml.ttl'
         }
 
         if rdb_username is not None and rdb_password is not None \
@@ -82,7 +83,8 @@ class SDMRDFizer(Container):
             g.bind('rml', RML)
             g.bind('d2rq', D2RQ)
             g.bind('rdf', RDF)
-            g.parse(os.path.join(self._data_path, os.path.basename(mapping_file)))
+            g.parse(os.path.join(self._data_path, 'shared',
+                                 os.path.basename(mapping_file)))
 
             # rr:logicalTable --> rml:logicalSource
             for triples_map_iri, p, o in g.triples((None, RDF.type, R2RML.TriplesMap)):

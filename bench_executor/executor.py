@@ -17,6 +17,7 @@ from statistics import mean, median
 METADATA_FILE = 'metadata.json'
 SCHEMA_FILE = 'metadata.schema'
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
+CONFIG_DIR = os.path.join(os.path.dirname(__file__), 'config')
 WAIT_TIME = 5 # seconds
 METRIC_TYPE_MEASUREMENT = 'MEASUREMENT'
 METRIC_TYPE_INIT = 'INIT'
@@ -373,6 +374,11 @@ class Executor:
         for result_dir in glob(f'{case["directory"]}/results'):
             shutil.rmtree(result_dir)
 
+        # Data: persistent storage
+        for data_dir in glob(f'{case["directory"]}/data/*'):
+            if not data_dir.endswith('shared'):
+                shutil.rmtree(data_dir)
+
     def run(self, case: dict, interval: float, run: int, checkpoint: bool) -> Tuple[bool, float]:
         success = True
         start = time()
@@ -392,7 +398,7 @@ class Executor:
         # configuring database users, storage, etc. which is only done once
         for step in data['steps']:
             module = self._class_module_mapping[step['resource']]
-            resource = getattr(module, step['resource'])(data_path,
+            resource = getattr(module, step['resource'])(data_path, CONFIG_DIR,
                                                          self._verbose)
             if hasattr(resource, 'initialization'):
                 success = resource.initialization()
@@ -409,7 +415,7 @@ class Executor:
         # Execute steps
         for step in data['steps']:
             module = self._class_module_mapping[step['resource']]
-            resource = getattr(module, step['resource'])(data_path,
+            resource = getattr(module, step['resource'])(data_path, CONFIG_DIR,
                                                          self._verbose)
             root_mount_directory = resource.root_mount_directory()
 
@@ -454,8 +460,8 @@ class Executor:
             # Step complete
             self._print_step(step['resource'], step['name'], success)
 
+        # Case finished, store diff time
         diff = time() - start
-        sleep(WAIT_TIME)
 
         # Stop all metric measurement threads
         stop_event.set()
@@ -466,7 +472,7 @@ class Executor:
             if r is not None and hasattr(r, 'stop'):
                 r.stop()
 
-        self._print_step('Cleaner', 'Clean up resources', success)
+        self._print_step('Cleaner', 'Clean up resources', True)
 
         # Mark checkpoint if necessary
         if checkpoint:
@@ -491,6 +497,10 @@ class Executor:
             os.makedirs(os.path.join(results_run_path, subdir), exist_ok=True)
             shutil.move(metrics_file, os.path.join(results_run_path, subdir,
                                                'metrics.jsonl'))
+
+        self._print_step('Cooldown', f'Hardware cooldown period {WAIT_TIME}s',
+                         success)
+        sleep(WAIT_TIME)
 
         return success, diff
 

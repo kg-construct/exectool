@@ -10,6 +10,7 @@ import pymysql
 import subprocess
 import docker
 import atexit
+from glob import glob
 from container import Container, ContainerManager
 from rmlmapper import RMLMapper
 from postgresql import PostgreSQL
@@ -25,7 +26,8 @@ from executor import Executor
 from time import sleep
 from rdflib import Graph
 
-DATA_DIR = os.path.join(os.getcwd(), 'data')
+DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
+CONFIG_DIR = os.path.join(os.path.dirname(__file__), 'config')
 EXIT_CODE_INTERRUPTED = -4
 
 manager = ContainerManager()
@@ -36,9 +38,16 @@ def clean():
         print('Stopping all containers before exiting...')
         manager.stop_all()
 
+    for f in glob(f'{os.path.join(DATA_DIR, "shared")}/*'):
+        # Keep original data and mappings
+        if 'student' in f or 'mapping' in f:
+            continue
+        os.remove(f)
+
 class UnitTests(unittest.TestCase):
     def setUp(self):
-        warnings.filterwarnings(action='ignore', message='unclosed', category=ResourceWarning)
+        warnings.filterwarnings(action='ignore', message='unclosed',
+                                category=ResourceWarning)
 
     @classmethod
     def tearDownClass(self):
@@ -91,12 +100,14 @@ class UnitTests(unittest.TestCase):
 
         # Stats should be increased by now
         stats2 = c.stats()
-        self.assertTrue(stats1['cpu']['total_cpu_time'] < stats2['cpu']['total_cpu_time'])
+        cpu1 = stats1['cpu']['total_cpu_time']
+        cpu2 = stats2['cpu']['total_cpu_time']
+        self.assertTrue(cpu1 < cpu2)
 
         c.stop()
 
     def test_postgresql(self):
-        postgresql = PostgreSQL(DATA_DIR, False)
+        postgresql = PostgreSQL(DATA_DIR, CONFIG_DIR, False)
         self.assertTrue(postgresql.initialization())
         self.assertTrue(postgresql.wait_until_ready())
         connection = psycopg2.connect(host='localhost', database='db',
@@ -112,7 +123,8 @@ class UnitTests(unittest.TestCase):
         results = []
         for record in cursor:
             results.append([record[0], record[1]])
-        self.assertListEqual(results, [['Jefke', '21'], ['Maria', '22'], ['Jos', '23']])
+        expected = [['Jefke', '21'], ['Maria', '22'], ['Jos', '23']]
+        self.assertListEqual(results, expected)
 
         # Test invalid query
         with self.assertRaises(psycopg2.errors.UndefinedTable):
@@ -123,7 +135,7 @@ class UnitTests(unittest.TestCase):
         postgresql.stop()
 
         # Check if the tables are really dropped
-        postgresql = PostgreSQL(DATA_DIR, False)
+        postgresql = PostgreSQL(DATA_DIR, CONFIG_DIR, False)
         self.assertTrue(postgresql.wait_until_ready())
         connection = psycopg2.connect(host='localhost', user='root',
                                       password='root', database='db')
@@ -138,13 +150,14 @@ class UnitTests(unittest.TestCase):
         results = []
         for record in cursor:
             results.append([record[0], record[1]])
-        self.assertListEqual(results, [['Jefke', '21'], ['Maria', '22'], ['Jos', '23']])
+        expected = [['Jefke', '21'], ['Maria', '22'], ['Jos', '23']]
+        self.assertListEqual(results, expected)
 
         connection.close()
         postgresql.stop()
 
     def test_mysql(self):
-        mysql = MySQL(DATA_DIR, False)
+        mysql = MySQL(DATA_DIR, CONFIG_DIR, False)
         self.assertTrue(mysql.initialization())
         self.assertTrue(mysql.wait_until_ready())
         connection = pymysql.connect(host='localhost', user='root',
@@ -160,7 +173,8 @@ class UnitTests(unittest.TestCase):
         results = []
         for record in cursor:
             results.append([record[0], record[1]])
-        self.assertListEqual(results, [['Jefke', '21'], ['Maria', '22'], ['Jos', '23']])
+        expected = [['Jefke', '21'], ['Maria', '22'], ['Jos', '23']]
+        self.assertListEqual(results, expected)
 
         # Test invalid query
         with self.assertRaises(pymysql.err.ProgrammingError):
@@ -171,7 +185,7 @@ class UnitTests(unittest.TestCase):
         mysql.stop()
 
         # Check if the tables are really dropped
-        mysql = MySQL(DATA_DIR, False)
+        mysql = MySQL(DATA_DIR, CONFIG_DIR, False)
         self.assertTrue(mysql.wait_until_ready())
         connection = pymysql.connect(host='localhost', user='root',
                                      password='root', db='db')
@@ -185,70 +199,86 @@ class UnitTests(unittest.TestCase):
         results = []
         for record in cursor:
             results.append([record[0], record[1]])
-        self.assertListEqual(results, [['Jefke', '21'], ['Maria', '22'], ['Jos', '23']])
+        expected = [['Jefke', '21'], ['Maria', '22'], ['Jos', '23']]
+        self.assertListEqual(results, expected)
 
         connection.close()
         mysql.stop()
 
 class FileTests(unittest.TestCase):
     def setUp(self):
-        warnings.filterwarnings(action='ignore', message='unclosed', category=ResourceWarning)
+        warnings.filterwarnings(action='ignore', message='unclosed',
+                                category=ResourceWarning)
 
     @classmethod
     def tearDownClass(self):
         manager.stop_all()
 
     def test_rmlmapper_file(self):
-        rmlmapper = RMLMapper(DATA_DIR, False)
+        rmlmapper = RMLMapper(DATA_DIR, CONFIG_DIR, False)
         try:
-            os.remove(os.path.join(DATA_DIR, 'rmlmapper', 'out.nt'))
+            os.remove(os.path.join(DATA_DIR, 'shared', 'rmlmapper_file.nt'))
         except FileNotFoundError:
             pass
-        self.assertTrue(rmlmapper.execute_mapping('/data/mapping.rml.ttl', '/data/out.nt', 'ntriples'))
-        self.assertTrue(os.path.exists(os.path.join(DATA_DIR, 'rmlmapper', 'out.nt')))
+        self.assertTrue(rmlmapper.execute_mapping('mapping.rml.ttl',
+                                                  'rmlmapper_file.nt',
+                                                  'ntriples'))
+        self.assertTrue(os.path.exists(os.path.join(DATA_DIR, 'shared',
+                                                    'rmlmapper_file.nt')))
         g = Graph()
-        g.parse(os.path.join(DATA_DIR, 'rmlmapper', 'out.nt'), format='ntriples')
+        g.parse(os.path.join(DATA_DIR, 'shared', 'rmlmapper_file.nt'),
+                format='ntriples')
         self.assertEqual(len(g), 3)
         rmlmapper.stop()
 
     def test_morphkgc_file(self):
-        morphkgc = MorphKGC(DATA_DIR, False)
+        morphkgc = MorphKGC(DATA_DIR, CONFIG_DIR, False)
         try:
-            os.remove(os.path.join(DATA_DIR, 'morphkgc', 'out.nt'))
+            os.remove(os.path.join(DATA_DIR, 'morphkgc', 'shared',
+                                   'morphkgc_file.nt'))
         except FileNotFoundError:
             pass
-        self.assertTrue(morphkgc.execute_mapping('/data/mapping.rml.ttl','/data/out.nt', 'ntriples'))
-        self.assertTrue(os.path.exists(os.path.join(DATA_DIR, 'morphkgc', 'out.nt')))
+        self.assertTrue(morphkgc.execute_mapping('mapping.rml.ttl',
+                                                 'morphkgc_file.nt',
+                                                 'ntriples'))
+        self.assertTrue(os.path.exists(os.path.join(DATA_DIR, 'shared',
+                                                    'morphkgc_file.nt')))
         g = Graph()
-        g.parse(os.path.join(DATA_DIR, 'morphkgc', 'out.nt'), format='ntriples')
+        g.parse(os.path.join(DATA_DIR, 'shared', 'morphkgc_file.nt'),
+                format='ntriples')
         self.assertEqual(len(g), 3)
         morphkgc.stop()
 
     def test_sdmrdfizer_file(self):
-        sdmrdfizer = SDMRDFizer(DATA_DIR, False)
+        sdmrdfizer = SDMRDFizer(DATA_DIR, CONFIG_DIR, False)
         try:
-            os.remove(os.path.join(DATA_DIR, 'sdmrdfizer', 'out.nt'))
+            os.remove(os.path.join(DATA_DIR, 'shared', 'sdmrdfizer_file.nt'))
         except FileNotFoundError:
             pass
-        self.assertTrue(sdmrdfizer.execute_mapping('/data/mapping.rml.ttl','/data/out.nt', 'ntriples'))
-        self.assertTrue(os.path.exists(os.path.join(DATA_DIR, 'sdmrdfizer', 'out.nt')))
+        self.assertTrue(sdmrdfizer.execute_mapping('mapping.rml.ttl',
+                                                   'sdmrdfizer_file.nt',
+                                                   'ntriples'))
+        self.assertTrue(os.path.exists(os.path.join(DATA_DIR, 'shared',
+                                                    'sdmrdfizer_file.nt')))
         g = Graph()
-        g.parse(os.path.join(DATA_DIR, 'sdmrdfizer', 'out.nt'), format='ntriples')
+        g.parse(os.path.join(DATA_DIR, 'shared',
+                             'sdmrdfizer_file.nt'), format='ntriples')
         self.assertEqual(len(g), 3)
         sdmrdfizer.stop()
 
 
 class RDBTests(unittest.TestCase):
     def setUp(self):
-        warnings.filterwarnings(action='ignore', message='unclosed', category=ResourceWarning)
+        warnings.filterwarnings(action='ignore', message='unclosed',
+                                category=ResourceWarning)
 
     @classmethod
     def setUpClass(cls):
-        cls._mysql = MySQL(DATA_DIR, False)
+        cls._mysql = MySQL(DATA_DIR, CONFIG_DIR, False)
         cls._mysql.wait_until_ready()
         cls._mysql.load('student.csv', 'student')
 
-        cls._postgresql = PostgreSQL(DATA_DIR, False)
+        cls._postgresql = PostgreSQL(DATA_DIR, CONFIG_DIR, False)
         cls._postgresql.wait_until_ready()
         cls._postgresql.load('student.csv', 'student')
 
@@ -259,161 +289,193 @@ class RDBTests(unittest.TestCase):
         manager.stop_all()
 
     def test_rmlmapper_mysql(self):
-        rmlmapper = RMLMapper(DATA_DIR, False)
+        rmlmapper = RMLMapper(DATA_DIR, CONFIG_DIR, False)
         try:
-            os.remove(os.path.join(DATA_DIR, 'rmlmapper', 'out.nt'))
+            os.remove(os.path.join(DATA_DIR, 'shared', 'rmlmapper_mysql.nt'))
         except FileNotFoundError:
             pass
-        self.assertTrue(rmlmapper.execute_mapping('/data/mapping.r2rml.ttl',
-                                                  '/data/out.nt', 'ntriples',
-                                                  'root', 'root', 'MySQL',
-                                                  '3306', 'db', 'MySQL'))
+        self.assertTrue(rmlmapper.execute_mapping('mapping.r2rml.ttl',
+                                                  'rmlmapper_mysql.nt',
+                                                  'ntriples', 'root', 'root',
+                                                  'MySQL', '3306', 'db',
+                                                  'MySQL'))
 
-        self.assertTrue(os.path.exists(os.path.join(DATA_DIR, 'rmlmapper', 'out.nt')))
+        self.assertTrue(os.path.exists(os.path.join(DATA_DIR, 'shared',
+                                                    'rmlmapper_mysql.nt')))
         g = Graph()
-        g.parse(os.path.join(DATA_DIR, 'rmlmapper', 'out.nt'), format='ntriples')
+        g.parse(os.path.join(DATA_DIR, 'shared', 'rmlmapper_mysql.nt'),
+                format='ntriples')
         self.assertEqual(len(g), 3)
 
         rmlmapper.stop()
 
     def test_rmlmapper_postgresql(self):
-        rmlmapper = RMLMapper(DATA_DIR, True)
+        rmlmapper = RMLMapper(DATA_DIR, CONFIG_DIR, True)
         try:
-            os.remove(os.path.join(DATA_DIR, 'rmlmapper', 'out.nt'))
+            os.remove(os.path.join(DATA_DIR, 'shared',
+                                   'rmlmapper_postgresql.nt'))
         except FileNotFoundError:
             pass
-        self.assertTrue(rmlmapper.execute_mapping('/data/mapping.r2rml.ttl',
-                                                  '/data/out.nt', 'ntriples',
-                                                  'root', 'root', 'PostgreSQL',
-                                                  '5432', 'db', 'PostgreSQL'))
+        self.assertTrue(rmlmapper.execute_mapping('mapping.r2rml.ttl',
+                                                  'rmlmapper_postgresql.nt',
+                                                  'ntriples', 'root', 'root',
+                                                  'PostgreSQL', '5432', 'db',
+                                                  'PostgreSQL'))
 
-        self.assertTrue(os.path.exists(os.path.join(DATA_DIR, 'rmlmapper', 'out.nt')))
+        self.assertTrue(os.path.exists(os.path.join(DATA_DIR, 'shared',
+                                                    'rmlmapper_postgresql.nt')))
         g = Graph()
-        g.parse(os.path.join(DATA_DIR, 'rmlmapper', 'out.nt'), format='ntriples')
+        g.parse(os.path.join(DATA_DIR, 'shared', 'rmlmapper_postgresql.nt'),
+                format='ntriples')
         self.assertEqual(len(g), 3)
 
         rmlmapper.stop()
 
     def test_morphkgc_mysql(self):
-        morphkgc = MorphKGC(DATA_DIR, True)
+        morphkgc = MorphKGC(DATA_DIR, CONFIG_DIR, True)
         try:
-            os.remove(os.path.join(DATA_DIR, 'morphkgc', 'out.nt'))
+            os.remove(os.path.join(DATA_DIR, 'shared', 'morphkgc_mysql.nt'))
         except FileNotFoundError:
             pass
-        self.assertTrue(morphkgc.execute_mapping('/data/mapping.r2rml.ttl',
-                                                 '/data/out.nt', 'ntriples',
-                                                 'root', 'root', 'MySQL',
-                                                 '3306', 'db', 'MySQL'))
+        self.assertTrue(morphkgc.execute_mapping('mapping.r2rml.ttl',
+                                                 'morphkgc_mysql.nt',
+                                                 'ntriples', 'root', 'root',
+                                                 'MySQL', '3306', 'db',
+                                                 'MySQL'))
 
-        self.assertTrue(os.path.exists(os.path.join(DATA_DIR, 'morphkgc', 'out.nt')))
+        self.assertTrue(os.path.exists(os.path.join(DATA_DIR, 'shared',
+                                                    'morphkgc_mysql.nt')))
         g = Graph()
-        g.parse(os.path.join(DATA_DIR, 'morphkgc', 'out.nt'), format='ntriples')
+        g.parse(os.path.join(DATA_DIR, 'shared', 'morphkgc_mysql.nt'),
+                format='ntriples')
         self.assertEqual(len(g), 3)
 
         morphkgc.stop()
 
     def test_morphkgc_postgresql(self):
-        morphkgc = MorphKGC(DATA_DIR, True)
+        morphkgc = MorphKGC(DATA_DIR, CONFIG_DIR, True)
         try:
-            os.remove(os.path.join(DATA_DIR, 'morphkgc', 'out.nt'))
+            os.remove(os.path.join(DATA_DIR, 'shared', 'morphkgc_postgresql.nt'))
         except FileNotFoundError:
             pass
-        self.assertTrue(morphkgc.execute_mapping('/data/mapping.r2rml.ttl',
-                                                 '/data/out.nt', 'ntriples',
-                                                 'root', 'root', 'PostgreSQL',
-                                                 '5432', 'db', 'PostgreSQL'))
+        self.assertTrue(morphkgc.execute_mapping('mapping.r2rml.ttl',
+                                                 'morphkgc_postgresql.nt',
+                                                 'ntriples', 'root', 'root',
+                                                 'PostgreSQL', '5432', 'db',
+                                                 'PostgreSQL'))
 
-        self.assertTrue(os.path.exists(os.path.join(DATA_DIR, 'morphkgc', 'out.nt')))
+        self.assertTrue(os.path.exists(os.path.join(DATA_DIR, 'shared',
+                                                    'morphkgc_postgresql.nt')))
         g = Graph()
-        g.parse(os.path.join(DATA_DIR, 'morphkgc', 'out.nt'), format='ntriples')
+        g.parse(os.path.join(DATA_DIR, 'shared', 'morphkgc_postgresql.nt'),
+                format='ntriples')
         self.assertEqual(len(g), 3)
 
         morphkgc.stop()
 
     def test_sdmrdfizer_mysql(self):
-        sdmrdfizer = SDMRDFizer(DATA_DIR, True)
+        sdmrdfizer = SDMRDFizer(DATA_DIR, CONFIG_DIR, True)
         try:
-            os.remove(os.path.join(DATA_DIR, 'sdmrdfizer', 'out.nt'))
+            os.remove(os.path.join(DATA_DIR, 'shared', 'sdmrdfizer_mysql.nt'))
         except FileNotFoundError:
             pass
-        self.assertTrue(sdmrdfizer.execute_mapping('/data/mapping.r2rml.ttl',
-                                                   '/data/out.nt', 'ntriples',
-                                                   'root', 'root', 'MySQL',
-                                                   '3306', 'db', 'MySQL'))
+        self.assertTrue(sdmrdfizer.execute_mapping('mapping.r2rml.ttl',
+                                                   'sdmrdfizer_mysql.nt',
+                                                   'ntriples', 'root', 'root',
+                                                   'MySQL', '3306', 'db',
+                                                   'MySQL'))
 
-        self.assertTrue(os.path.exists(os.path.join(DATA_DIR, 'sdmrdfizer', 'out.nt')))
+        self.assertTrue(os.path.exists(os.path.join(DATA_DIR, 'shared',
+                                                    'sdmrdfizer_mysql.nt')))
         g = Graph()
-        g.parse(os.path.join(DATA_DIR, 'sdmrdfizer', 'out.nt'), format='ntriples')
+        g.parse(os.path.join(DATA_DIR, 'shared', 'sdmrdfizer_mysql.nt'),
+                format='ntriples')
         self.assertEqual(len(g), 3)
 
         sdmrdfizer.stop()
 
     def test_sdmrdfizer_postgresql(self):
-        sdmrdfizer = SDMRDFizer(DATA_DIR, True)
+        sdmrdfizer = SDMRDFizer(DATA_DIR, CONFIG_DIR, True)
         try:
-            os.remove(os.path.join(DATA_DIR, 'sdmrdfizer', 'out.nt'))
+            os.remove(os.path.join(DATA_DIR, 'shared',
+                                   'sdmrdfizer_postgresql.nt'))
         except FileNotFoundError:
             pass
-        self.assertTrue(sdmrdfizer.execute_mapping('/data/mapping.r2rml.ttl',
-                                                   '/data/out.nt', 'ntriples',
-                                                   'root', 'root', 'PostgreSQL',
-                                                   '5432', 'db', 'PostgreSQL'))
+        self.assertTrue(sdmrdfizer.execute_mapping('mapping.r2rml.ttl',
+                                                   'sdmrdfizer_postgresql.nt',
+                                                   'ntriples', 'root', 'root',
+                                                   'PostgreSQL', '5432', 'db',
+                                                   'PostgreSQL'))
 
-        self.assertTrue(os.path.exists(os.path.join(DATA_DIR, 'sdmrdfizer', 'out.nt')))
+        exist = os.path.exists(os.path.join(DATA_DIR, 'shared',
+                                            'sdmrdfizer_postgresql.nt'))
+        self.assertTrue(exist)
         g = Graph()
-        g.parse(os.path.join(DATA_DIR, 'sdmrdfizer', 'out.nt'), format='ntriples')
+        g.parse(os.path.join(DATA_DIR, 'shared', 'sdmrdfizer_postgresql.nt'),
+                format='ntriples')
         self.assertEqual(len(g), 3)
 
         sdmrdfizer.stop()
 
     def test_ontopmaterialize_mysql(self):
-        ontop = OntopMaterialize(DATA_DIR, True)
+        ontop = OntopMaterialize(DATA_DIR, CONFIG_DIR, True)
         try:
-            os.remove(os.path.join(DATA_DIR, 'ontopmaterialize', 'out.nt'))
+            os.remove(os.path.join(DATA_DIR, 'shared',
+                                   'ontopmaterialize_mysql.nt'))
         except FileNotFoundError:
             pass
-        self.assertTrue(ontop.execute_mapping('/data/mapping.r2rml.ttl',
-                                              '/data/out.nt', 'ntriples',
-                                              'root', 'root', 'MySQL',
-                                              '3306', 'db', 'MySQL'))
+        self.assertTrue(ontop.execute_mapping('mapping.r2rml.ttl',
+                                              'ontopmaterialize_mysql.nt',
+                                              'ntriples', 'root', 'root',
+                                              'MySQL', '3306', 'db', 'MySQL'))
 
-        self.assertTrue(os.path.exists(os.path.join(DATA_DIR, 'ontopmaterialize', 'out.nt')))
+        exist = os.path.exists(os.path.join(DATA_DIR, 'shared',
+                                            'ontopmaterialize_mysql.nt'))
+        self.assertTrue(exist)
         g = Graph()
-        g.parse(os.path.join(DATA_DIR, 'ontopmaterialize', 'out.nt'), format='ntriples')
+        g.parse(os.path.join(DATA_DIR, 'shared', 'ontopmaterialize_mysql.nt'),
+                format='ntriples')
         self.assertEqual(len(g), 3)
 
         ontop.stop()
 
     def test_ontopmaterialize_postgresql(self):
-        ontop = OntopMaterialize(DATA_DIR, True)
+        ontop = OntopMaterialize(DATA_DIR, CONFIG_DIR, True)
         try:
-            os.remove(os.path.join(DATA_DIR, 'ontopmaterialize', 'out.nt'))
+            os.remove(os.path.join(DATA_DIR, 'shared',
+                                   'ontopmaterialize_postgresql.nt'))
         except FileNotFoundError:
             pass
-        self.assertTrue(ontop.execute_mapping('/data/mapping.r2rml.ttl',
-                                              '/data/out.nt', 'ntriples',
-                                              'root', 'root', 'PostgreSQL',
-                                              '5432', 'db', 'PostgreSQL'))
+        self.assertTrue(ontop.execute_mapping('mapping.r2rml.ttl',
+                                              'ontopmaterialize_postgresql.nt',
+                                              'ntriples', 'root', 'root',
+                                              'PostgreSQL', '5432', 'db',
+                                              'PostgreSQL'))
 
-        self.assertTrue(os.path.exists(os.path.join(DATA_DIR, 'ontopmaterialize', 'out.nt')))
+        exist = os.path.exists(os.path.join(DATA_DIR, 'shared',
+                                            'ontopmaterialize_postgresql.nt'))
+        self.assertTrue(exist)
         g = Graph()
-        g.parse(os.path.join(DATA_DIR, 'ontopmaterialize', 'out.nt'), format='ntriples')
+        g.parse(os.path.join(DATA_DIR, 'shared',
+                             'ontopmaterialize_postgresql.nt'),
+                format='ntriples')
         self.assertEqual(len(g), 3)
 
         ontop.stop()
 
     def test_ontopendpoint_mysql(self):
-        ontop = OntopVirtualize(DATA_DIR, True)
+        ontop = OntopVirtualize(DATA_DIR, CONFIG_DIR, True)
         try:
-            os.remove(os.path.join(DATA_DIR, 'ontopendpoint', 'out.nt'))
+            os.remove(os.path.join(DATA_DIR, 'shared',
+                                   'ontopendpoint_mysql.nt'))
         except FileNotFoundError:
             pass
-        self.assertTrue(ontop.execute_mapping('/data/mapping.r2rml.ttl',
-                                              '/data/out.nt', 'ntriples',
-                                              'root', 'root', 'MySQL',
-                                              '3306', 'db', 'MySQL'))
+        self.assertTrue(ontop.execute_mapping('mapping.r2rml.ttl',
+                                              'ontopendpoint_mysql.nt',
+                                              'ntriples', 'root', 'root',
+                                              'MySQL', '3306', 'db', 'MySQL'))
         # Verify loaded data
-        q = Query(DATA_DIR, True)
+        q = Query(DATA_DIR, CONFIG_DIR, True)
         results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
                             'http://localhost:8888/sparql')
         results = list(filter(None, results.split('\n')))
@@ -424,17 +486,18 @@ class RDBTests(unittest.TestCase):
         ontop.stop()
 
     def test_ontopendpoint_postgresql(self):
-        ontop = OntopVirtualize(DATA_DIR, True)
+        ontop = OntopVirtualize(DATA_DIR, CONFIG_DIR, True)
         try:
-            os.remove(os.path.join(DATA_DIR, 'ontopendpoint', 'out.nt'))
+            os.remove(os.path.join(DATA_DIR, 'shared', 'ontopendpoint_postgresql.nt'))
         except FileNotFoundError:
             pass
-        self.assertTrue(ontop.execute_mapping('/data/mapping.r2rml.ttl',
-                                              '/data/out.nt', 'ntriples',
-                                              'root', 'root', 'PostgreSQL',
-                                              '5432', 'db', 'PostgreSQL'))
+        self.assertTrue(ontop.execute_mapping('mapping.r2rml.ttl',
+                                              'ontopendpoint_postgresql.nt',
+                                              'ntriples', 'root', 'root',
+                                              'PostgreSQL', '5432', 'db',
+                                              'PostgreSQL'))
         # Verify loaded data
-        q = Query(DATA_DIR, False)
+        q = Query(DATA_DIR, CONFIG_DIR, False)
         results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
                             'http://localhost:8888/sparql')
         results = list(filter(None, results.split('\n')))
@@ -443,52 +506,59 @@ class RDBTests(unittest.TestCase):
         ontop.stop()
 
     def test_morphrdb_mysql(self):
-        morphrdb = MorphRDB(DATA_DIR, True)
+        morphrdb = MorphRDB(DATA_DIR, CONFIG_DIR, True)
         try:
-            os.remove(os.path.join(DATA_DIR, 'morphrdb', 'out.nt'))
+            os.remove(os.path.join(DATA_DIR, 'shared', 'morphrdb_mysql.nt'))
         except FileNotFoundError:
             pass
-        self.assertTrue(morphrdb.execute_mapping('/data/mapping.r2rml.ttl',
-                                                 '/data/out.nt', 'ntriples',
-                                                 'root', 'root', 'MySQL',
-                                                 '3306', 'db', 'MySQL'))
+        self.assertTrue(morphrdb.execute_mapping('mapping.r2rml.ttl',
+                                                 'morphrdb_mysql.nt',
+                                                 'ntriples', 'root', 'root',
+                                                 'MySQL', '3306', 'db',
+                                                 'MySQL'))
 
-        self.assertTrue(os.path.exists(os.path.join(DATA_DIR, 'morphrdb', 'out.nt')))
+        self.assertTrue(os.path.exists(os.path.join(DATA_DIR, 'shared',
+                                                    'morphrdb_mysql.nt')))
         g = Graph()
-        g.parse(os.path.join(DATA_DIR, 'morphrdb', 'out.nt'), format='ntriples')
+        g.parse(os.path.join(DATA_DIR, 'shared', 'morphrdb_mysql.nt'),
+                format='ntriples')
         self.assertEqual(len(g), 3)
 
         morphrdb.stop()
 
     def test_morphrdb_postgresql(self):
-        morphrdb = MorphRDB(DATA_DIR, True)
+        morphrdb = MorphRDB(DATA_DIR, CONFIG_DIR, True)
         try:
-            os.remove(os.path.join(DATA_DIR, 'morphrdb', 'out.nt'))
+            os.remove(os.path.join(DATA_DIR, 'shared',
+                                   'morphrdb_postgresql.nt'))
         except FileNotFoundError:
             pass
-        self.assertTrue(morphrdb.execute_mapping('/data/mapping.r2rml.ttl',
-                                                 '/data/out.nt', 'ntriples',
-                                                 'root', 'root', 'PostgreSQL',
-                                                 '5432', 'db', 'PostgreSQL'))
+        self.assertTrue(morphrdb.execute_mapping('mapping.r2rml.ttl',
+                                                 'morphrdb_postgresql.nt',
+                                                 'ntriples', 'root', 'root',
+                                                 'PostgreSQL', '5432', 'db',
+                                                 'PostgreSQL'))
 
-        self.assertTrue(os.path.exists(os.path.join(DATA_DIR, 'morphrdb', 'out.nt')))
+        self.assertTrue(os.path.exists(os.path.join(DATA_DIR, 'shared',
+                                                    'morphrdb_postgresql.nt')))
         g = Graph()
-        g.parse(os.path.join(DATA_DIR, 'morphrdb', 'out.nt'), format='ntriples')
+        g.parse(os.path.join(DATA_DIR, 'shared', 'morphrdb_postgresql.nt'),
+                format='ntriples')
         self.assertEqual(len(g), 3)
 
         morphrdb.stop()
 
-
 class TriplestoreTests(unittest.TestCase):
     def setUp(self):
-        warnings.filterwarnings(action='ignore', message='unclosed', category=ResourceWarning)
+        warnings.filterwarnings(action='ignore', message='unclosed',
+                                category=ResourceWarning)
 
     @classmethod
     def tearDownClass(cls):
         manager.stop_all()
 
     def test_virtuoso(self):
-        virtuoso = Virtuoso(DATA_DIR, False)
+        virtuoso = Virtuoso(DATA_DIR, CONFIG_DIR, False)
         self.assertTrue(virtuoso.initialization())
         self.assertTrue(virtuoso.wait_until_ready())
 
@@ -513,7 +583,7 @@ class TriplestoreTests(unittest.TestCase):
         self.assertTrue(virtuoso.load('student.nt'))
 
         # Verify loaded data
-        q = Query(DATA_DIR, False)
+        q = Query(DATA_DIR, CONFIG_DIR, False)
         results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
                             'http://localhost:8890/sparql')
         results = list(filter(None, results.split('\n')))
@@ -523,11 +593,11 @@ class TriplestoreTests(unittest.TestCase):
         virtuoso.stop()
 
         # Virtuoso is already initialized only wait for it to be ready
-        virtuoso = Virtuoso(DATA_DIR, False)
+        virtuoso = Virtuoso(DATA_DIR, CONFIG_DIR, False)
         self.assertTrue(virtuoso.wait_until_ready())
 
         # Verify removed data
-        q = Query(DATA_DIR, False)
+        q = Query(DATA_DIR, CONFIG_DIR, False)
         results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
                             'http://localhost:8890/sparql')
         self.assertTrue('# Empty NT' in results)
@@ -536,7 +606,7 @@ class TriplestoreTests(unittest.TestCase):
         self.assertTrue(virtuoso.load('student.nt'))
 
         # Verify loaded data
-        q = Query(DATA_DIR, False)
+        q = Query(DATA_DIR, CONFIG_DIR, False)
         results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
                             'http://localhost:8890/sparql')
         results = list(filter(None, results.split('\n')))
@@ -545,7 +615,7 @@ class TriplestoreTests(unittest.TestCase):
         virtuoso.stop()
 
     def test_fuseki(self):
-        fuseki = Fuseki(DATA_DIR, False)
+        fuseki = Fuseki(DATA_DIR, CONFIG_DIR, False)
         self.assertTrue(fuseki.initialization())
         self.assertTrue(fuseki.wait_until_ready())
 
@@ -553,7 +623,7 @@ class TriplestoreTests(unittest.TestCase):
         self.assertTrue(fuseki.load('student.nt'))
 
         # Verify loaded data
-        q = Query(DATA_DIR, False)
+        q = Query(DATA_DIR, CONFIG_DIR, False)
         results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
                             fuseki.endpoint)
         results = list(filter(None, results.split('\n')))
@@ -562,10 +632,10 @@ class TriplestoreTests(unittest.TestCase):
         fuseki.stop()
 
         # Verify removed data
-        fuseki = Fuseki(DATA_DIR, False)
+        fuseki = Fuseki(DATA_DIR, CONFIG_DIR, False)
         self.assertTrue(fuseki.wait_until_ready())
 
-        q = Query(DATA_DIR, False)
+        q = Query(DATA_DIR, CONFIG_DIR, False)
         results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
                             fuseki.endpoint)
         results = list(filter(None, results.split('\n')))
@@ -575,7 +645,7 @@ class TriplestoreTests(unittest.TestCase):
         self.assertTrue(fuseki.load('student.nt'))
 
         # Verify loaded data
-        q = Query(DATA_DIR, False)
+        q = Query(DATA_DIR, CONFIG_DIR, False)
         results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
                             fuseki.endpoint)
         results = list(filter(None, results.split('\n')))
@@ -584,7 +654,7 @@ class TriplestoreTests(unittest.TestCase):
         fuseki.stop()
 
     def test_query(self):
-        q = Query(DATA_DIR, False)
+        q = Query(DATA_DIR, CONFIG_DIR, False)
         results = q.execute('CONSTRUCT WHERE { ?s ?p ?o. } LIMIT 100',
                             'https://dbpedia.org/sparql')
         results = list(filter(None, results.split('\n')))
@@ -599,15 +669,19 @@ class IntegrationTests(unittest.TestCase):
         manager.stop_all()
 
     def test_executor_list(self):
-        executor = Executor(os.path.join(DATA_DIR, 'cases'), False)
+        executor = Executor(os.path.join(DATA_DIR, 'test-cases'), False)
         cases = executor.list()
         iris = [x['data']['@id'] for x in cases]
-        self.assertListEqual(['http://dylanvanassche.be/cases/transform-csv-to-ntriples',
-                              'http://dylanvanassche.be/cases/transform-mysql-to-ntriples',
-                              'http://dylanvanassche.be/cases/transform-postgresql-to-ntriples'], iris)
+        expected = ['http://dylanvanassche.be/test-cases/rmlmapper/fuseki/transform-csv-to-ntriples',
+            'http://dylanvanassche.be/test-cases/rmlmapper/fuseki/transform-mysql-to-ntriples',
+            'http://dylanvanassche.be/cases/rmlmapper/fuseki/transform-postgresql-to-ntriples',
+            'http://dylanvanassche.be/test-cases/rmlmapper/virtuoso/transform-csv-to-ntriples',
+            'http://dylanvanassche.be/test-cases/rmlmapper/virtuoso/transform-mysql-to-ntriples',
+            'http://dylanvanassche.be/cases/rmlmapper/virtuoso/transform-postgresql-to-ntriples']
+        self.assertListEqual(expected, iris)
 
     def test_executor_run(self):
-        path = os.path.join(DATA_DIR, 'cases')
+        path = os.path.join(DATA_DIR, 'test-cases')
         executor = Executor(path, False)
 
         for case in executor.list():
@@ -616,14 +690,13 @@ class IntegrationTests(unittest.TestCase):
 
             # Check if all files are removed
             for step in case['data']['steps']:
-                name = case['data']['name']
-                resource = step['resource']
-                root_mount_directory = resource.lower().replace('_', '')
-                log_file = os.path.join(path, name, 'data', root_mount_directory,
+                directory = case['directory']
+                resource = step['resource'].lower().replace('_', '')
+                log_file = os.path.join(directory, 'results', 'run_1', resource,
                                         'logs.txt')
-                checkpoint_file = os.path.join(path, name, '.done')
-                metrics_file = os.path.join(path, name, 'data', root_mount_directory,
-                                            'metrics.jsonl')
+                checkpoint_file = os.path.join(directory, '.done')
+                metrics_file = os.path.join(directory, 'results', 'run_1',
+                                            resource, 'metrics.jsonl')
 
                 self.assertFalse(os.path.exists(log_file))
                 self.assertFalse(os.path.exists(metrics_file))
@@ -632,17 +705,17 @@ class IntegrationTests(unittest.TestCase):
             # Run case
             self.assertTrue(executor.run(case, 0.1, 1, True))
 
+            print(case['directory'])
+
             # Check if all files are generated
             for step in case['data']['steps']:
-                name = case['data']['name']
-                resource = step['resource']
-                root_mount_directory = resource.lower().replace('_', '')
-                log_file = os.path.join(path, name, 'results', 'run_1',
-                                        root_mount_directory, 'logs.txt')
-                checkpoint_file = os.path.join(path, name, '.done')
-                metrics_file = os.path.join(path, name, 'results', 'run_1',
-                                            root_mount_directory,
-                                            'metrics.jsonl')
+                directory = case['directory']
+                resource = step['resource'].lower().replace('_', '')
+                log_file = os.path.join(directory, 'results', 'run_1', resource,
+                                        'logs.txt')
+                checkpoint_file = os.path.join(directory, '.done')
+                metrics_file = os.path.join(directory, 'results', 'run_1',
+                                            resource, 'metrics.jsonl')
 
                 # Verify if log, checkpoint, metrics files exists
                 # Log files are expected to contain at least 1 line,

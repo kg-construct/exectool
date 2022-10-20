@@ -7,15 +7,18 @@ from container import Container
 VERSION = '7.2.7'
 
 class Virtuoso(Container):
-    def __init__(self, data_path: str, verbose: bool):
+    def __init__(self, data_path: str, config_path: str, verbose: bool):
         self._data_path = os.path.abspath(data_path)
+        self._config_path = os.path.abspath(config_path)
         self._verbose = verbose
         tmp_dir = os.path.join(tempfile.gettempdir(), 'virtuoso')
         os.makedirs(tmp_dir, exist_ok=True)
+        os.makedirs(os.path.join(self._data_path, 'virtuoso'), exist_ok=True)
         super().__init__(f'openlink/virtuoso-opensource-7:{VERSION}', 'Virtuoso',
                          ports={'8890':'8890', '1111':'1111'},
                          environment={'DBA_PASSWORD':'root'},
                          volumes=[f'{self._data_path}/shared:/usr/share/proj',
+                                  f'{self._config_path}/virtuoso/virtuoso.ini:/database/virtuoso.ini',
                                   f'{tmp_dir}:/database'])
         self._endpoint = 'http://localhost:8890/sparql'
 

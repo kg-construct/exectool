@@ -7,9 +7,11 @@ from container import Container
 VERSION = '2.2.0'
 
 class MorphKGC(Container):
-    def __init__(self, data_path: str, verbose: bool):
+    def __init__(self, data_path: str, config_path: str, verbose: bool):
         self._data_path = os.path.abspath(data_path)
+        self._config_path = os.path.abspath(config_path)
         self._verbose = verbose
+        os.makedirs(os.path.join(self._data_path, 'morphkgc'), exist_ok=True)
         super().__init__(f'kg-construct/morph-kgc:v{VERSION}', 'Morph-KGC',
                          volumes=[f'{self._data_path}/morphkgc:/data',
                                   f'{self._data_path}/shared:/data/shared'])
@@ -37,11 +39,11 @@ class MorphKGC(Container):
         # Generate INI configuration file since no CLI is available
         config = configparser.ConfigParser()
         config['CONFIGURATION'] = {
-            'output_file': output_file,
+            'output_file': f'/data/shared/{output_file}',
             'output_format': serialization
         }
         config['DataSource0'] = {
-            'mappings': mapping_file
+            'mappings': f'/data/shared/{mapping_file}'
         }
 
         if rdb_username is not None and rdb_password is not None \

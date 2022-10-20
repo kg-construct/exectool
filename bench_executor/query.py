@@ -6,10 +6,13 @@ import requests
 from typing import Optional, List
 
 class Query():
-    def __init__(self, data_path, verbose):
+    def __init__(self, data_path: str, config_path: str, verbose: bool):
         self._data_path = os.path.abspath(data_path)
+        self._config_path = os.path.abspath(config_path)
         self._verbose = verbose
         self._logs = []
+
+        os.makedirs(os.path.join(self._data_path, 'query'), exist_ok=True)
 
     def root_mount_directory(self) -> str:
         return __name__.lower()
