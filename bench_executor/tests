@@ -9,7 +9,8 @@ import psycopg2
 import pymysql
 import subprocess
 import docker
-from container import Container
+import atexit
+from container import Container, ContainerManager
 from rmlmapper import RMLMapper
 from postgresql import PostgreSQL
 from mysql import MySQL
@@ -25,26 +26,15 @@ from time import sleep
 from rdflib import Graph
 
 DATA_DIR = os.path.join(os.getcwd(), 'data')
+EXIT_CODE_INTERRUPTED = -4
 
-def _remove_all_containers():
-    client = docker.from_env()
-    stopped = False
-    removed = False
+manager = ContainerManager()
 
-    # Always stop and remove all containers even when tests are failing
-    for container in client.containers.list():
-        try:
-            container.stop()
-            stopped = True
-        except docker.errors.APIError:
-            pass
-        try:
-            container.remove()
-            removed = True
-        except docker.errors.APIError:
-            pass
-        print(f'{container.name}: stopped? {stopped} removed? {removed}')
-
+@atexit.register
+def clean():
+    if len(manager.list_all()) > 0:
+        print('Stopping all containers before exiting...')
+        manager.stop_all()
 
 class UnitTests(unittest.TestCase):
     def setUp(self):
@@ -52,7 +42,7 @@ class UnitTests(unittest.TestCase):
 
     @classmethod
     def tearDownClass(self):
-        _remove_all_containers()
+        manager.stop_all()
 
     def test_docker_run(self):
         c = Container('nginx:alpine', 'test_docker_run', {'80/tcp': '8080/tcp'})
@@ -206,7 +196,7 @@ class FileTests(unittest.TestCase):
 
     @classmethod
     def tearDownClass(self):
-        _remove_all_containers()
+        manager.stop_all()
 
     def test_rmlmapper_file(self):
         rmlmapper = RMLMapper(DATA_DIR, False)
@@ -266,7 +256,7 @@ class RDBTests(unittest.TestCase):
     def tearDownClass(cls):
         cls._mysql.stop()
         cls._postgresql.stop()
-        _remove_all_containers()
+        manager.stop_all()
 
     def test_rmlmapper_mysql(self):
         rmlmapper = RMLMapper(DATA_DIR, False)
@@ -495,7 +485,7 @@ class TriplestoreTests(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        _remove_all_containers()
+        manager.stop_all()
 
     def test_virtuoso(self):
         virtuoso = Virtuoso(DATA_DIR, False)
@@ -606,7 +596,7 @@ class IntegrationTests(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        _remove_all_containers()
+        manager.stop_all()
 
     def test_executor_list(self):
         executor = Executor(os.path.join(DATA_DIR, 'cases'), False)
@@ -695,6 +685,10 @@ if __name__ == '__main__':
             sys.exit(-1)
     except subprocess.CalledProcessError:
         pass
+
+    if len(manager.list_all()) != 0:
+        print('Stopping all containers before starting tests...')
+        manager.stop_all()
 
     if len(sys.argv) > 1:
         unittest.main()

@@ -17,6 +17,33 @@ CGROUPS_DIR_SYSTEMD_V2 = '/sys/fs/cgroup/system.slice/'
 CGROUPS_DIR_CGROUPFS_V2 = '/sys/fs/cgroup/docker/'
 CGROUPS_MODE_SYSTEMD = 'systemd'
 CGROUPS_MODE_CGROUPSFS = 'cgroupfs'
+NETWORK_REGEX = r"(\w*):\s*(\d*)\s*(\d*)\s*(\d*)\s*(\d*)\s*(\d*)\s*(\d*)" + \
+                r"\s*(\d*)\s*(\d*)\s*(\d*)\s*(\d*)\s*(\d*)\s*(\d*)\s*(\d*)" + \
+                r"\s*(\d*)\s*(\d*)\s*(\d*)"
+
+class ContainerManager():
+    def __init__(self):
+        self._client = docker.from_env()
+
+    def list_all(self):
+        return self._client.containers.list(all=True)
+
+    def stop_all(self):
+        stopped = False
+        removed = False
+
+        for container in self.list_all():
+            try:
+                container.stop()
+                stopped = True
+            except docker.errors.APIError:
+                pass
+            try:
+                container.remove()
+                removed = True
+            except docker.errors.APIError:
+                pass
+            print(f'Container {container.name}: stopped: {stopped} removed: {removed}')
 
 class Container():
     def __init__(self, container: str, name: str, ports: dict = {},
@@ -29,6 +56,7 @@ class Container():
         self._volumes = volumes
         self._environment = environment
         self._logs = []
+        self._proc_pid = None
         self._long_id = None
         self._cgroups_mode = None
         self._cgroups_dir = None
@@ -159,9 +187,9 @@ class Container():
         return True
 
     def stats(self, silence_failure=False) -> Optional[dict]:
-        # Docker API is slow for retrieving stats, use underlying cgroups
-        # instead to retrieve the raw data without the processing overhead of
-        # the Docker daemon
+        # Docker API is slow for retrieving stats, use underlying cgroups and
+        # proc file systems instead to retrieve the raw data without the
+        # processing overhead of the Docker daemon
         if self._container is not None and self._cgroups_dir is not None:
             stats = {
                 'time': round(time(), 2),
@@ -170,26 +198,42 @@ class Container():
                 'io': {},
                 'network': {}
             }
-            long_id = self._container.id
-            path = None
+
+            # Get IDs to access metrics on filesystem
+            if self._proc_pid is None or self._long_id is None:
+                self._container.reload()
+                pid = self._container.attrs['State']['Pid']
+                if pid != 0:
+                    self._proc_pid = pid
+                self._long_id = self._container.id
+            cgroup_path = None
+            proc_path = None
 
             if self._cgroups_mode == CGROUPS_MODE_SYSTEMD:
-                path = os.path.join(self._cgroups_dir,
-                                    f'docker-{long_id}.scope')
+                cgroup_path = os.path.join(self._cgroups_dir,
+                                           f'docker-{self._long_id}.scope')
             elif self._cgroups_mode == CGROUPS_MODE_CGROUPSFS:
-                path = os.path.join(self._cgroups_dir, long_id)
+                cgroup_path = os.path.join(self._cgroups_dir, self._long_id)
             else:
                 raise ValueError('Unknown CGroup mode, this statement should '
                                  'be unreachable. Please report this as a bug.')
 
-            if not os.path.exists(path):
+            proc_path = os.path.join(f'/proc/{self._proc_pid}')
+
+            if not os.path.exists(cgroup_path):
                 if not silence_failure:
-                    print('Container CGroupFS file does not exist (yet)',
+                    print(f'Container {self._cgroups_dir} files do not exist',
+                          file=sys.stderr)
+                return None
+
+            if not os.path.exists(proc_path):
+                if not silence_failure:
+                    print('Container /proc files do not exist',
                           file=sys.stderr)
                 return None
 
             try:
-                with open(os.path.join(path, 'cpu.stat'), 'r') as f:
+                with open(os.path.join(cgroup_path, 'cpu.stat'), 'r') as f:
                     # <metric> <value>
                     cpu_raw = f.read()
                     for raw in cpu_raw.split('\n'):
@@ -203,12 +247,12 @@ class Container():
                             elif metric == 'system_usec':
                                 stats['cpu']['system_cpu_time'] = int(value) / (10**6)
 
-                with open(os.path.join(path, 'memory.current'), 'r') as f:
+                with open(os.path.join(cgroup_path, 'memory.current'), 'r') as f:
                     # <value>
                     memory_raw = f.read()
                     stats['memory']['total'] = int(memory_raw) / (10**3)
 
-                with open(os.path.join(path, 'io.stat'), 'r') as f:
+                with open(os.path.join(cgroup_path, 'io.stat'), 'r') as f:
                     # <major:minor> rbytes=<value> wbytes=<value> rios=<value>
                     # wios=<value> dbytes=<value> dios=<value>
                     io_raw = f.read()
@@ -240,7 +284,50 @@ class Container():
                             'number_of_discards': number_of_discards
                         }
 
-                if cpu_raw and memory_raw and io_raw:
+                with open(os.path.join(proc_path, 'net', 'dev'), 'r') as f:
+                    # header Interface | Receive | Transmist
+                    # header <metrics>
+                    # <interface>: <received bytes> <received_packets>
+                    # <received_errs> <received_drop> <received_fifo>
+                    # <received_frame> <received_compressed>
+                    # <received_multicast> <send_bytes> <send_packets>
+                    # <send_errs> <send_drop> <send_fifo> <send_colls>
+                    # <send_carrier> <send_compressed>
+                    network_raw = f.read()
+                    for raw in network_raw.split('\n'):
+                        if raw == '' or 'Receive' in raw or 'packets' in raw:
+                            continue
+                        network = re.search(NETWORK_REGEX, raw).groups()
+                        device = network[0]
+                        bytes_received = int(network[1])
+                        packets_received = int(network[2])
+                        errors_received = int(network[3])
+                        dropped_received = int(network[4])
+                        fifo_received = int(network[5])
+                        frame_received = int(network[6])
+                        compressed_received = int(network[7])
+                        multicast_received = int(network[8])
+                        bytes_transmitted = int(network[9])
+                        packets_transmitted = int(network[10])
+                        errors_transmitted = int(network[11])
+                        dropped_transmitted = int(network[12])
+                        fifo_transmitted = int(network[13])
+                        colls_transmitted = int(network[14])
+                        carrier_transmitted = int(network[15])
+                        compressed_transmitted = int(network[16])
+
+                        stats['network'][device] = {
+                            'size_received': bytes_received / (10**3),
+                            'size_transmitted': bytes_transmitted / (10**3),
+                            'packets_received': packets_received,
+                            'packets_transmitted': packets_transmitted,
+                            'errors_received': errors_received,
+                            'errors_transmitted': errors_transmitted,
+                            'dropped_received': dropped_received,
+                            'dropped_transmitted': dropped_transmitted
+                        }
+
+                if cpu_raw and memory_raw and io_raw and network_raw:
                     return stats
             except FileNotFoundError:
                 return None

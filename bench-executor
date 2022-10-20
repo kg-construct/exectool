@@ -4,8 +4,9 @@ import os
 import sys
 import argparse
 import subprocess
+import atexit
 from signal import signal, SIGINT
-from bench_executor import Executor
+from bench_executor import Executor, Manager
 
 VERSION = '0.1.0'
 EXIT_CODE_UNKNOWN_COMMAND = -1
@@ -14,7 +15,15 @@ EXIT_CODE_FAILED_CASE = -3
 EXIT_CODE_INTERRUPTED = -4
 EXIT_CODE_SELINUX = -5
 EXIT_CODE_EVEN_RUNS = -6
+
 stop = False
+manager = Manager()
+
+@atexit.register
+def _clean():
+    if len(manager.list_all()) > 0:
+        print('Cleaning up before exiting...')
+        manager.stop_all()
 
 def signal_handler(signum, frame):
     global stop
