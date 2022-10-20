@@ -4,13 +4,17 @@ bench_executor/data/postgresql/
 bench_executor/data/virtuoso/
 bench_executor/data/mysql/
 bench_executor/data/morphkgc/
-bench_executor/data/morphkgc/
+bench_executor/data/morphrdb/
+bench_executor/data/ontopendpoint/
+bench_executor/data/ontopmaterialize/
 bench_executor/data/sdmrdfizer/
+bench_executor/data/query/
 bench_executor/data/test-cases/*/data
 bench_executor/data/cases/*/results
 *.done
 *logs.txt
 *metrics.jsonl
+*results.nt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
