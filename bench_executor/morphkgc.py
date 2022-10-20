@@ -20,7 +20,8 @@ class MorphKGC(Container):
         return __name__.lower()
 
     def execute(self, arguments) -> bool:
-        return self.run_and_wait_for_exit(f'python3 -m morph_kgc /data/config.ini')
+        cmd = f'python3 -m morph_kgc /data/config_morphkgc.ini'
+        return self.run_and_wait_for_exit(cmd)
 
     def execute_mapping(self, mapping_file: str, output_file: str,
                         serialization: str, rdb_username: str = None,
@@ -55,11 +56,13 @@ class MorphKGC(Container):
                 protocol = 'postgresql+psycopg2'
             else:
                 raise ValueError(f'Unknown RDB type: "{rdf_type}"')
-            rdb_dsn = f'{protocol}://{rdb_username}:{rdb_password}@{rdb_host}:{rdb_port}/{rdb_name}'
+            rdb_dsn = f'{protocol}://{rdb_username}:{rdb_password}' + \
+                      f'@{rdb_host}:{rdb_port}/{rdb_name}'
             config['DataSource0']['db_url'] = rdb_dsn
 
         os.makedirs(os.path.join(self._data_path, 'morphkgc'), exist_ok=True)
-        with open(os.path.join(self._data_path, 'morphkgc', 'config.ini'), 'w') as f:
+        path = os.path.join(self._data_path, 'morphkgc', 'config_morphkgc.ini')
+        with open(path, 'w') as f:
             config.write(f)
 
         return self.execute([])

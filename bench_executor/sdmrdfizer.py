@@ -25,8 +25,9 @@ class SDMRDFizer(Container):
         return __name__.lower()
 
     def execute(self, arguments) -> bool:
-        return self.run_and_wait_for_exit(f'python3 sdm-rdfizer/rdfizer/run_rdfizer.py '
-                                          '/data/config.ini')
+        cmd = f'python3 sdm-rdfizer/rdfizer/run_rdfizer.py ' + \
+              f'/data/config_sdmrdfizer.ini'
+        return self.run_and_wait_for_exit(cmd)
 
     def execute_mapping(self, mapping_file: str, output_file: str,
                         serialization: str, rdb_username: str = None,
@@ -52,7 +53,7 @@ class SDMRDFizer(Container):
         }
         config['dataset1'] = {
             'name': name,
-            'mapping': '/data/mapping_converted.rml.ttl'
+            'mapping': f'/data/shared/{os.path.basename(mapping_file)}'
         }
 
         if rdb_username is not None and rdb_password is not None \
@@ -76,7 +77,7 @@ class SDMRDFizer(Container):
             dsn = f'{driver}://{rdb_host}:{rdb_port}/{rdb_name}'
 
             # Compatibility with R2RML mapping files
-            # Replace rr:logicalTable with rml:logicalSource + D2RQ RDB description
+            # Replace rr:logicalTable with rml:logicalSource + D2RQ description
             # and rr:column with rml:reference
             g = Graph()
             g.bind('rr', R2RML)
@@ -87,7 +88,8 @@ class SDMRDFizer(Container):
                                  os.path.basename(mapping_file)))
 
             # rr:logicalTable --> rml:logicalSource
-            for triples_map_iri, p, o in g.triples((None, RDF.type, R2RML.TriplesMap)):
+            for triples_map_iri, p, o in g.triples((None, RDF.type,
+                                                    R2RML.TriplesMap)):
                 logical_source_iri = BNode()
                 d2rq_rdb_iri = BNode()
                 logical_table_iri = g.value(triples_map_iri, R2RML.logicalTable)
@@ -102,8 +104,10 @@ class SDMRDFizer(Container):
                 g.add((logical_source_iri, RML.source, d2rq_rdb_iri))
                 g.add((logical_source_iri, RDF.type, RML.LogicalSource))
                 g.add((triples_map_iri, RML.logicalSource, logical_source_iri))
-                g.remove((triples_map_iri, R2RML.logicalTable, logical_table_iri))
-                g.remove((logical_table_iri, R2RML.tableName, table_name_literal))
+                g.remove((triples_map_iri, R2RML.logicalTable,
+                          logical_table_iri))
+                g.remove((logical_table_iri, R2RML.tableName,
+                          table_name_literal))
 
             # rr:column --> rml:reference
             for s, p, o in g.triples((None, R2RML.column, None)):
@@ -112,7 +116,7 @@ class SDMRDFizer(Container):
 
             # SDM-RDFizer cannot handle rml:referenceFormulation when using
             # RDBs, remove it for safety
-            # https://github.com/SDM-TIB/SDM-RDFizer/issues/71#issuecomment-966247575
+            # https://github.com/SDM-TIB/SDM-RDFizer/issues/71
             for s, p, o in g.triples((None, RML.referenceFormulation, None)):
                 g.remove((s, p, o))
 
@@ -121,7 +125,9 @@ class SDMRDFizer(Container):
             g.serialize(destination=destination, format='turtle')
 
         os.makedirs(os.path.join(self._data_path, 'sdmrdfizer'), exist_ok=True)
-        with open(os.path.join(self._data_path, 'sdmrdfizer', 'config.ini'), 'w') as f:
+        path = os.path.join(self._data_path, 'sdmrdfizer',
+                            'config_sdmrdfizer.ini')
+        with open(path, 'w') as f:
             config.write(f, space_around_delimiters=False)
 
         return self.execute([])

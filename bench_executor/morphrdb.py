@@ -26,10 +26,11 @@ class MorphRDB(Container):
         max_heap = int(psutil.virtual_memory().total * (1/2))
 
         # Execute command
-        return self.run_and_wait_for_exit(f'java -Xmx{max_heap} -Xms{max_heap} '
-                        f'-cp .:morph-rdb-dist-3.12.6.jar:dependency/* '
-                        f'es.upm.fi.dia.oeg.morph.r2rml.rdb.engine.MorphRDBRunner '
-                        f'/data config.properties')
+        cmd = f'java -Xmx{max_heap} -Xms{max_heap} ' + \
+              f'-cp .:morph-rdb-dist-3.12.6.jar:dependency/* ' + \
+              f'es.upm.fi.dia.oeg.morph.r2rml.rdb.engine.MorphRDBRunner ' + \
+              f'/data config.properties'
+        return self.run_and_wait_for_exit(cmd)
 
     def execute_mapping(self, mapping_file: str, output_file: str,
                         serialization: str, rdb_username: str = None,
@@ -47,11 +48,11 @@ class MorphRDB(Container):
 
         # Generate INI configuration file since no CLI is available
         config = configparser.ConfigParser()
+        mapping_file = os.path.join('shared', os.path.basename(mapping_file))
+        output_file = os.path.join('shared', os.path.basename(output_file))
         config['root']= {
-            'mappingdocument.file.path': os.path.join('shared',
-                                                      os.path.basename(mapping_file)),
-            'output.file.path': os.path.join('shared',
-                                             os.path.basename(output_file)),
+            'mappingdocument.file.path': mapping_file,
+            'output.file.path': output_file,
             'output.rdflanguage': serialization,
         }
 

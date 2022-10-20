@@ -30,11 +30,10 @@ class RMLMapper(Container):
         max_heap = int(psutil.virtual_memory().total * (1/2))
 
         # Execute command
-        success = self.run_and_wait_for_exit(f'java -Xmx{max_heap} -Xms{max_heap} '
-                                             f'-jar rmlmapper/rmlmapper.jar '
-                                             f'{" ".join(arguments)}')
-
-        return success
+        cmd = f'java -Xmx{max_heap} -Xms{max_heap} ' + \
+              f'-jar rmlmapper/rmlmapper.jar ' + \
+              f'{" ".join(arguments)}'
+        return self.run_and_wait_for_exit(cmd)
 
     def execute_mapping(self, mapping_file, output_file, serialization,
                         rdb_username: str = None, rdb_password: str = None,

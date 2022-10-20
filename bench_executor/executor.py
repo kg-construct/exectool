@@ -118,7 +118,8 @@ class Executor:
         for m in self._modules:
             module_name = os.path.splitext(m)[0]
             imported_module = importlib.import_module(module_name)
-            for name, cls in inspect.getmembers(imported_module, inspect.isclass):
+            for name, cls in inspect.getmembers(imported_module,
+                                                inspect.isclass):
                 if name.startswith('_') or name[0].islower():
                     continue
 
@@ -139,7 +140,8 @@ class Executor:
                         methods[method_name].append({'name': p.name,
                                                      'required': required})
 
-                if name not in list(filter(lambda x: x['name'], self._resources)):
+                if name not in list(filter(lambda x: x['name'],
+                                           self._resources)):
                     self._resources.append({'name': name, 'commands': methods})
 
     def _resources_all_names(self) -> list:
@@ -161,7 +163,8 @@ class Executor:
         else:
             return None
 
-    def _resources_all_parameters_by_command(self, name: str, command: str) -> list:
+    def _resources_all_parameters_by_command(self, name: str,
+                                             command: str) -> list:
         parameters = []
         for r in filter(lambda x: x['name'] == name, self._resources):
             try:
@@ -171,7 +174,8 @@ class Executor:
             except KeyError:
                 return None
 
-    def _resources_all_required_parameters_by_command(self, name: str, command: str) -> list:
+    def _resources_all_required_parameters_by_command(self, name: str,
+                                                      command: str) -> list:
         parameters = []
         for r in filter(lambda x: x['name'] == name, self._resources):
             try:
@@ -198,7 +202,8 @@ class Executor:
                     return False
 
                 # Check if command is known
-                commands = self._resources_all_commands_by_name(step['resource'])
+                r = step['resource']
+                commands = self._resources_all_commands_by_name(r)
                 if commands is None or step['command'] not in commands:
                     if self._verbose:
                         print(f'{path}: Unknown command "{step["command"]}" for'
@@ -206,7 +211,9 @@ class Executor:
                     return False
 
                 # Check if parameters are known
-                parameters = self._resources_all_parameters_by_command(step['resource'], step['command'])
+                r = step['resource']
+                c = step['command']
+                parameters = self._resources_all_parameters_by_command(r, c)
                 if parameters is None:
                     return False
 
@@ -219,13 +226,17 @@ class Executor:
                         return False
 
                 # Check if all required parameters are provided
-                parameters = self._resources_all_required_parameters_by_command(step['resource'], step['command'])
+                r = step['resource']
+                c = step['command']
+                parameters = \
+                    self._resources_all_required_parameters_by_command(r, c)
                 for p in parameters:
                     if p not in step['parameters'].keys():
                         if self._verbose:
-                            print(f'{path}: Missing required parameter "{p}" for '
-                                  f'command "{step["command"]}" of resource '
-                                  f'"{step["resource"]}"', file=sys.stderr)
+                            print(f'{path}: Missing required parameter "{p}" '
+                                  f'for command "{step["command"]}" '
+                                  f'of resource "{step["resource"]}"',
+                                  file=sys.stderr)
                         return False
 
         except jsonschema.ValidationError:
@@ -273,7 +284,8 @@ class Executor:
                         m = json.loads(line)
                         m['index'] = index + 1
                         if m['type'] == METRIC_TYPE_INIT or \
-                           (m['name'] == 'Query' and m['type'] == METRIC_TYPE_START):
+                           (m['name'] == 'Query' \
+                            and m['type'] == METRIC_TYPE_START):
                             start_time = m['time']
                         elif start_time is not None:
                             # In rare cases we may end up with -0.0 due to
@@ -379,7 +391,8 @@ class Executor:
             if not data_dir.endswith('shared'):
                 shutil.rmtree(data_dir)
 
-    def run(self, case: dict, interval: float, run: int, checkpoint: bool) -> Tuple[bool, float]:
+    def run(self, case: dict, interval: float, run: int,
+            checkpoint: bool) -> Tuple[bool, float]:
         success = True
         start = time()
         data = case['data']
@@ -477,7 +490,8 @@ class Executor:
         # Mark checkpoint if necessary
         if checkpoint:
             with open(checkpoint_file, 'w') as f:
-                f.write(f'{datetime.now().replace(microsecond=0).isoformat()}\n')
+                d = datetime.now().replace(microsecond=0).isoformat()
+                f.write(f'{d}\n')
 
         # Move results for a clean slate when doing multiple runs
         results_run_path = os.path.join(results_path, f'run_{run}')

@@ -43,7 +43,8 @@ class ContainerManager():
                 removed = True
             except docker.errors.APIError:
                 pass
-            print(f'Container {container.name}: stopped: {stopped} removed: {removed}')
+            print(f'Container {container.name}: stopped: {stopped} '
+                  f'removed: {removed}')
 
 class Container():
     def __init__(self, container: str, name: str, ports: dict = {},
@@ -95,15 +96,14 @@ class Container():
 
     def run(self, command: str = '', detach=True) -> bool:
         try:
+            e = self._environment
             self._container = self._client.containers.run(self._container_name,
                                                           command,
                                                           name=self._name,
                                                           detach=detach,
-                                                          #auto_remove=True,
-                                                          #remove=True,
                                                           ports=self._ports,
                                                           network=NETWORK_NAME,
-                                                          environment=self._environment,
+                                                          environment=e,
                                                           volumes=self._volumes)
             return True
         except docker.errors.APIError as e:
@@ -137,7 +137,8 @@ class Container():
         except docker.errors.APIError as e:
             print(e, file=sys.stderr)
 
-        print(f'Retrieving container "{self._name}" logs failed!', file=sys.stderr)
+        print(f'Retrieving container "{self._name}" logs failed!',
+              file=sys.stderr)
         return None
 
     def run_and_wait_for_log(self, log_line: str, command: str ='') -> bool:
@@ -233,7 +234,8 @@ class Container():
                 return None
 
             try:
-                with open(os.path.join(cgroup_path, 'cpu.stat'), 'r') as f:
+                p = os.path.join(cgroup_path, 'cpu.stat')
+                with open(p, 'r') as f:
                     # <metric> <value>
                     cpu_raw = f.read()
                     for raw in cpu_raw.split('\n'):
@@ -241,18 +243,23 @@ class Container():
                             or 'system_usec' in raw:
                             metric, value = raw.split(' ')
                             if metric == 'usage_usec':
-                                stats['cpu']['total_cpu_time'] = int(value) / (10**6)
+                                stats['cpu']['total_cpu_time'] = \
+                                    int(value) / (10**6)
                             elif metric == 'user_usec':
-                                stats['cpu']['user_cpu_time'] = int(value) / (10**6)
+                                stats['cpu']['user_cpu_time'] = \
+                                    int(value) / (10**6)
                             elif metric == 'system_usec':
-                                stats['cpu']['system_cpu_time'] = int(value) / (10**6)
+                                stats['cpu']['system_cpu_time'] = \
+                                    int(value) / (10**6)
 
-                with open(os.path.join(cgroup_path, 'memory.current'), 'r') as f:
+                p = os.path.join(cgroup_path, 'memory.current')
+                with open(p, 'r') as f:
                     # <value>
                     memory_raw = f.read()
                     stats['memory']['total'] = int(memory_raw) / (10**3)
 
-                with open(os.path.join(cgroup_path, 'io.stat'), 'r') as f:
+                p = os.path.join(cgroup_path, 'io.stat')
+                with open(p, 'r') as f:
                     # <major:minor> rbytes=<value> wbytes=<value> rios=<value>
                     # wios=<value> dbytes=<value> dios=<value>
                     io_raw = f.read()
@@ -284,7 +291,8 @@ class Container():
                             'number_of_discards': number_of_discards
                         }
 
-                with open(os.path.join(proc_path, 'net', 'dev'), 'r') as f:
+                p = os.path.join(proc_path, 'net', 'dev')
+                with open(p, 'r') as f:
                     # header Interface | Receive | Transmist
                     # header <metrics>
                     # <interface>: <received bytes> <received_packets>
@@ -336,5 +344,6 @@ class Container():
         # a soon as the container is started by polling this continuously.
         # Silence the error message in such cases to avoid log spam
         if not silence_failure:
-            print(f'Retrieving container "{self._name}" stats failed!', file=sys.stderr)
+            print(f'Retrieving container "{self._name}" stats failed!',
+                  file=sys.stderr)
         return None

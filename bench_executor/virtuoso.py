@@ -14,11 +14,12 @@ class Virtuoso(Container):
         tmp_dir = os.path.join(tempfile.gettempdir(), 'virtuoso')
         os.makedirs(tmp_dir, exist_ok=True)
         os.makedirs(os.path.join(self._data_path, 'virtuoso'), exist_ok=True)
-        super().__init__(f'openlink/virtuoso-opensource-7:{VERSION}', 'Virtuoso',
-                         ports={'8890':'8890', '1111':'1111'},
+        super().__init__(f'openlink/virtuoso-opensource-7:{VERSION}',
+                         'Virtuoso', ports={'8890':'8890', '1111':'1111'},
                          environment={'DBA_PASSWORD':'root'},
                          volumes=[f'{self._data_path}/shared:/usr/share/proj',
-                                  f'{self._config_path}/virtuoso/virtuoso.ini:/database/virtuoso.ini',
+                                  f'{self._config_path}/virtuoso/virtuoso.ini:'
+                                  f'/database/virtuoso.ini',
                                   f'{tmp_dir}:/database'])
         self._endpoint = 'http://localhost:8890/sparql'
 
@@ -48,12 +49,15 @@ class Virtuoso(Container):
             return False
 
         # Load directory with data
-        success, logs = self.exec('isql -U dba -P root exec="ld_dir(\'/usr/share/proj/\','
-                                  f'\'{rdf_file}\', \'http://example.com/graph\');"')
+        success, logs = self.exec('isql -U dba -P root '
+                                  'exec="ld_dir(\'/usr/share/proj/\','
+                                  f'\'{rdf_file}\', '
+                                  '\'http://example.com/graph\');"')
         self._logs += logs
         if not success:
             return False
-        success, logs = self.exec('isql -U dba -P root exec="rdf_loader_run();"')
+        success, logs = self.exec('isql -U dba -P root '
+                                  'exec="rdf_loader_run();"')
         self._logs += logs
         if not success:
             return False
@@ -64,11 +68,13 @@ class Virtuoso(Container):
         self._logs += logs
         if not success:
             return False
-        success, logs = self.exec('isql -U dba -P root exec="checkpoint_interval(60);"')
+        success, logs = self.exec('isql -U dba -P root '
+                                  'exec="checkpoint_interval(60);"')
         self._logs += logs
         if not success:
             return False
-        success, logs = self.exec('isql -U dba -P root exec="scheduler_interval(10);"')
+        success, logs = self.exec('isql -U dba -P root '
+                                  'exec="scheduler_interval(10);"')
         self._logs += logs
         if not success:
             return False
@@ -77,11 +83,13 @@ class Virtuoso(Container):
 
     def stop(self) -> bool:
         # Drop loaded triples
-        success, logs = self.exec('isql -U dba -P root exec="delete from DB.DBA.load_list;"')
+        success, logs = self.exec('isql -U dba -P root '
+                                  'exec="delete from DB.DBA.load_list;"')
         self._logs += logs
         if not success:
             return False
-        success, logs = self.exec('isql -U dba -P root exec="rdf_global_reset();"')
+        success, logs = self.exec('isql -U dba -P root '
+                                  'exec="rdf_global_reset();"')
         self._logs += logs
         if not success:
             return False

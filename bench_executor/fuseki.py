@@ -24,8 +24,12 @@ class Fuseki(Container):
 
         super().__init__(f'apache/fuseki:v{VERSION}', 'Fuseki',
                          ports={'3030':'3030'},
-                         environment={'JAVA_OPTIONS':f'-Xmx{max_heap} -Xms{max_heap}'},
-                         volumes=[f'{self._config_path}/fuseki/log4j2.properties:/fuseki/log4j2.properties',
+                         environment={
+                             'JAVA_OPTIONS':f'-Xmx{max_heap} -Xms{max_heap}'
+                         },
+                         volumes=[f'{self._config_path}/fuseki/'
+                                  f'log4j2.properties:/fuseki/'
+                                  f'log4j2.properties',
                                   f'{self._data_path}/shared:/data',
                                   f'{tmp_dir}:/fuseki/databases/DB'])
         self._endpoint = 'http://localhost:3030/ds/sparql'

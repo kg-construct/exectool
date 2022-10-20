@@ -28,8 +28,10 @@ class MySQL(Container):
                          environment={'MYSQL_ROOT_PASSWORD': 'root',
                                       'MYSQL_DATABASE': 'db'},
                          volumes=[f'{self._data_path}/shared/:/data/shared',
-                                  f'{self._config_path}/mysql/mysql-secure-file-prive.cnf:'
-                                  '/etc/mysql/conf.d/mysql-secure-file-prive.cnf',
+                                  f'{self._config_path}/mysql/'
+                                  f'mysql-secure-file-prive.cnf:'
+                                  f'/etc/mysql/conf.d/'
+                                  f'mysql-secure-file-prive.cnf',
                                   f'{tmp_dir}:/var/lib/mysql'])
 
     def initialization(self) -> bool:
@@ -47,7 +49,8 @@ class MySQL(Container):
         return __name__.lower()
 
     def wait_until_ready(self, command: str = '') -> bool:
-        return self.run_and_wait_for_log('port: 3306  MySQL Community Server - GPL.', command=command)
+        log_line = 'port: 3306  MySQL Community Server - GPL.'
+        return self.run_and_wait_for_log(log_line, command=command)
 
     def load(self, csv_file: str = '', table: str = '') -> bool:
         success = True

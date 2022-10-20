@@ -310,7 +310,7 @@ class RDBTests(unittest.TestCase):
         rmlmapper.stop()
 
     def test_rmlmapper_postgresql(self):
-        rmlmapper = RMLMapper(DATA_DIR, CONFIG_DIR, True)
+        rmlmapper = RMLMapper(DATA_DIR, CONFIG_DIR, False)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared',
                                    'rmlmapper_postgresql.nt'))
@@ -332,7 +332,7 @@ class RDBTests(unittest.TestCase):
         rmlmapper.stop()
 
     def test_morphkgc_mysql(self):
-        morphkgc = MorphKGC(DATA_DIR, CONFIG_DIR, True)
+        morphkgc = MorphKGC(DATA_DIR, CONFIG_DIR, False)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared', 'morphkgc_mysql.nt'))
         except FileNotFoundError:
@@ -353,9 +353,10 @@ class RDBTests(unittest.TestCase):
         morphkgc.stop()
 
     def test_morphkgc_postgresql(self):
-        morphkgc = MorphKGC(DATA_DIR, CONFIG_DIR, True)
+        morphkgc = MorphKGC(DATA_DIR, CONFIG_DIR, False)
         try:
-            os.remove(os.path.join(DATA_DIR, 'shared', 'morphkgc_postgresql.nt'))
+            os.remove(os.path.join(DATA_DIR, 'shared',
+                                   'morphkgc_postgresql.nt'))
         except FileNotFoundError:
             pass
         self.assertTrue(morphkgc.execute_mapping('mapping.r2rml.ttl',
@@ -374,7 +375,7 @@ class RDBTests(unittest.TestCase):
         morphkgc.stop()
 
     def test_sdmrdfizer_mysql(self):
-        sdmrdfizer = SDMRDFizer(DATA_DIR, CONFIG_DIR, True)
+        sdmrdfizer = SDMRDFizer(DATA_DIR, CONFIG_DIR, False)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared', 'sdmrdfizer_mysql.nt'))
         except FileNotFoundError:
@@ -395,7 +396,7 @@ class RDBTests(unittest.TestCase):
         sdmrdfizer.stop()
 
     def test_sdmrdfizer_postgresql(self):
-        sdmrdfizer = SDMRDFizer(DATA_DIR, CONFIG_DIR, True)
+        sdmrdfizer = SDMRDFizer(DATA_DIR, CONFIG_DIR, False)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared',
                                    'sdmrdfizer_postgresql.nt'))
@@ -418,7 +419,7 @@ class RDBTests(unittest.TestCase):
         sdmrdfizer.stop()
 
     def test_ontopmaterialize_mysql(self):
-        ontop = OntopMaterialize(DATA_DIR, CONFIG_DIR, True)
+        ontop = OntopMaterialize(DATA_DIR, CONFIG_DIR, False)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared',
                                    'ontopmaterialize_mysql.nt'))
@@ -440,7 +441,7 @@ class RDBTests(unittest.TestCase):
         ontop.stop()
 
     def test_ontopmaterialize_postgresql(self):
-        ontop = OntopMaterialize(DATA_DIR, CONFIG_DIR, True)
+        ontop = OntopMaterialize(DATA_DIR, CONFIG_DIR, False)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared',
                                    'ontopmaterialize_postgresql.nt'))
@@ -464,7 +465,7 @@ class RDBTests(unittest.TestCase):
         ontop.stop()
 
     def test_ontopendpoint_mysql(self):
-        ontop = OntopVirtualize(DATA_DIR, CONFIG_DIR, True)
+        ontop = OntopVirtualize(DATA_DIR, CONFIG_DIR, False)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared',
                                    'ontopendpoint_mysql.nt'))
@@ -475,20 +476,23 @@ class RDBTests(unittest.TestCase):
                                               'ntriples', 'root', 'root',
                                               'MySQL', '3306', 'db', 'MySQL'))
         # Verify loaded data
-        q = Query(DATA_DIR, CONFIG_DIR, True)
-        results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
+        q = Query(DATA_DIR, CONFIG_DIR, False)
+        results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> '
+                            'CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
                             'http://localhost:8888/sparql')
         results = list(filter(None, results.split('\n')))
-        # Ontop does not support N-Triples and returns only Turtle and other formats
-        # For Turtle, 10 results are expect: 3 names and prefix definitions
+        # Ontop does not support N-Triples and returns only Turtle and other 
+        # formats. For Turtle, 10 results are expect: 3 names and prefix 
+        # definitions
         self.assertTrue(len(results) == 10)
 
         ontop.stop()
 
     def test_ontopendpoint_postgresql(self):
-        ontop = OntopVirtualize(DATA_DIR, CONFIG_DIR, True)
+        ontop = OntopVirtualize(DATA_DIR, CONFIG_DIR, False)
         try:
-            os.remove(os.path.join(DATA_DIR, 'shared', 'ontopendpoint_postgresql.nt'))
+            os.remove(os.path.join(DATA_DIR, 'shared',
+                                   'ontopendpoint_postgresql.nt'))
         except FileNotFoundError:
             pass
         self.assertTrue(ontop.execute_mapping('mapping.r2rml.ttl',
@@ -498,7 +502,8 @@ class RDBTests(unittest.TestCase):
                                               'PostgreSQL'))
         # Verify loaded data
         q = Query(DATA_DIR, CONFIG_DIR, False)
-        results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
+        results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> '
+                            'CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
                             'http://localhost:8888/sparql')
         results = list(filter(None, results.split('\n')))
         self.assertTrue(len(results) == 10)
@@ -506,7 +511,7 @@ class RDBTests(unittest.TestCase):
         ontop.stop()
 
     def test_morphrdb_mysql(self):
-        morphrdb = MorphRDB(DATA_DIR, CONFIG_DIR, True)
+        morphrdb = MorphRDB(DATA_DIR, CONFIG_DIR, False)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared', 'morphrdb_mysql.nt'))
         except FileNotFoundError:
@@ -527,7 +532,7 @@ class RDBTests(unittest.TestCase):
         morphrdb.stop()
 
     def test_morphrdb_postgresql(self):
-        morphrdb = MorphRDB(DATA_DIR, CONFIG_DIR, True)
+        morphrdb = MorphRDB(DATA_DIR, CONFIG_DIR, False)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared',
                                    'morphrdb_postgresql.nt'))
@@ -568,7 +573,10 @@ class TriplestoreTests(unittest.TestCase):
         r.raise_for_status()
 
         # Check if SPARQL endpoint works
-        r = requests.get('http://localhost:8890/sparql/?default-graph-uri=&query=CONSTRUCT+WHERE+%7B%0D%0A++%3Fs+%3Fp+%3Fo.%0D%0A%7D%0D%0ALIMIT+100&format=text%2Fplain')
+        r = requests.get('http://localhost:8890/sparql/'
+                         '?default-graph-uri=&query=CONSTRUCT+WHERE+'
+                         '%7B%0D%0A++%3Fs+%3Fp+%3Fo.%0D%0A%7D%0D%0ALIMIT+100'
+                         '&format=text%2Fplain')
         self.assertEqual(r.status_code, 200)
         r.raise_for_status()
 
@@ -584,7 +592,8 @@ class TriplestoreTests(unittest.TestCase):
 
         # Verify loaded data
         q = Query(DATA_DIR, CONFIG_DIR, False)
-        results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
+        results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> '
+                            'CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
                             'http://localhost:8890/sparql')
         results = list(filter(None, results.split('\n')))
         self.assertTrue(len(results) == 3)
@@ -598,7 +607,8 @@ class TriplestoreTests(unittest.TestCase):
 
         # Verify removed data
         q = Query(DATA_DIR, CONFIG_DIR, False)
-        results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
+        results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> '
+                            'CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
                             'http://localhost:8890/sparql')
         self.assertTrue('# Empty NT' in results)
 
@@ -607,7 +617,8 @@ class TriplestoreTests(unittest.TestCase):
 
         # Verify loaded data
         q = Query(DATA_DIR, CONFIG_DIR, False)
-        results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
+        results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> '
+                            'CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
                             'http://localhost:8890/sparql')
         results = list(filter(None, results.split('\n')))
         self.assertTrue(len(results) == 3)
@@ -624,7 +635,8 @@ class TriplestoreTests(unittest.TestCase):
 
         # Verify loaded data
         q = Query(DATA_DIR, CONFIG_DIR, False)
-        results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
+        results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> '
+                            'CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
                             fuseki.endpoint)
         results = list(filter(None, results.split('\n')))
         self.assertTrue(len(results) == 3)
@@ -636,7 +648,8 @@ class TriplestoreTests(unittest.TestCase):
         self.assertTrue(fuseki.wait_until_ready())
 
         q = Query(DATA_DIR, CONFIG_DIR, False)
-        results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
+        results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> '
+                            'CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
                             fuseki.endpoint)
         results = list(filter(None, results.split('\n')))
         self.assertTrue(len(results) == 0)
@@ -646,7 +659,8 @@ class TriplestoreTests(unittest.TestCase):
 
         # Verify loaded data
         q = Query(DATA_DIR, CONFIG_DIR, False)
-        results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
+        results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> '
+                            'CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
                             fuseki.endpoint)
         results = list(filter(None, results.split('\n')))
         self.assertTrue(len(results) == 3)
@@ -662,7 +676,8 @@ class TriplestoreTests(unittest.TestCase):
 
 class IntegrationTests(unittest.TestCase):
     def setUp(self):
-        warnings.filterwarnings(action='ignore', message='unclosed', category=ResourceWarning)
+        warnings.filterwarnings(action='ignore', message='unclosed',
+                                category=ResourceWarning)
 
     @classmethod
     def tearDownClass(cls):
@@ -672,12 +687,13 @@ class IntegrationTests(unittest.TestCase):
         executor = Executor(os.path.join(DATA_DIR, 'test-cases'), False)
         cases = executor.list()
         iris = [x['data']['@id'] for x in cases]
-        expected = ['http://dylanvanassche.be/test-cases/rmlmapper/fuseki/transform-csv-to-ntriples',
-            'http://dylanvanassche.be/test-cases/rmlmapper/fuseki/transform-mysql-to-ntriples',
-            'http://dylanvanassche.be/cases/rmlmapper/fuseki/transform-postgresql-to-ntriples',
-            'http://dylanvanassche.be/test-cases/rmlmapper/virtuoso/transform-csv-to-ntriples',
-            'http://dylanvanassche.be/test-cases/rmlmapper/virtuoso/transform-mysql-to-ntriples',
-            'http://dylanvanassche.be/cases/rmlmapper/virtuoso/transform-postgresql-to-ntriples']
+        BASE_URL = 'http://dylanvanassche.be/test-cases'
+        expected = [f'{BASE_URL}/rmlmapper/fuseki/transform-csv-to-ntriples',
+            f'{BASE_URL}/rmlmapper/fuseki/transform-mysql-to-ntriples',
+            f'{BASE_URL}/rmlmapper/fuseki/transform-postgresql-to-ntriples',
+            f'{BASE_URL}/rmlmapper/virtuoso/transform-csv-to-ntriples',
+            f'{BASE_URL}/rmlmapper/virtuoso/transform-mysql-to-ntriples',
+            f'{BASE_URL}/rmlmapper/virtuoso/transform-postgresql-to-ntriples']
         self.assertListEqual(expected, iris)
 
     def test_executor_run(self):
@@ -704,8 +720,6 @@ class IntegrationTests(unittest.TestCase):
 
             # Run case
             self.assertTrue(executor.run(case, 0.1, 1, True))
-
-            print(case['directory'])
 
             # Check if all files are generated
             for step in case['data']['steps']:
