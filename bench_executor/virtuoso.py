@@ -18,8 +18,6 @@ class Virtuoso(Container):
                          'Virtuoso', ports={'8890':'8890', '1111':'1111'},
                          environment={'DBA_PASSWORD':'root'},
                          volumes=[f'{self._data_path}/shared:/usr/share/proj',
-                                  f'{self._config_path}/virtuoso/virtuoso.ini:'
-                                  f'/database/virtuoso.ini',
                                   f'{tmp_dir}:/database'])
         self._endpoint = 'http://localhost:8890/sparql'
 

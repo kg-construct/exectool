@@ -19,7 +19,7 @@
             "resource": "RMLMapper",
             "command": "execute_mapping",
             "parameters": {
-                "mapping_file": "mapping.rml.ttl",
+                "mapping_file": "mapping.r2rml.ttl",
                 "output_file": "out.nt",
                 "serialization": "nquads",
                 "rdb_host": "PostgreSQL",

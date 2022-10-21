@@ -81,8 +81,9 @@ class _Ontop(Container):
 
         arguments.append('-m')
         arguments.append(os.path.join('/data/shared/', mapping_file))
-        arguments.append('-o')
-        arguments.append(os.path.join('/data/shared/', output_file))
+        if output_file is not None:
+            arguments.append('-o')
+            arguments.append(os.path.join('/data/shared/', output_file))
         arguments.append('-p')
         arguments.append('/data/config.properties')
 
@@ -96,10 +97,11 @@ class OntopVirtualize(_Ontop):
                     exist_ok=True)
         super().__init__('Ontop-Virtualize', data_path, verbose, 'endpoint')
 
-    def execute_mapping(self, mapping_file, output_file, serialization,
-                        rdb_username: str = None, rdb_password: str = None,
-                        rdb_host: str = None, rdb_port: str = None,
-                        rdb_name: str = None, rdb_type: str = None) -> bool:
+    def execute_mapping(self, mapping_file: str, output_file: str = None,
+                        serialization: str = None, rdb_username: str = None,
+                        rdb_password: str = None, rdb_host: str = None,
+                        rdb_port: str = None, rdb_name: str = None,
+                        rdb_type: str = None) -> bool:
         config_file = f'{self._data_path}/ontopendpoint/config.properties'
         arguments = ['--cors-allowed-origins=*', '--port=8888']
         return super().execute_mapping('endpoint', config_file, arguments,
@@ -115,10 +117,11 @@ class OntopMaterialize(_Ontop):
                     exist_ok=True)
         super().__init__('Ontop-Materialize', data_path, verbose, 'materialize')
 
-    def execute_mapping(self, mapping_file, output_file, serialization,
-                        rdb_username: str = None, rdb_password: str = None,
-                        rdb_host: str = None, rdb_port: str = None,
-                        rdb_name: str = None, rdb_type: str = None) -> bool:
+    def execute_mapping(self, mapping_file: str, output_file: str,
+                        serialization: str, rdb_username: str = None,
+                        rdb_password: str = None, rdb_host: str = None,
+                        rdb_port: str = None, rdb_name: str = None,
+                        rdb_type: str = None) -> bool:
         config_file = f'{self._data_path}/ontopmaterialize/config.properties'
         arguments = [ '-f', serialization ]
         return super().execute_mapping('materialize', config_file, arguments,

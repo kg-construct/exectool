@@ -402,10 +402,6 @@ class Executor:
         os.makedirs(data_path, exist_ok=True)
         checkpoint_file = os.path.join(directory, '.done')
 
-        if os.path.exists(checkpoint_file):
-            print(f'        ⏩ SKIPPED')
-            return True, 0.0
-
         # Initialize resources if needed
         # Some resources have to perform an initialization step such as
         # configuring database users, storage, etc. which is only done once

@@ -4,7 +4,7 @@
     "description": "Transform student.csv into N-Triples with RMLMapper with Virtuoso Triplestore",
     "steps": [
         {
-            "@id": "http://dylanvanassche.be/test-cases/transform-csv-to-ntriples#step1",
+            "@id": "http://dylanvanassche.be/test-cases/rmlmapper/virtuoso/transform-csv-to-ntriples#step1",
             "name": "Transform CSV into RDF",
             "resource": "RMLMapper",
             "command": "execute_mapping",

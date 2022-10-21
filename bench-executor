@@ -27,6 +27,26 @@ def _clean():
         print('Cleaning up before exiting...')
         manager.stop_all()
 
+def _format_progress(index: int, number_of_cases: int, start_time: datetime):
+    # Percentage completed cases
+    percentage = f'{int(100.0 * (index)/number_of_cases)}%'
+
+    # Time spent since started
+    delta = datetime.now() - start_time
+    hours = int(delta.total_seconds() / 3600)
+    minutes = int((delta.total_seconds() - hours * 3600) / 60)
+    seconds = int(delta.total_seconds() - hours * 3600 - minutes * 60)
+
+    if minutes == 0:
+        timestamp = f'{seconds : >5}s'
+    elif hours == 0:
+        timestamp = f'{minutes : >2}m{seconds : >2}s'
+    else:
+        timestamp = f'{hours : >2}h{minutes : >2}m'
+
+    # Format progress
+    return f'[{percentage : >4} {timestamp : >6}]'
+
 def signal_handler(signum, frame):
     global stop
 
@@ -62,27 +82,17 @@ def execute_cases(executor: Executor, interval: float, runs: int,
     start_time = datetime.now()
     for index, case in enumerate(cases):
         data = case['data']
+        directory = case['directory']
+        checkpoint_file = os.path.join(directory, '.done')
 
-        # Percentage completed cases
-        percentage = f'{int(100.0 * (index)/len(cases))}%'
-
-        # Time spent since started
-        delta = datetime.now() - start_time
-        hours = int(delta.total_seconds() / 3600)
-        minutes = int((delta.total_seconds() - hours * 3600) / 60)
-        seconds = int(delta.total_seconds() - hours * 3600 - minutes * 60)
-
-        if minutes == 0:
-            timestamp = f'{seconds : >5}s'
-        elif hours == 0:
-            timestamp = f'{minutes : >2}m{seconds : >2}s'
-        else:
-            timestamp = f'{hours : >2}h{minutes : >2}m'
-
-        # Log progress
-        progress = f'[{percentage : >4} {timestamp : >6}]'
-
+        progress = _format_progress(index, len(cases), start_time)
         print(f'{index+1 : >4}. {data["name"] : <63} {progress : <13}')
+
+        # Skip cases which are already done
+        if os.path.exists(checkpoint_file):
+            print(f'        ⏩ SKIPPED')
+            continue
+
         for i in range(1, runs+1):
             print(f'      ==> Run #{i} <==')
             success, diff = e.run(case, interval, i, i == runs)
@@ -103,6 +113,11 @@ def execute_cases(executor: Executor, interval: float, runs: int,
         for index, f in enumerate(failures):
             print(f'{index+1 : >4}. {f : <76}')
         sys.exit(EXIT_CODE_FAILED_CASE)
+    else:
+        msg = f'{len(cases)} executed succesfully'
+        progress = _format_progress(len(cases), len(cases), start_time)
+        print(f'{msg : <69} {progress : <13}')
+
 
 def clean_cases(executor: Executor):
     cases = e.list()
