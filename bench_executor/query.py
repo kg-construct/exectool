@@ -42,7 +42,7 @@ class Query():
                   f'"{sparql_endpoint}"', file=sys.stderr)
             self._logs.append(f'{e}\n')
             return False
-        path = os.path.join(self._data_path, 'query')
+        path = os.path.join(self._data_path, 'shared')
         os.makedirs(path, exist_ok=True)
         results_file = os.path.join(path, results_file)
         with open(results_file, 'w') as f:
