@@ -2,6 +2,7 @@
 
 import os
 import sys
+import csv
 import json
 import jsonschema
 import importlib
@@ -23,68 +24,86 @@ METRIC_TYPE_MEASUREMENT = 'MEASUREMENT'
 METRIC_TYPE_INIT = 'INIT'
 METRIC_TYPE_START = 'START'
 METRIC_TYPE_STOP = 'STOP'
+METRIC_TYPE_EXIT = 'EXIT'
+LOGS_FILE_NAME = 'logs.txt'
+METRICS_FILE_NAME = 'metrics.jsonl'
+
+# Compatible with csv.DictWriter
+class _JSONLWriter():
+    def __init__(self, jsonl_file: str, fieldnames: list = []):
+        self._file = jsonl_file
+
+    def writeheader(self):
+        pass
+
+    def writerows(self, rows):
+        for r in rows:
+            self.writerow(r)
+
+    def writerow(self, row):
+        r = json.dumps(row, sort_keys=True).replace('\n', '') + '\n'
+        self._file.write(r)
 
 def _collect_metrics(stop_event: Event, active_resources: list,
-                     interval: float):
-    running_containers = []
+                     interval: float, metrics_writer: _JSONLWriter):
+    init_done_containers = []
+    exit_done_containers = []
     while not stop_event.wait(0):
-        for r, f, name in active_resources:
-            if not hasattr(r, 'stats') or f.closed:
+        timestamp = time()
+        for resource in active_resources:
+            if not hasattr(resource, 'stats'):
                 continue
 
-            metrics = r.stats(silence_failure=True)
+            metrics = resource.stats(silence_failure=True)
+            name = resource.name
             if metrics is None:
-                # Container was running and now not anymore, write stop metric
-                # This codepath is only triggered when the container exits on
-                # its own.
-                if name in running_containers:
-                    metrics = {
-                                'type': METRIC_TYPE_STOP,
-                                'time': time(),
-                                'name': name,
-                                'interval': interval
-                              }
-                    m = json.dumps(metrics).replace('\n', '') + '\n'
-                    f.write(m)
-                    f.flush()
-                    f.close()
+                # Container was started but is not running anymore, write stop
+                # metric. This codepath is only triggered when the container
+                # exits on its own.
+                if resource.started and name not in exit_done_containers:
+                    metrics_exit = {
+                                     'type': METRIC_TYPE_EXIT,
+                                     'time': timestamp,
+                                     'name': name,
+                                     'interval': interval
+                                   }
+                    metrics_writer.writerow(metrics_exit)
+                    exit_done_containers.append(name)
                 continue
 
-            if name not in running_containers:
-                metrics_start = {
-                                  'type': METRIC_TYPE_INIT,
-                                  'time': time(),
-                                  'name': name,
-                                  'interval': interval
-                                }
-                m = json.dumps(metrics_start).replace('\n', '') + '\n'
-                f.write(m)
-                running_containers.append(name)
+            if name not in init_done_containers:
+                metrics_init = {
+                                 'type': METRIC_TYPE_INIT,
+                                 'time': timestamp,
+                                 'name': name,
+                                 'interval': interval
+                               }
+                metrics_writer.writerow(metrics_init)
+                init_done_containers.append(name)
 
-            # JSONL dump: replace all new lines and append a single new line
-            # at the end and dump it to the file
             metrics['name'] = name
             metrics['type'] = METRIC_TYPE_MEASUREMENT
             metrics['interval'] = interval
-            m = json.dumps(metrics).replace('\n', '') + '\n'
-            f.write(m)
-        sleep(interval)
+            metrics['time'] = timestamp
+            metrics_writer.writerow(metrics)
+
+        # Wait the specific interval but substract the time we needed to
+        # collect the metrics so we still have our fixed interval
+        delta = time() - timestamp
+        sleep(interval - delta)
 
     # Some containers keep running throughout the whole case, write the stop
     # metric once the metric measurement thread exists as the case is finished
     # then anyway.
-    for r, f, name in active_resources:
-        if not f.closed:
-            metrics = {
-                        'type': METRIC_TYPE_STOP,
-                        'time': time(),
-                        'name': name,
-                        'interval': interval
-                      }
-            m = json.dumps(metrics).replace('\n', '') + '\n'
-            f.write(m)
-            f.flush()
-            f.close()
+    for resource in active_resources:
+        name = resource.name
+        metrics = {
+                    'type': METRIC_TYPE_EXIT,
+                    'time': timestamp,
+                    'name': name,
+                    'interval': interval
+                  }
+        metrics_writer.writerow(metrics)
 
 class Executor:
     def __init__(self, main_directory: str, verbose: bool = False,
@@ -269,7 +288,7 @@ class Executor:
             # Get metrics for each run
             for resource_path in glob(f'{run_path}/*'):
                 resource = os.path.split(resource_path)[-1]
-                metrics_file = os.path.join(resource_path, 'metrics.jsonl')
+                metrics_file = os.path.join(resource_path, METRICS_FILE_NAME)
                 if not os.path.exists(metrics_file):
                     print(f'Metrics for resource "{resource}" in run {run} of '
                           f'case "{data["name"]}" does not exist',
@@ -398,9 +417,16 @@ class Executor:
         data = case['data']
         directory = case['directory']
         data_path = os.path.join(directory, 'data')
-        results_path = os.path.join(directory, 'results')
-        os.makedirs(data_path, exist_ok=True)
+        results_run_path = os.path.join(directory, 'results', f'run_{run}')
         checkpoint_file = os.path.join(directory, '.done')
+
+        # Make sure we start with a clean setup before the first run
+        if run == 1:
+            self.clean(case)
+
+        # create directories
+        os.makedirs(data_path, exist_ok=True)
+        os.makedirs(results_run_path, exist_ok=True)
 
         # Initialize resources if needed
         # Some resources have to perform an initialization step such as
@@ -416,8 +442,13 @@ class Executor:
         # Launch metrics thread
         stop_event = Event()
         active_resources = []
+        metrics_file = open(os.path.join(results_run_path,
+                                         METRICS_FILE_NAME), 'w')
+        metrics_writer = _JSONLWriter(metrics_file)
+        metrics_writer.writeheader()
         metrics_thread = Thread(target=_collect_metrics,
-                                args=(stop_event, active_resources, interval),
+                                args=(stop_event, active_resources,
+                                      interval, metrics_writer),
                                 daemon=True)
         metrics_thread.start()
 
@@ -431,17 +462,16 @@ class Executor:
             # Allow metrics thread to retrieve stats from container
             path = os.path.join(data_path, root_mount_directory)
             os.makedirs(path, exist_ok=True)
-            path = os.path.join(path, 'metrics.jsonl')
-            f = open(path, 'w')
             metrics = {
                         'type': METRIC_TYPE_START,
                         'time': time(),
-                        'name': step['resource'],
-                        'interval': interval
+                        'name': step['name'],
+                        'interval': interval,
+                        '@id': step['@id']
                       }
-            m = json.dumps(metrics).replace('\n', '') + '\n'
-            f.write(m)
-            active_resources.append((resource, f, step['resource']))
+            metrics_writer.writerow(metrics)
+            active_resources.append(resource)
+            start_step = time()
 
             # Containers may need to start up first before executing a command
             if hasattr(resource, 'wait_until_ready'):
@@ -457,12 +487,22 @@ class Executor:
                 self._print_step(step['resource'], step['name'], success)
                 break
 
+            # Store execution time of each step
+            diff_step = abs(round(time() - start_step, 2))
+            metrics = {
+                        'type': METRIC_TYPE_STOP,
+                        'time': time(),
+                        'name': step['name'],
+                        'interval': interval,
+                        '@id': step['@id'],
+                      }
+            metrics_writer.writerow(metrics)
+
             # Store logs
             # Needs separate process for logs and metrics collecting
             if hasattr(resource, 'logs'):
                 path = os.path.join(data_path,
-                                    root_mount_directory,
-                                    'logs.txt')
+                                    root_mount_directory, LOGS_FILE_NAME)
                 with open(path, 'w') as f:
                     f.writelines(resource.logs())
 
@@ -475,11 +515,13 @@ class Executor:
         # Stop all metric measurement threads
         stop_event.set()
         metrics_thread.join()
+        metrics_file.flush()
+        metrics_file.close()
 
         # Stop active containers
-        for r, f, name in active_resources:
-            if r is not None and hasattr(r, 'stop'):
-                r.stop()
+        for resource in active_resources:
+            if resource is not None and hasattr(resource, 'stop'):
+                resource.stop()
 
         self._print_step('Cleaner', 'Clean up resources', True)
 
@@ -490,23 +532,35 @@ class Executor:
                 f.write(f'{d}\n')
 
         # Move results for a clean slate when doing multiple runs
-        results_run_path = os.path.join(results_path, f'run_{run}')
-        os.makedirs(results_run_path, exist_ok=True)
         # Log files
-        for log_file in glob(f'{data_path}/*/logs.txt'):
+        for log_file in glob(f'{data_path}/*/{LOGS_FILE_NAME}'):
             subdir = log_file.replace(f'{data_path}/', '') \
-                    .replace('/logs.txt', '')
+                    .replace(f'/{LOGS_FILE_NAME}', '')
             os.makedirs(os.path.join(results_run_path, subdir), exist_ok=True)
             shutil.move(log_file, os.path.join(results_run_path, subdir,
-                                               'logs.txt'))
+                                               LOGS_FILE_NAME))
 
         # Metrics measurements
-        for metrics_file in glob(f'{data_path}/*/metrics.jsonl'):
+        for metrics_file in glob(f'{data_path}/*/{METRICS_FILE_NAME}'):
             subdir = metrics_file.replace(f'{data_path}/', '') \
-                    .replace('/metrics.jsonl', '')
+                    .replace(f'/METRICS_FILE_NAME', '')
             os.makedirs(os.path.join(results_run_path, subdir), exist_ok=True)
             shutil.move(metrics_file, os.path.join(results_run_path, subdir,
-                                               'metrics.jsonl'))
+                                                   METRICS_FILE_NAME))
+
+        # Results: all 'output_file' and 'result_file' values
+        for step in data['steps']:
+            subdir = step['resource'].lower().replace('_', '')
+            if step['parameters'].get('results_file', False):
+                results_file = step['parameters']['results_file']
+                p1 = os.path.join(directory, 'data/shared', results_file)
+                p2 = os.path.join(results_run_path, subdir, results_file)
+                shutil.move(p1, p2)
+            if step['parameters'].get('output_file', False):
+                output_file = step['parameters']['output_file']
+                p1 = os.path.join(directory, 'data/shared', output_file)
+                p2 = os.path.join(results_run_path, subdir, output_file)
+                shutil.move(p1, p2)
 
         self._print_step('Cooldown', f'Hardware cooldown period {WAIT_TIME}s',
                          success)

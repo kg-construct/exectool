@@ -21,7 +21,7 @@
             "parameters": {
                 "mapping_file": "mapping.r2rml.ttl",
                 "output_file": "out.nt",
-                "serialization": "nquads",
+                "serialization": "ntriples",
                 "rdb_host": "PostgreSQL",
                 "rdb_port": "5432",
                 "rdb_username": "root",

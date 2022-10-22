@@ -10,7 +10,7 @@
             "command": "execute_mapping",
             "parameters": {
                 "mapping_file": "/data/mapping.rml.ttl",
-                "serialization": "nquads"
+                "serialization": "ntriples"
             }
         }
     ]

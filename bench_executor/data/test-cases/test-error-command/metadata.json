@@ -11,7 +11,7 @@
             "parameters": {
                 "mapping_file": "/data/mapping.rml.ttl",
                 "output_file": "/data/out.nt",
-                "serialization": "nquads"
+                "serialization": "ntriples"
             }
         }
     ]

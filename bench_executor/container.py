@@ -61,6 +61,7 @@ class Container():
         self._long_id = None
         self._cgroups_mode = None
         self._cgroups_dir = None
+        self._started = False
 
         # create network if not exist
         try:
@@ -84,15 +85,9 @@ class Container():
         else:
             print('CGroups not found, stats unsupported', file=sys.stderr)
 
-    def is_running(self):
-        if self._container is not None:
-            return self._container.status == 'running'
-        return False
-
-    def is_exited(self):
-        if self._container is not None:
-            return self._container.status == 'exited'
-        return False
+    @property
+    def started(self):
+        return self._started
 
     def run(self, command: str = '', detach=True) -> bool:
         try:
@@ -105,6 +100,7 @@ class Container():
                                                           network=NETWORK_NAME,
                                                           environment=e,
                                                           volumes=self._volumes)
+            self._started = (self._container is not None)
             return True
         except docker.errors.APIError as e:
             print(e, file=sys.stderr)
@@ -192,13 +188,7 @@ class Container():
         # proc file systems instead to retrieve the raw data without the
         # processing overhead of the Docker daemon
         if self._container is not None and self._cgroups_dir is not None:
-            stats = {
-                'time': round(time(), 2),
-                'cpu': {},
-                'memory': {},
-                'io': {},
-                'network': {}
-            }
+            stats = {}
 
             # Get IDs to access metrics on filesystem
             if self._proc_pid is None or self._long_id is None:
@@ -243,22 +233,23 @@ class Container():
                             or 'system_usec' in raw:
                             metric, value = raw.split(' ')
                             if metric == 'usage_usec':
-                                stats['cpu']['total_cpu_time'] = \
+                                stats['cpu_total_time'] = \
                                     int(value) / (10**6)
                             elif metric == 'user_usec':
-                                stats['cpu']['user_cpu_time'] = \
+                                stats['cpu_user_time'] = \
                                     int(value) / (10**6)
                             elif metric == 'system_usec':
-                                stats['cpu']['system_cpu_time'] = \
+                                stats['cpu_system_time'] = \
                                     int(value) / (10**6)
 
                 p = os.path.join(cgroup_path, 'memory.current')
                 with open(p, 'r') as f:
                     # <value>
                     memory_raw = f.read()
-                    stats['memory']['total'] = int(memory_raw) / (10**3)
+                    stats['memory_total_size'] = int(memory_raw) / (10**3)
 
                 p = os.path.join(cgroup_path, 'io.stat')
+                stats['io'] = []
                 with open(p, 'r') as f:
                     # <major:minor> rbytes=<value> wbytes=<value> rios=<value>
                     # wios=<value> dbytes=<value> dios=<value>
@@ -270,6 +261,10 @@ class Container():
                                                   raw).groups()[0]
                         device = os.path.realpath(os.path.join(DEV_BLOCK_DIR,
                                                                device_number))
+                        # Skip device mapper interfaces as they proxy real
+                        # drives
+                        if '/dev/dm' in device:
+                            continue
                         bytes_read = int(re.search(r"rbytes=(\d*)",
                                                    raw).groups()[0])
                         bytes_write = int(re.search(r"wbytes=(\d*)",
@@ -282,16 +277,19 @@ class Container():
                                                         raw).groups()[0])
                         number_of_discards = int(re.search(r"dios=(\d*)",
                                                            raw).groups()[0])
-                        stats['io'][device] = {
+                        # Multiple disks will results in multiple list entries
+                        stats['io'].append({
+                            'device': device,
                             'total_size_read': bytes_read / (10**3),
                             'total_size_write': bytes_write / (10**3),
                             'total_size_discarded': bytes_discarded / (10**3),
                             'number_of_reads': number_of_reads,
                             'number_of_writes': number_of_writes,
                             'number_of_discards': number_of_discards
-                        }
+                        })
 
                 p = os.path.join(proc_path, 'net', 'dev')
+                stats['network'] = []
                 with open(p, 'r') as f:
                     # header Interface | Receive | Transmist
                     # header <metrics>
@@ -324,7 +322,10 @@ class Container():
                         carrier_transmitted = int(network[15])
                         compressed_transmitted = int(network[16])
 
-                        stats['network'][device] = {
+                        # Multiple network interfaces will results
+                        # in multiple list entries
+                        stats['network'].append({
+                            'device': device,
                             'size_received': bytes_received / (10**3),
                             'size_transmitted': bytes_transmitted / (10**3),
                             'packets_received': packets_received,
@@ -333,7 +334,7 @@ class Container():
                             'errors_transmitted': errors_transmitted,
                             'dropped_received': dropped_received,
                             'dropped_transmitted': dropped_transmitted
-                        }
+                        })
 
                 if cpu_raw and memory_raw and io_raw and network_raw:
                     return stats
@@ -347,3 +348,7 @@ class Container():
             print(f'Retrieving container "{self._name}" stats failed!',
                   file=sys.stderr)
         return None
+
+    @property
+    def name(self):
+        return self._name

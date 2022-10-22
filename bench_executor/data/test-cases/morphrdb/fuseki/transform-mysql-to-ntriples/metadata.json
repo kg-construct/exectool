@@ -21,7 +21,7 @@
             "parameters": {
                 "mapping_file": "mapping.r2rml.ttl",
                 "output_file": "out.nt",
-                "serialization": "nquads",
+                "serialization": "ntriples",
                 "rdb_host": "MySQL",
                 "rdb_port": "3306",
                 "rdb_username": "root",

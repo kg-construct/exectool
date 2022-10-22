@@ -11,8 +11,13 @@ class Query():
         self._config_path = os.path.abspath(config_path)
         self._verbose = verbose
         self._logs = []
+        self._name = 'Query'
 
         os.makedirs(os.path.join(self._data_path, 'query'), exist_ok=True)
+
+    @property
+    def name(self):
+        return self._name
 
     def root_mount_directory(self) -> str:
         return __name__.lower()
