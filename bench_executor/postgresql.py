@@ -13,6 +13,7 @@ HOST = 'localhost'
 USER = 'root'
 PASSWORD = 'root'
 DB = 'db'
+PORT = '5432'
 WAIT_TIME = 3
 
 class PostgreSQL(Container):
@@ -26,10 +27,11 @@ class PostgreSQL(Container):
         self._tables = []
 
         super().__init__('postgres:14.5-bullseye', 'PostgreSQL',
-                         ports={'5432': '5432'},
+                         ports={PORT: PORT},
                          environment={'POSTGRES_PASSWORD': PASSWORD,
                                       'POSTGRES_USER': USER,
                                       'POSTGRES_DB': DB,
+                                      'PGPASSWORD': PASSWORD,
                                       'POSTGRES_HOST_AUTH_METHOD': 'trust'},
                          volumes=[f'{self._data_path}/shared:/data/shared',
                                   f'{tmp_dir}:/var/lib/postgresql/data'])
@@ -45,16 +47,37 @@ class PostgreSQL(Container):
 
         return success
 
+    @property
     def root_mount_directory(self) -> str:
         return __name__.lower()
 
     def wait_until_ready(self, command: str = '') -> bool:
-        success = self.run_and_wait_for_log('port 5432', command=command)
+        success = self.run_and_wait_for_log(f'port {PORT}', command=command)
         sleep(WAIT_TIME)
 
         return success
 
     def load(self, csv_file: str, table: str) -> bool:
+        return self._load_csv(csv_file, table, True)
+
+    def load_sql_schema(self, schema_file: str, csv_files: list[str]) -> bool:
+        success = True
+
+        # Load SQL schema
+        success, output = self.exec(f'psql -h {HOST} -p {PORT} -U {USER} '
+                                    f'-d {DB} -f /data/shared/{schema_file}')
+        for l in output.split('\n'):
+            print(l)
+        # Load CSVs
+        if success:
+            for csv_file, table in csv_files:
+                success = self._load_csv(csv_file, table, False)
+                if not success:
+                    break
+
+        return success
+
+    def _load_csv(self, csv_file: str, table: str, create: bool):
         success = True
         columns = None
         table = table.lower()
@@ -78,10 +101,12 @@ class PostgreSQL(Container):
         try:
             cursor = connection.cursor()
 
-            cursor.execute(f'DROP TABLE IF EXISTS {table};')
-            c = ' VARCHAR , '.join(columns) + ' VARCHAR'
-            cursor.execute(f'CREATE TABLE {table} (KEY SERIAL, {c}, '
-                           'PRIMARY KEY(KEY))')
+            if create:
+                cursor.execute(f'DROP TABLE IF EXISTS {table};')
+                c = ' VARCHAR , '.join(columns) + ' VARCHAR'
+                cursor.execute(f'CREATE TABLE {table} (KEY SERIAL, {c}, '
+                               'PRIMARY KEY(KEY))')
+
             c = ','.join(columns)
             cursor.execute(f'COPY {table} ({c}) FROM '
                            f'\'/data/shared/{csv_file}\' '

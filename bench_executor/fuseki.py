@@ -45,8 +45,13 @@ class Fuseki(Container):
 
         return success
 
+    @property
     def root_mount_directory(self) -> str:
         return __name__.lower()
+
+    @property
+    def headers(self) -> str:
+        return {}
 
     def wait_until_ready(self, command: str = '') -> bool:
         command = f'{command} {CMD_ARGS}'

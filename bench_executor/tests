@@ -2,6 +2,7 @@
 
 import os
 import sys
+import json
 import unittest
 import requests
 import warnings
@@ -28,7 +29,15 @@ from rdflib import Graph
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 CONFIG_DIR = os.path.join(os.path.dirname(__file__), 'config')
+LOGS_FILE_NAME = 'logs.txt'
+METRICS_FILE_NAME = 'metrics.jsonl'
+CHECKPOINT_FILE_NAME = '.done'
 EXIT_CODE_INTERRUPTED = -4
+METRIC_TYPE_STOP = 'STOP'
+METRIC_TYPE_START = 'START'
+METRIC_TYPE_INIT = 'INIT'
+METRIC_TYPE_MEASUREMENT = 'MEASUREMENT'
+METRIC_TYPE_EXIT = 'EXIT'
 
 manager = ContainerManager()
 
@@ -40,7 +49,8 @@ def clean():
 
     for f in glob(f'{os.path.join(DATA_DIR, "shared")}/*'):
         # Keep original data and mappings
-        if 'student' in f or 'mapping' in f:
+        if 'student' in f or 'mapping' in f or f.endswith('.q') \
+           or f.endswith('.sql'):
             continue
         os.remove(f)
 
@@ -100,9 +110,18 @@ class UnitTests(unittest.TestCase):
 
         # Stats should be increased by now
         stats2 = c.stats()
-        cpu1 = stats1['cpu']['total_cpu_time']
-        cpu2 = stats2['cpu']['total_cpu_time']
+        cpu1 = stats1['cpu_total_time']
+        cpu2 = stats2['cpu_total_time']
         self.assertTrue(cpu1 < cpu2)
+        cpu1 = stats1['cpu_user_time']
+        cpu2 = stats2['cpu_user_time']
+        self.assertTrue(cpu1 < cpu2)
+        cpu1 = stats1['cpu_system_time']
+        cpu2 = stats2['cpu_system_time']
+        self.assertTrue(cpu1 < cpu2)
+        mem1 = stats1['memory_total_size']
+        mem2 = stats2['memory_total_size']
+        self.assertTrue(mem1 < mem2)
 
         c.stop()
 
@@ -153,11 +172,31 @@ class UnitTests(unittest.TestCase):
         expected = [['Jefke', '21'], ['Maria', '22'], ['Jos', '23']]
         self.assertListEqual(results, expected)
 
+        # Check SQL schema loading with 2 tables
+        CSV_FILES = [('student.csv', 'student1'),('student.csv', 'student2')]
+        self.assertTrue(postgresql.load_sql_schema('schema_postgresql.sql',
+                                                   CSV_FILES))
+        # Verify table 1
+        cursor.execute('SELECT name, age FROM student1;')
+        results = []
+        for record in cursor:
+            results.append([record[0], record[1]])
+        expected = [['Jefke', '21'], ['Maria', '22'], ['Jos', '23']]
+        self.assertListEqual(results, expected)
+
+        # Verify table 2
+        cursor.execute('SELECT name, age FROM student2;')
+        results = []
+        for record in cursor:
+            results.append([record[0], record[1]])
+        expected = [['Jefke', '21'], ['Maria', '22'], ['Jos', '23']]
+        self.assertListEqual(results, expected)
+
         connection.close()
         postgresql.stop()
 
     def test_mysql(self):
-        mysql = MySQL(DATA_DIR, CONFIG_DIR, False)
+        mysql = MySQL(DATA_DIR, CONFIG_DIR, True)
         self.assertTrue(mysql.initialization())
         self.assertTrue(mysql.wait_until_ready())
         connection = pymysql.connect(host='localhost', user='root',
@@ -196,6 +235,32 @@ class UnitTests(unittest.TestCase):
         # Check if we can now reload
         self.assertTrue(mysql.load('student.csv', 'student'))
         cursor.execute('SELECT name, age FROM student;')
+        results = []
+        for record in cursor:
+            results.append([record[0], record[1]])
+        expected = [['Jefke', '21'], ['Maria', '22'], ['Jos', '23']]
+        self.assertListEqual(results, expected)
+
+        # Check SQL schema loading with 2 tables
+        CSV_FILES = [('student.csv', 'student1'),('student.csv', 'student2')]
+        self.assertTrue(mysql.load_sql_schema('schema_mysql.sql', CSV_FILES))
+
+        # Recreate cursor because we dropped tables
+        connection.close()
+        connection = pymysql.connect(host='localhost', user='root',
+                                     password='root', db='db')
+        cursor = connection.cursor()
+
+        # Verify table 1
+        cursor.execute('SELECT name, age FROM student1;')
+        results = []
+        for record in cursor:
+            results.append([record[0], record[1]])
+        expected = [['Jefke', '21'], ['Maria', '22'], ['Jos', '23']]
+        self.assertListEqual(results, expected)
+
+        # Verify table 2
+        cursor.execute('SELECT name, age FROM student2;')
         results = []
         for record in cursor:
             results.append([record[0], record[1]])
@@ -419,7 +484,7 @@ class RDBTests(unittest.TestCase):
         sdmrdfizer.stop()
 
     def test_ontopmaterialize_mysql(self):
-        ontop = OntopMaterialize(DATA_DIR, CONFIG_DIR, False)
+        ontop = OntopMaterialize(DATA_DIR, CONFIG_DIR, True)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared',
                                    'ontopmaterialize_mysql.nt'))
@@ -441,7 +506,7 @@ class RDBTests(unittest.TestCase):
         ontop.stop()
 
     def test_ontopmaterialize_postgresql(self):
-        ontop = OntopMaterialize(DATA_DIR, CONFIG_DIR, False)
+        ontop = OntopMaterialize(DATA_DIR, CONFIG_DIR, True)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared',
                                    'ontopmaterialize_postgresql.nt'))
@@ -465,7 +530,9 @@ class RDBTests(unittest.TestCase):
         ontop.stop()
 
     def test_ontopendpoint_mysql(self):
-        ontop = OntopVirtualize(DATA_DIR, CONFIG_DIR, False)
+        QUERY='PREFIX foaf: <http://xmlns.com/foaf/0.1/> ' + \
+              'CONSTRUCT WHERE { ?s foaf:name ?o1 . }'
+        ontop = OntopVirtualize(DATA_DIR, CONFIG_DIR, True)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared',
                                    'ontopendpoint_mysql.nt'))
@@ -477,18 +544,15 @@ class RDBTests(unittest.TestCase):
                                               'MySQL', '3306', 'db', 'MySQL'))
         # Verify loaded data
         q = Query(DATA_DIR, CONFIG_DIR, False)
-        results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> '
-                            'CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
-                            'http://localhost:8888/sparql')
+        results = q.execute(QUERY, ontop.endpoint, ontop.headers)
         results = list(filter(None, results.split('\n')))
-        # Ontop does not support N-Triples and returns only Turtle and other 
-        # formats. For Turtle, 10 results are expect: 3 names and prefix 
-        # definitions
-        self.assertTrue(len(results) == 10)
+        self.assertTrue(len(results) == 3)
 
         ontop.stop()
 
     def test_ontopendpoint_postgresql(self):
+        QUERY='PREFIX foaf: <http://xmlns.com/foaf/0.1/> ' + \
+              'CONSTRUCT WHERE { ?s foaf:name ?o1 . }'
         ontop = OntopVirtualize(DATA_DIR, CONFIG_DIR, False)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared',
@@ -502,11 +566,9 @@ class RDBTests(unittest.TestCase):
                                               'PostgreSQL'))
         # Verify loaded data
         q = Query(DATA_DIR, CONFIG_DIR, False)
-        results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> '
-                            'CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
-                            'http://localhost:8888/sparql')
+        results = q.execute(QUERY, ontop.endpoint, ontop.headers)
         results = list(filter(None, results.split('\n')))
-        self.assertTrue(len(results) == 10)
+        self.assertTrue(len(results) == 3)
 
         ontop.stop()
 
@@ -563,6 +625,8 @@ class TriplestoreTests(unittest.TestCase):
         manager.stop_all()
 
     def test_virtuoso(self):
+        QUERY='PREFIX foaf: <http://xmlns.com/foaf/0.1/> ' + \
+              'CONSTRUCT WHERE { ?s foaf:name ?o1 . }'
         virtuoso = Virtuoso(DATA_DIR, CONFIG_DIR, False)
         self.assertTrue(virtuoso.initialization())
         self.assertTrue(virtuoso.wait_until_ready())
@@ -592,9 +656,7 @@ class TriplestoreTests(unittest.TestCase):
 
         # Verify loaded data
         q = Query(DATA_DIR, CONFIG_DIR, False)
-        results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> '
-                            'CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
-                            'http://localhost:8890/sparql')
+        results = q.execute(QUERY, virtuoso.endpoint, virtuoso.headers)
         results = list(filter(None, results.split('\n')))
         self.assertTrue(len(results) == 3)
 
@@ -607,9 +669,7 @@ class TriplestoreTests(unittest.TestCase):
 
         # Verify removed data
         q = Query(DATA_DIR, CONFIG_DIR, False)
-        results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> '
-                            'CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
-                            'http://localhost:8890/sparql')
+        results = q.execute(QUERY, virtuoso.endpoint, virtuoso.headers)
         self.assertTrue('# Empty NT' in results)
 
         # Test if we can now reload our RDF
@@ -617,15 +677,15 @@ class TriplestoreTests(unittest.TestCase):
 
         # Verify loaded data
         q = Query(DATA_DIR, CONFIG_DIR, False)
-        results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> '
-                            'CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
-                            'http://localhost:8890/sparql')
+        results = q.execute(QUERY, virtuoso.endpoint, virtuoso.headers)
         results = list(filter(None, results.split('\n')))
         self.assertTrue(len(results) == 3)
 
         virtuoso.stop()
 
     def test_fuseki(self):
+        QUERY='PREFIX foaf: <http://xmlns.com/foaf/0.1/> ' + \
+              'CONSTRUCT WHERE { ?s foaf:name ?o1 . }'
         fuseki = Fuseki(DATA_DIR, CONFIG_DIR, False)
         self.assertTrue(fuseki.initialization())
         self.assertTrue(fuseki.wait_until_ready())
@@ -635,9 +695,7 @@ class TriplestoreTests(unittest.TestCase):
 
         # Verify loaded data
         q = Query(DATA_DIR, CONFIG_DIR, False)
-        results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> '
-                            'CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
-                            fuseki.endpoint)
+        results = q.execute(QUERY, fuseki.endpoint, fuseki.headers)
         results = list(filter(None, results.split('\n')))
         self.assertTrue(len(results) == 3)
 
@@ -648,9 +706,7 @@ class TriplestoreTests(unittest.TestCase):
         self.assertTrue(fuseki.wait_until_ready())
 
         q = Query(DATA_DIR, CONFIG_DIR, False)
-        results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> '
-                            'CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
-                            fuseki.endpoint)
+        results = q.execute(QUERY, fuseki.endpoint, fuseki.headers)
         results = list(filter(None, results.split('\n')))
         self.assertTrue(len(results) == 0)
 
@@ -659,20 +715,51 @@ class TriplestoreTests(unittest.TestCase):
 
         # Verify loaded data
         q = Query(DATA_DIR, CONFIG_DIR, False)
-        results = q.execute('PREFIX foaf: <http://xmlns.com/foaf/0.1/> '
-                            'CONSTRUCT WHERE { ?s foaf:name ?o1 . }',
-                            fuseki.endpoint)
+        results = q.execute(QUERY, fuseki.endpoint, fuseki.headers)
         results = list(filter(None, results.split('\n')))
         self.assertTrue(len(results) == 3)
 
         fuseki.stop()
 
-    def test_query(self):
+    def test_query_execute(self):
+        QUERY = 'CONSTRUCT WHERE { ?s ?p ?o. } LIMIT 100'
+        DBPEDIA_SPARQL = 'https://dbpedia.org/sparql'
+
         q = Query(DATA_DIR, CONFIG_DIR, False)
-        results = q.execute('CONSTRUCT WHERE { ?s ?p ?o. } LIMIT 100',
-                            'https://dbpedia.org/sparql')
+        results = q.execute(QUERY, DBPEDIA_SPARQL)
         results = list(filter(None, results.split('\n')))
         self.assertTrue(len(results) == 100)
+
+    def test_query_execute_and_save(self):
+        QUERY = 'CONSTRUCT WHERE { ?s ?p ?o. } LIMIT 100'
+        DBPEDIA_SPARQL = 'https://dbpedia.org/sparql'
+
+        q = Query(DATA_DIR, CONFIG_DIR, False)
+        self.assertTrue(q.execute_and_save(QUERY, DBPEDIA_SPARQL, 'results.nt',
+                                           {}))
+        with open(os.path.join(DATA_DIR, 'shared', 'results.nt'), 'r') as f:
+            results = list(filter(None, f.read().split('\n')))
+            self.assertTrue(len(results) == 100)
+
+    def test_query_execute_from_file(self):
+        QUERY_FILE = 'spo100.q'
+        DBPEDIA_SPARQL = 'https://dbpedia.org/sparql'
+
+        q = Query(DATA_DIR, CONFIG_DIR, False)
+        results = q.execute_from_file(QUERY_FILE, DBPEDIA_SPARQL, {})
+        results = list(filter(None, results.split('\n')))
+        self.assertTrue(len(results) == 100)
+
+    def test_query_execute_from_file_and_save(self):
+        QUERY_FILE = 'spo100.q'
+        DBPEDIA_SPARQL = 'https://dbpedia.org/sparql'
+
+        q = Query(DATA_DIR, CONFIG_DIR, False)
+        self.assertTrue(q.execute_from_file_and_save(QUERY_FILE, DBPEDIA_SPARQL,
+                                                     'results.nt', {}))
+        with open(os.path.join(DATA_DIR, 'shared', 'results.nt'), 'r') as f:
+            results = list(filter(None, f.read().split('\n')))
+            self.assertTrue(len(results) == 100)
 
 class IntegrationTests(unittest.TestCase):
     def setUp(self):
@@ -688,13 +775,41 @@ class IntegrationTests(unittest.TestCase):
         cases = executor.list()
         iris = [x['data']['@id'] for x in cases]
         BASE_URL = 'http://dylanvanassche.be/test-cases'
-        expected = [f'{BASE_URL}/rmlmapper/fuseki/transform-csv-to-ntriples',
-            f'{BASE_URL}/rmlmapper/fuseki/transform-mysql-to-ntriples',
-            f'{BASE_URL}/rmlmapper/fuseki/transform-postgresql-to-ntriples',
-            f'{BASE_URL}/rmlmapper/virtuoso/transform-csv-to-ntriples',
-            f'{BASE_URL}/rmlmapper/virtuoso/transform-mysql-to-ntriples',
-            f'{BASE_URL}/rmlmapper/virtuoso/transform-postgresql-to-ntriples']
-        self.assertListEqual(expected, iris)
+        e = [f'{BASE_URL}/rmlmapper/fuseki/transform-csv-to-ntriples',
+             f'{BASE_URL}/rmlmapper/fuseki/transform-mysql-to-ntriples',
+             f'{BASE_URL}/rmlmapper/fuseki/transform-postgresql-to-ntriples',
+             f'{BASE_URL}/rmlmapper/virtuoso/transform-csv-to-ntriples',
+             f'{BASE_URL}/rmlmapper/virtuoso/transform-mysql-to-ntriples',
+             f'{BASE_URL}/rmlmapper/virtuoso/transform-postgresql-to-ntriples',
+             f'{BASE_URL}/sdmrdfizer/fuseki/transform-csv-to-ntriples',
+             f'{BASE_URL}/sdmrdfizer/fuseki/transform-mysql-to-ntriples',
+             f'{BASE_URL}/sdmrdfizer/fuseki/transform-postgresql-to-ntriples',
+             f'{BASE_URL}/sdmrdfizer/virtuoso/transform-csv-to-ntriples',
+             f'{BASE_URL}/sdmrdfizer/virtuoso/transform-mysql-to-ntriples',
+             f'{BASE_URL}/sdmrdfizer/virtuoso/transform-postgresql-to-ntriples',
+             f'{BASE_URL}/morphkgc/fuseki/transform-csv-to-ntriples',
+             f'{BASE_URL}/morphkgc/fuseki/transform-mysql-to-ntriples',
+             f'{BASE_URL}/morphkgc/fuseki/transform-postgresql-to-ntriples',
+             f'{BASE_URL}/morphkgc/virtuoso/transform-csv-to-ntriples',
+             f'{BASE_URL}/morphkgc/virtuoso/transform-mysql-to-ntriples',
+             f'{BASE_URL}/morphkgc/virtuoso/transform-postgresql-to-ntriples',
+             f'{BASE_URL}/morphrdb/fuseki/transform-mysql-to-ntriples',
+             f'{BASE_URL}/morphrdb/fuseki/transform-postgresql-to-ntriples',
+             f'{BASE_URL}/morphrdb/virtuoso/transform-mysql-to-ntriples',
+             f'{BASE_URL}/morphrdb/virtuoso/transform-postgresql-to-ntriples',
+             f'{BASE_URL}/ontopmaterialize/fuseki/transform-mysql-to-ntriples',
+             f'{BASE_URL}/ontopmaterialize/fuseki/'
+             'transform-postgresql-to-ntriples',
+             f'{BASE_URL}/ontopmaterialize/virtuoso/'
+             'transform-mysql-to-ntriples',
+             f'{BASE_URL}/ontopmaterialize/virtuoso/'
+             'transform-postgresql-to-ntriples',
+             f'{BASE_URL}/ontopendpoint/fuseki/transform-mysql-to-ntriples',
+             f'{BASE_URL}/ontopendpoint/fuseki/'
+             'transform-postgresql-to-ntriples']
+        # We expect 28 cases
+        self.assertTrue(len(iris) == 28)
+        self.assertListEqual(e, iris)
 
     def test_executor_run(self):
         path = os.path.join(DATA_DIR, 'test-cases')
@@ -709,10 +824,10 @@ class IntegrationTests(unittest.TestCase):
                 directory = case['directory']
                 resource = step['resource'].lower().replace('_', '')
                 log_file = os.path.join(directory, 'results', 'run_1', resource,
-                                        'logs.txt')
-                checkpoint_file = os.path.join(directory, '.done')
+                                        LOGS_FILE_NAME)
+                checkpoint_file = os.path.join(directory, CHECKPOINT_FILE_NAME)
                 metrics_file = os.path.join(directory, 'results', 'run_1',
-                                            resource, 'metrics.jsonl')
+                                            resource, METRICS_FILE_NAME)
 
                 self.assertFalse(os.path.exists(log_file))
                 self.assertFalse(os.path.exists(metrics_file))
@@ -726,10 +841,10 @@ class IntegrationTests(unittest.TestCase):
                 directory = case['directory']
                 resource = step['resource'].lower().replace('_', '')
                 log_file = os.path.join(directory, 'results', 'run_1', resource,
-                                        'logs.txt')
-                checkpoint_file = os.path.join(directory, '.done')
+                                        LOGS_FILE_NAME)
+                checkpoint_file = os.path.join(directory, CHECKPOINT_FILE_NAME)
                 metrics_file = os.path.join(directory, 'results', 'run_1',
-                                            resource, 'metrics.jsonl')
+                                            METRICS_FILE_NAME)
 
                 # Verify if log, checkpoint, metrics files exists
                 # Log files are expected to contain at least 1 line,
@@ -741,24 +856,51 @@ class IntegrationTests(unittest.TestCase):
                 self.assertTrue(os.path.exists(metrics_file))
                 with open(metrics_file) as f:
                     lines = f.readlines()
-                    # Query execution is not done with a Docker container so
-                    # no stats available about resource consumption
-                    if 'query' in metrics_file:
-                        self.assertTrue(len(lines) == 2)
-                        self.assertTrue('START' in lines[0])
-                        self.assertTrue('STOP' in lines)
-                        self.assertTrue('EXIT' in lines)
-                    else:
-                        self.assertTrue(len(lines) >= 4)
-                        self.assertTrue('START' in lines[0])
-                        self.assertTrue('INIT' in lines[1])
-                        self.assertTrue('MEASUREMENT' in lines[2])
-                        self.assertTrue('cpu' in lines[2])
-                        self.assertTrue('memory' in lines[2])
-                        self.assertTrue('io' in lines[2])
-                        self.assertTrue('network' in lines[2])
-                        self.assertTrue('STOP' in lines)
-                        self.assertTrue('EXIT' in lines)
+
+                    for l in lines:
+                        m = json.loads(l)
+                        if m['type'] == METRIC_TYPE_START or \
+                            m['type'] == METRIC_TYPE_STOP or \
+                            m['type'] == METRIC_TYPE_INIT or \
+                            m['type'] == METRIC_TYPE_EXIT:
+                            for key in ['interval', 'resource', 'time', 'type']:
+                                self.assertIn(key, m)
+                                self.assertIsNotNone(m[key])
+                        elif m['type'] == METRIC_TYPE_MEASUREMENT:
+                            for key in ['interval', 'resource', 'time', 'type',
+                                        'cpu_total_time', 'cpu_user_time',
+                                        'cpu_system_time', 'memory_total_size',
+                                        'io', 'network']:
+                                self.assertIn(key, m)
+                                self.assertIsNotNone(m[key])
+
+                                if key == 'io':
+                                    for key2 in ['device', 'total_size_read',
+                                                 'total_size_write',
+                                                 'total_size_discard',
+                                                 'number_of_read',
+                                                 'number_of_write',
+                                                 'number_of_discard']:
+                                        for entry in m['io']:
+                                            self.assertIn(key2, entry)
+                                            self.assertIsNotNone(entry[key2])
+
+                                if key == 'network':
+                                    for key3 in ['device',
+                                                 'total_size_received',
+                                                 'total_size_transmitted',
+                                                 'number_of_packets_received',
+                                                 'number_of_packets_transmitted',
+                                                 'number_of_errors_received',
+                                                 'number_of_errors_transmitted',
+                                                 'number_of_drops_received',
+                                                 'number_of_drops_transmitted']:
+                                        for entry in m['network']:
+                                            self.assertIn(key3, entry)
+                                            self.assertIsNotNone(entry[key3])
+                        else:
+                            raise ValueError('Unknown metric type: '
+                                             f'"{m["type"]}"')
 
                 self.assertTrue(os.path.exists(checkpoint_file))
                 with open(checkpoint_file) as f:

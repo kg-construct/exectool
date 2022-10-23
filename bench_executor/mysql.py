@@ -12,6 +12,7 @@ HOST = 'localhost'
 USER = 'root'
 PASSWORD = 'root'
 DB = 'db'
+PORT = '3306'
 
 class MySQL(Container):
     def __init__(self, data_path: str, config_path: str, verbose: bool):
@@ -24,7 +25,7 @@ class MySQL(Container):
         os.makedirs(os.path.join(self._data_path, 'mysql'), exist_ok=True)
 
         super().__init__(f'mysql:{VERSION}-debian', 'MySQL',
-                         ports={'3306':'3306'},
+                         ports={PORT:PORT},
                          environment={'MYSQL_ROOT_PASSWORD': 'root',
                                       'MYSQL_DATABASE': 'db'},
                          volumes=[f'{self._data_path}/shared/:/data/shared',
@@ -45,14 +46,41 @@ class MySQL(Container):
 
         return success
 
+    @property
     def root_mount_directory(self) -> str:
         return __name__.lower()
 
     def wait_until_ready(self, command: str = '') -> bool:
-        log_line = 'port: 3306  MySQL Community Server - GPL.'
+        log_line = f'port: {PORT}  MySQL Community Server - GPL.'
         return self.run_and_wait_for_log(log_line, command=command)
 
-    def load(self, csv_file: str = '', table: str = '') -> bool:
+    def load(self, csv_file: str, table: str) -> bool:
+        return self._load_csv(csv_file, table, True)
+
+    def load_sql_schema(self, schema_file: str, csv_files: list[str]) -> bool:
+        success = True
+
+        # Load SQL schema
+        cmd = f'/bin/sh -c \'mysql --host={HOST} --port={PORT} --user={USER} ' + \
+              f'--password={PASSWORD} --database={DB} ' + \
+              f'< /data/shared/{schema_file}\''
+        success, output = self.exec(cmd)
+
+        for l in output.split('\n'):
+            print(l.strip())
+
+        print('LOADING CSVs')
+
+        # Load CSVs
+        if success:
+            for csv_file, table in csv_files:
+                success = self._load_csv(csv_file, table, False)
+                if not success:
+                    break
+
+        return success
+
+    def _load_csv(self, csv_file: str, table: str, create: bool) -> bool:
         success = True
         columns = None
         table = table.lower()
@@ -60,7 +88,7 @@ class MySQL(Container):
 
         self._tables.append(table)
 
-        # Analyze and move CSV for loading
+        # Analyze CSV for loading
         if not os.path.exists(path):
             print(f'CSV file "{path}" does not exist', file=sys.stderr)
             return False
@@ -76,10 +104,11 @@ class MySQL(Container):
         try:
             cursor = connection.cursor()
 
-            cursor.execute(f'DROP TABLE IF EXISTS {table};')
-            c = ' TEXT , '.join(columns) + ' TEXT'
-            cursor.execute(f'CREATE TABLE {table} (k INT ZEROFILL NOT NULL '
-                           f'AUTO_INCREMENT, {c}, PRIMARY KEY(k));')
+            if create:
+                cursor.execute(f'DROP TABLE IF EXISTS {table};')
+                c = ' TEXT , '.join(columns) + ' TEXT'
+                cursor.execute(f'CREATE TABLE {table} (k INT ZEROFILL NOT NULL '
+                               f'AUTO_INCREMENT, {c}, PRIMARY KEY(k));')
             c = ','.join(columns)
             cursor.execute(f'LOAD DATA INFILE \'/data/shared/{csv_file}\' '
                            f'INTO TABLE {table} FIELDS TERMINATED BY \',\' '

@@ -21,6 +21,7 @@ class SDMRDFizer(Container):
                          volumes=[f'{self._data_path}/sdmrdfizer:/data',
                                   f'{self._data_path}/shared:/data/shared'])
 
+    @property
     def root_mount_directory(self) -> str:
         return __name__.lower()
 

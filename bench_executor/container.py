@@ -261,10 +261,6 @@ class Container():
                                                   raw).groups()[0]
                         device = os.path.realpath(os.path.join(DEV_BLOCK_DIR,
                                                                device_number))
-                        # Skip device mapper interfaces as they proxy real
-                        # drives
-                        if '/dev/dm' in device:
-                            continue
                         bytes_read = int(re.search(r"rbytes=(\d*)",
                                                    raw).groups()[0])
                         bytes_write = int(re.search(r"wbytes=(\d*)",
@@ -282,10 +278,10 @@ class Container():
                             'device': device,
                             'total_size_read': bytes_read / (10**3),
                             'total_size_write': bytes_write / (10**3),
-                            'total_size_discarded': bytes_discarded / (10**3),
-                            'number_of_reads': number_of_reads,
-                            'number_of_writes': number_of_writes,
-                            'number_of_discards': number_of_discards
+                            'total_size_discard': bytes_discarded / (10**3),
+                            'number_of_read': number_of_reads,
+                            'number_of_write': number_of_writes,
+                            'number_of_discard': number_of_discards
                         })
 
                 p = os.path.join(proc_path, 'net', 'dev')
@@ -326,14 +322,14 @@ class Container():
                         # in multiple list entries
                         stats['network'].append({
                             'device': device,
-                            'size_received': bytes_received / (10**3),
-                            'size_transmitted': bytes_transmitted / (10**3),
-                            'packets_received': packets_received,
-                            'packets_transmitted': packets_transmitted,
-                            'errors_received': errors_received,
-                            'errors_transmitted': errors_transmitted,
-                            'dropped_received': dropped_received,
-                            'dropped_transmitted': dropped_transmitted
+                            'total_size_received': bytes_received / (10**3),
+                            'total_size_transmitted': bytes_transmitted / (10**3),
+                            'number_of_packets_received': packets_received,
+                            'number_of_packets_transmitted': packets_transmitted,
+                            'number_of_errors_received': errors_received,
+                            'number_of_errors_transmitted': errors_transmitted,
+                            'number_of_drops_received': dropped_received,
+                            'number_of_drops_transmitted': dropped_transmitted
                         })
 
                 if cpu_raw and memory_raw and io_raw and network_raw:

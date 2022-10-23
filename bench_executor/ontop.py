@@ -6,11 +6,17 @@ import psutil
 import configparser
 from container import Container
 
-VERSION = '4.2.0'
+#VERSION = '4.2.0'
+VERSION = '4.3.0-SNAPSHOT' # With N-Triples and N-Quads support
 
 class _Ontop(Container):
-    def __init__(self, name, data_path: str, verbose: bool, mode: str):
-        self.verbose = verbose
+    def __init__(self, name: str, data_path: str, verbose: bool, mode: str):
+        self._verbose = verbose
+        self._mode = mode
+        self._headers = {}
+
+        os.makedirs(os.path.join(self._data_path, f'ontop{self._mode}'),
+                    exist_ok=True)
 
         # Set Java heap to 1/2 of available memory instead of the default 1/4
         max_heap = int(psutil.virtual_memory().total * (1/2))
@@ -19,31 +25,46 @@ class _Ontop(Container):
         super().__init__(f'kg-construct/ontop:v{VERSION}', name,
                          ports={'8888':'8888'},
                          environment=environment,
-                         volumes=[f'{self._data_path}/ontop{mode}:/data',
+                         volumes=[f'{self._data_path}/'
+                                  f'{self.root_mount_directory}:/data',
                                   f'{self._data_path}/shared:/data/shared'])
 
+    @property
     def root_mount_directory(self) -> str:
-        return __name__.lower().replace('_', '')
+        if self._mode == 'endpoint':
+            return 'ontopvirtualize'
+        elif self._mode == 'materialize':
+            return 'ontopmaterialize'
+        else:
+            raise ValueError(f'Unknown Ontop mode: "{self._mode}"')
 
-    def execute(self, mode, arguments) -> bool:
-        cmd = f'/ontop/ontop {mode} {" ".join(arguments)}'
-        if mode == 'endpoint':
+    @property
+    def endpoint(self) -> str:
+        return 'http://localhost:8888/sparql'
+
+    @property
+    def headers(self) -> dict:
+        return self._headers
+
+    def execute(self, arguments: list) -> bool:
+        cmd = f'/ontop/ontop {self._mode} {" ".join(arguments)}'
+        if self._mode == 'endpoint':
             log_line = 'OntopEndpointApplication - Started ' + \
                        'OntopEndpointApplication'
             success = self.run_and_wait_for_log(log_line, cmd)
-        elif mode == 'materialize':
+        elif self._mode == 'materialize':
             success = self.run_and_wait_for_exit(cmd)
         else:
-            print(f'Unknown Ontop mode "{mode}"', file=sys.stderr)
+            print(f'Unknown Ontop mode "{self._mode}"', file=sys.stderr)
             success = False
 
         return success
 
-    def execute_mapping(self, mode, config_file, arguments, mapping_file,
-                        output_file, rdb_username: str = None,
-                        rdb_password: str = None, rdb_host: str = None,
-                        rdb_port: str = None, rdb_name: str = None,
-                        rdb_type: str = None) -> bool:
+    def execute_mapping(self, config_file: str, arguments: list,
+                        mapping_file: str, output_file: str,
+                        rdb_username: str = None, rdb_password: str = None,
+                        rdb_host: str = None, rdb_port: str = None,
+                        rdb_name: str = None, rdb_type: str = None) -> bool:
         # Generate INI configuration file since no CLI is available
         if rdb_username is not None and rdb_password is not None \
             and rdb_host is not None and rdb_port is not None \
@@ -64,7 +85,7 @@ class _Ontop(Container):
             else:
                 raise ValueError(f'Unknown RDB type: "{rdb_type}"')
 
-            path = os.path.join(self._data_path, f'ontop{mode}')
+            path = os.path.join(self._data_path, self.root_mount_directory)
             os.makedirs(path, exist_ok=True)
             with open(os.path.join(path, 'config.properties'), 'w') as f:
                 config.write(f, space_around_delimiters=False)
@@ -87,24 +108,38 @@ class _Ontop(Container):
         arguments.append('-p')
         arguments.append('/data/config.properties')
 
-        return self.execute(mode, arguments)
+        return self.execute(arguments)
 
 class OntopVirtualize(_Ontop):
     def __init__(self, data_path: str, config_path: str, verbose: bool):
         self._data_path = os.path.abspath(data_path)
         self._config_path = os.path.abspath(config_path)
-        os.makedirs(os.path.join(self._data_path, 'ontopendpoint'),
-                    exist_ok=True)
         super().__init__('Ontop-Virtualize', data_path, verbose, 'endpoint')
 
     def execute_mapping(self, mapping_file: str, output_file: str = None,
-                        serialization: str = None, rdb_username: str = None,
-                        rdb_password: str = None, rdb_host: str = None,
-                        rdb_port: str = None, rdb_name: str = None,
-                        rdb_type: str = None) -> bool:
-        config_file = f'{self._data_path}/ontopendpoint/config.properties'
+                        serialization: str = "ntriples",
+                        rdb_username: str = None, rdb_password: str = None,
+                        rdb_host: str = None, rdb_port: str = None,
+                        rdb_name: str = None, rdb_type: str = None) -> bool:
+        config_file = f'{self._data_path}/{self.root_mount_directory}' + \
+                      '/config.properties'
         arguments = ['--cors-allowed-origins=*', '--port=8888']
-        return super().execute_mapping('endpoint', config_file, arguments,
+        if serialization == 'ntriples':
+            self._headers = { 'Accept': 'application/n-triples' }
+        elif serialization == 'nquads':
+            self._headers = { 'Accept': 'application/n-quads' }
+        elif serialization == 'turtle':
+            self._headers = { 'Accept': 'text/turtle' }
+        elif serialization == 'rdfjson':
+            self._headers = { 'Accept': 'application/rdf+json' }
+        elif serialization == 'rdfxml':
+            self._headers = { 'Accept': 'application/rdf+xml' }
+        elif serialization == 'jsonld':
+            self._headers = { 'Accept': 'application/ld+json' }
+        else:
+            raise ValueError(f'Unsupported serialization format '
+                             f'"{serialization}" for Ontop')
+        return super().execute_mapping(config_file, arguments,
                                        mapping_file, output_file, rdb_username,
                                        rdb_password, rdb_host, rdb_port,
                                        rdb_name, rdb_type)
@@ -122,9 +157,11 @@ class OntopMaterialize(_Ontop):
                         rdb_password: str = None, rdb_host: str = None,
                         rdb_port: str = None, rdb_name: str = None,
                         rdb_type: str = None) -> bool:
-        config_file = f'{self._data_path}/ontopmaterialize/config.properties'
+        config_file = f'{self._data_path}/{self.root_mount_directory}' + \
+                      '/config.properties'
         arguments = [ '-f', serialization ]
-        return super().execute_mapping('materialize', config_file, arguments,
+        self._headers = { }
+        return super().execute_mapping(config_file, arguments,
                                        mapping_file, output_file, rdb_username,
                                        rdb_password, rdb_host, rdb_port,
                                        rdb_name, rdb_type)

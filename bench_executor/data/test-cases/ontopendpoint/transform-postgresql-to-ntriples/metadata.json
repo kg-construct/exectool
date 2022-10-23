@@ -20,6 +20,7 @@
             "command": "execute_mapping",
             "parameters": {
                 "mapping_file": "mapping.r2rml.ttl",
+                "serialization": "ntriples",
                 "rdb_host": "PostgreSQL",
                 "rdb_port": "5432",
                 "rdb_username": "root",

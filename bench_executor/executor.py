@@ -20,6 +20,7 @@ SCHEMA_FILE = 'metadata.schema'
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 CONFIG_DIR = os.path.join(os.path.dirname(__file__), 'config')
 WAIT_TIME = 5 # seconds
+METRIC_VERSION_1 = 1
 METRIC_TYPE_MEASUREMENT = 'MEASUREMENT'
 METRIC_TYPE_INIT = 'INIT'
 METRIC_TYPE_START = 'START'
@@ -62,9 +63,10 @@ def _collect_metrics(stop_event: Event, active_resources: list,
                 # exits on its own.
                 if resource.started and name not in exit_done_containers:
                     metrics_exit = {
+                                     'version': METRIC_VERSION_1,
                                      'type': METRIC_TYPE_EXIT,
                                      'time': timestamp,
-                                     'name': name,
+                                     'resource': name,
                                      'interval': interval
                                    }
                     metrics_writer.writerow(metrics_exit)
@@ -73,15 +75,17 @@ def _collect_metrics(stop_event: Event, active_resources: list,
 
             if name not in init_done_containers:
                 metrics_init = {
+                                 'version': METRIC_VERSION_1,
                                  'type': METRIC_TYPE_INIT,
                                  'time': timestamp,
-                                 'name': name,
+                                 'resource': name,
                                  'interval': interval
                                }
                 metrics_writer.writerow(metrics_init)
                 init_done_containers.append(name)
 
-            metrics['name'] = name
+            metrics['version'] = METRIC_VERSION_1
+            metrics['resource'] = name
             metrics['type'] = METRIC_TYPE_MEASUREMENT
             metrics['interval'] = interval
             metrics['time'] = timestamp
@@ -98,9 +102,10 @@ def _collect_metrics(stop_event: Event, active_resources: list,
     for resource in active_resources:
         name = resource.name
         metrics = {
+                    'version': METRIC_VERSION_1,
                     'type': METRIC_TYPE_EXIT,
                     'time': timestamp,
-                    'name': name,
+                    'resource': name,
                     'interval': interval
                   }
         metrics_writer.writerow(metrics)
@@ -285,6 +290,14 @@ class Executor:
                 print(f'Run "{run}" is not a number', file=sys.stderr)
                 return False, {}
 
+            metrics_file = os.path.join(run_path, METRICS_FILE_NAME)
+            if not os.path.exists(metrics_file):
+                print(f'Metrics file "{metrics_file}" does not exist',
+                      file=sys.stderr)
+                return False, {}
+
+            with open(metrics_file, 'r') as f:
+
             # Get metrics for each run
             for resource_path in glob(f'{run_path}/*'):
                 resource = os.path.split(resource_path)[-1]
@@ -457,15 +470,15 @@ class Executor:
             module = self._class_module_mapping[step['resource']]
             resource = getattr(module, step['resource'])(data_path, CONFIG_DIR,
                                                          self._verbose)
-            root_mount_directory = resource.root_mount_directory()
 
             # Allow metrics thread to retrieve stats from container
-            path = os.path.join(data_path, root_mount_directory)
+            path = os.path.join(data_path, resource.root_mount_directory)
             os.makedirs(path, exist_ok=True)
             metrics = {
+                        'version': METRIC_VERSION_1,
                         'type': METRIC_TYPE_START,
                         'time': time(),
-                        'name': step['name'],
+                        'resource': step['resource'],
                         'interval': interval,
                         '@id': step['@id']
                       }
@@ -490,9 +503,10 @@ class Executor:
             # Store execution time of each step
             diff_step = abs(round(time() - start_step, 2))
             metrics = {
+                        'version': METRIC_VERSION_1,
                         'type': METRIC_TYPE_STOP,
                         'time': time(),
-                        'name': step['name'],
+                        'resource': step['resource'],
                         'interval': interval,
                         '@id': step['@id'],
                       }
@@ -502,7 +516,8 @@ class Executor:
             # Needs separate process for logs and metrics collecting
             if hasattr(resource, 'logs'):
                 path = os.path.join(data_path,
-                                    root_mount_directory, LOGS_FILE_NAME)
+                                    resource.root_mount_directory,
+                                    LOGS_FILE_NAME)
                 with open(path, 'w') as f:
                     f.writelines(resource.logs())
 

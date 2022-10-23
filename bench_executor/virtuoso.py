@@ -32,6 +32,7 @@ class Virtuoso(Container):
 
         return success
 
+    @property
     def root_mount_directory(self) -> str:
         return __name__.lower()
 
@@ -96,3 +97,7 @@ class Virtuoso(Container):
     @property
     def endpoint(self):
         return self._endpoint
+
+    @property
+    def headers(self):
+        return {}

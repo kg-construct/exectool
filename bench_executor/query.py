@@ -19,19 +19,24 @@ class Query():
     def name(self):
         return self._name
 
+    @property
     def root_mount_directory(self) -> str:
         return __name__.lower()
 
-    def execute(self, query, sparql_endpoint: str) -> str:
+    def execute(self, query: str, sparql_endpoint: str,
+                headers: dict = None) -> str:
         self._logs.append(f'Executing query "{query}" on endpoint '
                           f'"{sparql_endpoint}"\n')
         data = {
             'query': query,
             'format': 'text/plain', # N-Triples Virtuoso
-            'default-graph-uri': '', # Empty default graph Virtuoso
             'maxrows': 10000000 # Overwrite Virtuoso SPARQL limit
         }
-        r = requests.post(sparql_endpoint, data=data)
+        # Hardcoded to N-Triples
+        if headers is not None:
+            r = requests.post(sparql_endpoint, data=data, headers=headers)
+        else:
+            r = requests.post(sparql_endpoint, data=data)
         r.raise_for_status()
         return r.text
 
@@ -39,9 +44,9 @@ class Query():
         return self._logs
 
     def execute_and_save(self, query: str, sparql_endpoint: str,
-                         results_file: str) -> bool:
+                         results_file: str, headers: dict = None) -> bool:
         try:
-            results = self.execute(query, sparql_endpoint)
+            results = self.execute(query, sparql_endpoint, headers)
         except Exception as e:
             print(f'Failed to execute query "{query}" on endpoint '
                   f'"{sparql_endpoint}"', file=sys.stderr)
@@ -65,6 +70,32 @@ class Query():
         if len(results) and 'Empty' not in results:
             return True
         else:
-            self._logs.append(f'No results found!\n')
+            self._logs.append('No results found!\n')
             print('No results found for query!', file=sys.stderr)
             return False
+
+    def _read_query_file(self, query_file: str) -> str:
+        path = os.path.join(self._data_path, 'shared', query_file)
+        if not os.path.exists(path):
+            msg = f'Query file "{path}" does not exist'
+            print(msg, file=sys.stderr)
+            self._logs.append(msg + '\n')
+            return False
+
+        with open(path, 'r') as f:
+            query = f.read()
+
+        return query
+
+    def execute_from_file(self, query_file: str, sparql_endpoint: str,
+                          headers: dict = None) -> bool:
+        query = self._read_query_file(query_file)
+        return self.execute(query, sparql_endpoint, headers)
+
+    def execute_from_file_and_save(self, query_file: str,
+                                   sparql_endpoint: str,
+                                   results_file: str,
+                                   headers: dict = None) -> bool:
+        query = self._read_query_file(query_file)
+        return self.execute_and_save(query, sparql_endpoint, results_file,
+                                     headers)

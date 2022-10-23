@@ -18,6 +18,7 @@ class MorphRDB(Container):
                          volumes=[f'{self._data_path}/shared:/data/shared',
                                   f'{self._data_path}/morphrdb:/data'])
 
+    @property
     def root_mount_directory(self) -> str:
         return __name__.lower()
 

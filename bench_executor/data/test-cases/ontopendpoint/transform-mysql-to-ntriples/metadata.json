@@ -20,6 +20,7 @@
             "command": "execute_mapping",
             "parameters": {
                 "mapping_file": "mapping.r2rml.ttl",
+                "serialization": "ntriples",
                 "rdb_host": "MySQL",
                 "rdb_port": "3306",
                 "rdb_username": "root",
