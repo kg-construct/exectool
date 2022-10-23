@@ -4,16 +4,26 @@
 ################################################################################
 FROM ubuntu:22.04
 # Configure the Ontop version to use
-ARG URL=https://github.com/ontop/ontop/releases/download/ontop-4.2.0/ontop-cli-4.2.0.zip
+ARG COMMIT="627f98a44434152a226e69f3a99af864508e035d"
+ARG URL=https://github.com/DylanVanAssche/ontop/archive/$COMMIT.zip
 
 # Install latest updates and dependencies
 RUN apt-get update
 RUN apt-get upgrade -y
-RUN apt-get install -y openjdk-8-jdk less vim wget unzip
+RUN apt-get install -y openjdk-8-jdk less vim wget unzip maven
 
-# Download Ontop release
+# Configure Java
+RUN readlink -f `which javac` | sed "s:/bin/javac::"
+ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+RUN echo "JAVA_HOME value: ${JAVA_HOME}"
+
+# Build Ontop from source
 RUN wget -O ontop.zip $URL
-RUN unzip ontop.zip -d /ontop
+RUN unzip ontop.zip -d /ontop-src
+WORKDIR /ontop-src/ontop-$COMMIT
+RUN mvn -Prelease -DskipTests
+WORKDIR /
+RUN unzip /ontop-src/ontop-$COMMIT/build/distribution/target/ontop-cli-4.3.0-SNAPSHOT.zip -d /ontop
 COPY mysql-connector.jar /ontop/jdbc/
 COPY postgresql-connector.jar /ontop/jdbc/
 
