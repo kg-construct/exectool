@@ -112,16 +112,16 @@ class UnitTests(unittest.TestCase):
         stats2 = c.stats()
         cpu1 = stats1['cpu_total_time']
         cpu2 = stats2['cpu_total_time']
-        self.assertTrue(cpu1 < cpu2)
+        self.assertGreater(cpu2, cpu1)
         cpu1 = stats1['cpu_user_time']
         cpu2 = stats2['cpu_user_time']
-        self.assertTrue(cpu1 < cpu2)
+        self.assertGreaterEqual(cpu2, cpu1)
         cpu1 = stats1['cpu_system_time']
         cpu2 = stats2['cpu_system_time']
-        self.assertTrue(cpu1 < cpu2)
+        self.assertGreaterEqual(cpu2, cpu1)
         mem1 = stats1['memory_total_size']
         mem2 = stats2['memory_total_size']
-        self.assertTrue(mem1 < mem2)
+        self.assertNotEqual(mem1, mem2)
 
         c.stop()
 
