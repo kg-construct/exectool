@@ -8,11 +8,15 @@ import jsonschema
 import importlib
 import inspect
 import shutil
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import numpy as np
 from glob import glob
 from datetime import datetime
 from time import time, sleep
-from typing import Tuple
+from typing import Tuple, Optional
 from threading import Thread, Event
+from queue import Queue
 from statistics import mean, median
 
 METADATA_FILE = 'metadata.json'
@@ -28,22 +32,40 @@ METRIC_TYPE_STOP = 'STOP'
 METRIC_TYPE_EXIT = 'EXIT'
 LOGS_FILE_NAME = 'logs.txt'
 METRICS_FILE_NAME = 'metrics.jsonl'
+PLOT_MARGIN = 1.1
 
-# Compatible with csv.DictWriter
+# Thread-safe JSONL writer
 class _JSONLWriter():
-    def __init__(self, jsonl_file: str, fieldnames: list = []):
-        self._file = jsonl_file
+    def __init__(self, stop_event: Event, jsonl_file: str):
+        self._file = open(jsonl_file, 'w')
+        self._queue = Queue()
+        self._stop_event = stop_event
+        self._writing_thread = Thread(target=self._write_queue,
+                                      args=(self._queue,), daemon=True)
+        self._writing_thread.start()
 
-    def writeheader(self):
-        pass
+    def _write_queue(self, q: Queue):
+        while True:
+            row = q.get()
+            r = json.dumps(row, sort_keys=True).replace('\n', '') + '\n'
+            self._file.write(r)
+            q.task_done()
+
+            # Stop thread when queue is empty and the stop_event was set
+            if self._queue.empty() and self._stop_event.wait(0):
+                break
+
+        self._file.close()
 
     def writerows(self, rows):
         for r in rows:
             self.writerow(r)
 
     def writerow(self, row):
-        r = json.dumps(row, sort_keys=True).replace('\n', '') + '\n'
-        self._file.write(r)
+        self._queue.put(row)
+
+    def join(self):
+        self._writing_thread.join()
 
 def _collect_metrics(stop_event: Event, active_resources: list,
                      interval: float, metrics_writer: _JSONLWriter):
@@ -101,6 +123,11 @@ def _collect_metrics(stop_event: Event, active_resources: list,
     # then anyway.
     for resource in active_resources:
         name = resource.name
+
+        # Exited containers do not need to log multiple times their exit
+        if name in exit_done_containers or name in ['Query']:
+            continue
+
         metrics = {
                     'version': METRIC_VERSION_1,
                     'type': METRIC_TYPE_EXIT,
@@ -119,6 +146,7 @@ class Executor:
         self._class_module_mapping = {}
         self._verbose = verbose
         self._cli = cli
+        self._colors = [ 'red', 'green', 'blue', 'orange', 'purple' ]
 
         self._init_resources()
 
@@ -279,8 +307,8 @@ class Executor:
         else:
             print(f'        ❌ {resource : <20}: {name : <50}')
 
-    def _parse_metrics(self, results_path: str):
-        mapping = {}
+    def _parse_metrics(self, results_path: str) -> Optional[dict]:
+        metrics = {}
         for run_path in glob(f'{results_path}/run_*/'):
             try:
                 run = os.path.split(os.path.dirname(run_path))[-1]
@@ -288,81 +316,205 @@ class Executor:
                 run = int(run)
             except ValueError:
                 print(f'Run "{run}" is not a number', file=sys.stderr)
-                return False, {}
+                return None
 
             metrics_file = os.path.join(run_path, METRICS_FILE_NAME)
             if not os.path.exists(metrics_file):
                 print(f'Metrics file "{metrics_file}" does not exist',
                       file=sys.stderr)
-                return False, {}
+                return None
 
+            relative_time = None
+            execution_time = {}
             with open(metrics_file, 'r') as f:
-
-            # Get metrics for each run
-            for resource_path in glob(f'{run_path}/*'):
-                resource = os.path.split(resource_path)[-1]
-                metrics_file = os.path.join(resource_path, METRICS_FILE_NAME)
-                if not os.path.exists(metrics_file):
-                    print(f'Metrics for resource "{resource}" in run {run} of '
-                          f'case "{data["name"]}" does not exist',
-                          file=sys.stderr)
-                    return False, {}
-
-                # Parse JSONL file
-                metrics = []
-                with open(metrics_file, 'r') as f:
-                    start_time = None
-                    for index, line in enumerate(f.readlines()):
+                metrics[f'run_{run}'] = []
+                for index, line in enumerate(f.readlines()):
+                    try:
                         m = json.loads(line)
-                        m['index'] = index + 1
-                        if m['type'] == METRIC_TYPE_INIT or \
-                           (m['name'] == 'Query' \
-                            and m['type'] == METRIC_TYPE_START):
-                            start_time = m['time']
-                        elif start_time is not None:
-                            # In rare cases we may end up with -0.0 due to
-                            # floating point errors, filter them out
-                            m['diff'] = abs(round(m['time'] - start_time, 2))
-                        metrics.append(m)
+                    except json.JSONDecodeError:
+                        print(f'Cannot parse as JSON: "{line}"')
+                        return None
+                    resource = m['resource']
+                    m['index'] = index + 1
 
-                # Store mapping to apply statistics on
-                if resource not in mapping:
-                    mapping[resource] = {}
-                mapping[resource][str(run)] = metrics
+                    # Relative timestamp for the whole case
+                    if m['type'] == METRIC_TYPE_START and relative_time is None:
+                        relative_time = m['time']
+                        m['relative_time'] = 0.0
+                    else:
+                        t = abs(round(m['time'] - relative_time, 2))
+                        m['relative_time'] = t
 
-        return True, mapping
+                    # Execution time of each resource, the container
+                    # setup and shutdown times are removed, same for the
+                    # benchmark overhead of stopping and starting containers
+                    if m['type'] == METRIC_TYPE_INIT \
+                       and resource not in execution_time:
+                        execution_time[resource] = m['time']
+                        m['execution_time'] = 0.0
+                    elif m['type'] == METRIC_TYPE_EXIT \
+                         and resource in execution_time:
+                        t = abs(round(m['time'] - execution_time[resource], 2))
+                        m['execution_time'] = t
+                        del execution_time[resource]
+                    elif m['type'] == METRIC_TYPE_MEASUREMENT \
+                         and resource in execution_time:
+                        t = abs(round(m['time'] - execution_time[resource], 2))
+                        m['execution_time'] = t
 
-    def _stats_execution_time(self, resource: dict, metrics: dict):
-        diffs = []
-        for run in metrics[resource].keys():
-            execution_time = None
-            for entry in metrics[resource][run]:
+                    metrics[f'run_{run}'].append(m)
+
+        return metrics
+
+    def _aggregate_runs(self, metrics: dict) -> dict:
+        # Each key of metrics dict is a run
+        execution_times = []
+        for run in metrics.keys():
+            # Latest STOP metric entry is the last step and thus the relative
+            # execution time of the whole case
+            for entry in reversed(metrics[run]):
                 if entry['type'] == METRIC_TYPE_STOP:
-                    execution_time = entry['diff']
+                    execution_times.append(entry['relative_time'])
                     break
 
-            if execution_time is None:
-                print(f'Invalid metrics file in case "{data["name"]}"',
-                      file=sys.stderr)
-                return False
+        # Median execution time of all runs
+        median_time = median(execution_times)
+        median_run = f'run_{execution_times.index(median_time) + 1 }'
 
-            diffs.append(execution_time)
+        metrics['median_execution_time'] = median_time
+        metrics['median_run'] = median_run
+        return metrics
 
-        # We want a real datapoint as median value so only an uneven number of
-        # runs are allowed!
-        time_median = median(diffs)
-        index = diffs.index(time_median) + 1
+    def _generate_plots(self, metrics: dict, directory: str):
+        fig_path = os.path.join(directory, 'results', 'graphs.png')
+        m = metrics[metrics['median_run']]
 
-        return mean(diffs), time_median, index
+        # Re-use the execution time X-axis, 4 metrics: CPU, memory, IO, network
+        fig, ax = plt.subplots(4, 1, figsize=(12, 8))
+        ax[len(ax) - 1].set_xlabel(f'Case execution time (s)')
+        resources = sorted([*set(x['resource'] for x in m)])
 
-    def _stats_find_run(self, resource: dict, metrics: dict,
-                        time_median: float) -> dict:
-        for run in metrics[resource].keys():
-            execution_time = None
-            for entry in metrics[resource][run]:
-                if entry['type'] == METRIC_TYPE_STOP \
-                    and entry['diff'] == time_median:
-                        return metrics[resource][run]
+        for index, metric in enumerate(['cpu_total_time', 'memory_total_size']):
+            y_ticks = []
+            for color_index, r in enumerate(resources):
+                x = []
+                y = []
+                color = self._colors[color_index % len(self._colors)]
+                for entry in filter(lambda y: y['resource'] == r, m):
+                    if entry['type'] == METRIC_TYPE_INIT:
+                        x.append(entry['relative_time'])
+                        y.append(0.0)
+                    elif entry['type'] == METRIC_TYPE_MEASUREMENT:
+                        x.append(entry['relative_time'])
+
+                        if metric == 'memory_total_size':
+                            y.append(entry[metric] / 10**3)
+                        elif metric == 'cpu_total_time':
+                            y.append(entry[metric])
+                        else:
+                            raise ValueError(f'Cannot plot metric: "{metric}"')
+                    elif entry['type'] == METRIC_TYPE_START:
+                        ax[index].axvline(entry['relative_time'], color='grey',
+                                          linestyle='dotted')
+
+                ax[index].plot(x, y, color=color)
+                y_ticks.append(min(y))
+                y_ticks.append(max(y))
+
+                # Subplot titles
+                if metric == 'memory_total_size':
+                    ax[index].set_title('Total memory size vs execution time')
+                    ax[index].set_ylabel(f'Total memory size (MB)')
+                elif metric == 'cpu_total_time':
+                    ax[index].set_title('Total CPU time vs execution time')
+                    ax[index].set_ylabel(f'Total CPU time (s)')
+                else:
+                    raise ValueError(f'Cannot plot metric: "{metric}"')
+
+            ax[index].set_ylim(0.0, max(y_ticks) * PLOT_MARGIN)
+
+        for index, metric in enumerate(['io', 'network']):
+            y_ticks = []
+            for color_index, r in enumerate(resources):
+                x = []
+                y1 = {}
+                y2 = {}
+                color = self._colors[color_index % len(self._colors)]
+                for entry in filter(lambda y: y['resource'] == r, m):
+                    if entry['type'] == METRIC_TYPE_START:
+                        ax[index + 2].axvline(entry['relative_time'],
+                                              color='grey', linestyle='dotted')
+
+                    if metric not in entry:
+                        continue
+
+                    if entry['type'] == METRIC_TYPE_INIT \
+                       or entry['type'] == METRIC_TYPE_MEASUREMENT:
+                            x.append(entry['relative_time'])
+
+                    for data in entry[metric]:
+                        device = data['device']
+                        if device not in y1:
+                            y1[device] = []
+
+                        if device not in y2:
+                            y2[device] = []
+
+                        if entry['type'] == METRIC_TYPE_INIT:
+                            y1[device].append(0.0)
+                            y2[device].append(0.0)
+                        elif entry['type'] == METRIC_TYPE_MEASUREMENT:
+                            if metric == 'io':
+                                value_read = data['total_size_read'] / 10**3
+                                value_write = data['total_size_write'] / 10**3
+                                y1[device].append(value_read)
+                                y2[device].append(value_write)
+                                y_ticks.append(value_read)
+                                y_ticks.append(value_write)
+                            elif metric == 'network':
+                                value_received = data['total_size_received'] / 10**3
+                                value_transmitted = data['total_size_transmitted'] / 10**3
+                                y1[device].append(value_received)
+                                y2[device].append(value_transmitted)
+                                y_ticks.append(value_received)
+                                y_ticks.append(value_transmitted)
+                            else:
+                                raise ValueError(f'Cannot plot metric: "{metric}"')
+
+                # Receive/read
+                for device in y1.keys():
+                    ax[index + 2].plot(x, y1[device], color=color)
+
+                # Transmit/write
+                for device in y2.keys():
+                    ax[index + 2].plot(x, y2[device], color=color,
+                                       linestyle='dashed')
+
+                # Subplot titles
+                if metric == 'io':
+                    ax[index + 2].set_title('IO read/write vs execution time')
+                    ax[index + 2].set_ylabel(f'Data size (MB)')
+                elif metric == 'network':
+                    ax[index + 2].set_title('Network receive/transmit vs execution time')
+                    ax[index + 2].set_ylabel(f'Data size (MB)')
+                else:
+                    raise ValueError(f'Cannot plot metric: "{metric}"')
+
+            ax[index + 2].set_ylim(0.0, max(y_ticks) * PLOT_MARGIN)
+
+        handles = []
+        for color_index, r in enumerate(resources):
+            color = self._colors[color_index % len(self._colors)]
+            label = mpatches.Patch(color=color, label=r)
+            handles.append(label)
+        fig.tight_layout()
+        fig.legend(handles=handles, loc='lower center',
+                   bbox_to_anchor=(0.5, -0.05),
+                   fancybox=False, shadow=False,
+                   ncol=len(handles))
+
+        plt.savefig(fig_path, bbox_inches='tight')
+        plt.close(fig)
 
     def stats(self, case: dict) -> bool:
         data = case['data']
@@ -374,38 +526,30 @@ class Executor:
                   file=sys.stderr)
             return False
 
-        # Parse JSONL metric files by resource name
-        success, metrics = self._parse_metrics(results_path)
-        if not success:
+        # Parse JSONL metric file for each run
+        metrics = self._parse_metrics(results_path)
+        if metrics is None:
             print(f'Cannot parse results for case "{data["name"]}"',
                   file=sys.stderr)
             return False
 
-        for resource in metrics.keys():
-            if len(metrics[resource].keys()) % 2 == 0:
-                print(f'Number of runs must be uneven to generate statistics',
-                      file=sys.stderr)
-                return False
+        # We guarantee that median is always calculated from uneven number
+        # of runs, the median is always a datapoint. Take the run matching
+        # with this median value as median and average run values
+        if len(metrics.keys()) % 2 == 0:
+            print(f'Number of runs must be uneven to generate statistics',
+                  file=sys.stderr)
+            return False
 
-            # We guarantee that median is always calculated from uneven number
-            # of runs, the median is always a datapoint. Take the run matching
-            # with this median value as median and average run values
-            diff_mean, diff_median, run = self._stats_execution_time(resource,
-                                                                     metrics)
-            #print(diff_mean, diff_median, metrics[resource][str(run)])
-            aggregated_metrics = {}
-            aggregated_metrics['resource'] = resource
-            aggregated_metrics['measurements'] = metrics[resource][str(run)]
-            aggregated_metrics['diff_mean'] = diff_mean
-            aggregated_metrics['diff_median'] = diff_median
+        aggregated_metrics = self._aggregate_runs(metrics)
+        aggregated_metrics_path = os.path.join(directory, 'results',
+                                               'aggregated.json')
+        with open(aggregated_metrics_path, 'w') as f:
+            json.dump(aggregated_metrics, f, indent=True)
 
-            aggregated_metrics_path = os.path.join(directory,
-                                                   'results',
-                                                   resource,
-                                                   'metrics_aggregated.json')
-            os.makedirs(os.path.dirname(aggregated_metrics_path), exist_ok=True)
-            with open(aggregated_metrics_path, 'w') as f:
-                json.dump(aggregated_metrics, f, indent=True)
+        # Generate plots of CPU, memory, IO, network against execution time
+        self._generate_plots(metrics, directory)
+
         return True
 
     def clean(self, case: dict):
@@ -455,10 +599,8 @@ class Executor:
         # Launch metrics thread
         stop_event = Event()
         active_resources = []
-        metrics_file = open(os.path.join(results_run_path,
-                                         METRICS_FILE_NAME), 'w')
-        metrics_writer = _JSONLWriter(metrics_file)
-        metrics_writer.writeheader()
+        metrics_file = os.path.join(results_run_path, METRICS_FILE_NAME)
+        metrics_writer = _JSONLWriter(stop_event, metrics_file)
         metrics_thread = Thread(target=_collect_metrics,
                                 args=(stop_event, active_resources,
                                       interval, metrics_writer),
@@ -486,6 +628,18 @@ class Executor:
             active_resources.append(resource)
             start_step = time()
 
+            # non-container resources do not have INIT, add manually
+            # TODO: figure out a better way for non-container resources
+            if step['resource'] in ['Query']:
+                metrics_init = {
+                                 'version': METRIC_VERSION_1,
+                                 'type': METRIC_TYPE_INIT,
+                                 'time': time(),
+                                 'resource': step['resource'],
+                                 'interval': interval
+                               }
+                metrics_writer.writerow(metrics_init)
+
             # Containers may need to start up first before executing a command
             if hasattr(resource, 'wait_until_ready'):
                 if not resource.wait_until_ready():
@@ -499,6 +653,18 @@ class Executor:
                 success = False
                 self._print_step(step['resource'], step['name'], success)
                 break
+
+            # non-container resources do not have EXIT, add manually
+            # TODO: figure out a better way for non-container resources
+            if step['resource'] in ['Query']:
+                    metrics_exit = {
+                                     'version': METRIC_VERSION_1,
+                                     'type': METRIC_TYPE_EXIT,
+                                     'time': time(),
+                                     'resource': step['resource'],
+                                     'interval': interval
+                                   }
+                    metrics_writer.writerow(metrics_exit)
 
             # Store execution time of each step
             diff_step = abs(round(time() - start_step, 2))
@@ -527,11 +693,10 @@ class Executor:
         # Case finished, store diff time
         diff = time() - start
 
-        # Stop all metric measurement threads
+        # Stop all metric measurement and writing threads
         stop_event.set()
         metrics_thread.join()
-        metrics_file.flush()
-        metrics_file.close()
+        metrics_writer.join()
 
         # Stop active containers
         for resource in active_resources:

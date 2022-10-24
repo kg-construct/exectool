@@ -546,7 +546,7 @@ class RDBTests(unittest.TestCase):
         q = Query(DATA_DIR, CONFIG_DIR, False)
         results = q.execute(QUERY, ontop.endpoint, ontop.headers)
         results = list(filter(None, results.split('\n')))
-        self.assertTrue(len(results) == 3)
+        self.assertEqual(len(results), 3)
 
         ontop.stop()
 
@@ -568,7 +568,7 @@ class RDBTests(unittest.TestCase):
         q = Query(DATA_DIR, CONFIG_DIR, False)
         results = q.execute(QUERY, ontop.endpoint, ontop.headers)
         results = list(filter(None, results.split('\n')))
-        self.assertTrue(len(results) == 3)
+        self.assertEqual(len(results), 3)
 
         ontop.stop()
 
@@ -658,7 +658,7 @@ class TriplestoreTests(unittest.TestCase):
         q = Query(DATA_DIR, CONFIG_DIR, False)
         results = q.execute(QUERY, virtuoso.endpoint, virtuoso.headers)
         results = list(filter(None, results.split('\n')))
-        self.assertTrue(len(results) == 3)
+        self.assertEqual(len(results), 3)
 
         # RDF is dropped when container is stopped
         virtuoso.stop()
@@ -679,7 +679,7 @@ class TriplestoreTests(unittest.TestCase):
         q = Query(DATA_DIR, CONFIG_DIR, False)
         results = q.execute(QUERY, virtuoso.endpoint, virtuoso.headers)
         results = list(filter(None, results.split('\n')))
-        self.assertTrue(len(results) == 3)
+        self.assertEqual(len(results), 3)
 
         virtuoso.stop()
 
@@ -697,7 +697,7 @@ class TriplestoreTests(unittest.TestCase):
         q = Query(DATA_DIR, CONFIG_DIR, False)
         results = q.execute(QUERY, fuseki.endpoint, fuseki.headers)
         results = list(filter(None, results.split('\n')))
-        self.assertTrue(len(results) == 3)
+        self.assertEqual(len(results), 3)
 
         fuseki.stop()
 
@@ -708,7 +708,7 @@ class TriplestoreTests(unittest.TestCase):
         q = Query(DATA_DIR, CONFIG_DIR, False)
         results = q.execute(QUERY, fuseki.endpoint, fuseki.headers)
         results = list(filter(None, results.split('\n')))
-        self.assertTrue(len(results) == 0)
+        self.assertEqual(len(results), 0)
 
         # Test if we can now reload our RDF
         self.assertTrue(fuseki.load('student.nt'))
@@ -717,7 +717,7 @@ class TriplestoreTests(unittest.TestCase):
         q = Query(DATA_DIR, CONFIG_DIR, False)
         results = q.execute(QUERY, fuseki.endpoint, fuseki.headers)
         results = list(filter(None, results.split('\n')))
-        self.assertTrue(len(results) == 3)
+        self.assertEqual(len(results), 3)
 
         fuseki.stop()
 
@@ -728,7 +728,7 @@ class TriplestoreTests(unittest.TestCase):
         q = Query(DATA_DIR, CONFIG_DIR, False)
         results = q.execute(QUERY, DBPEDIA_SPARQL)
         results = list(filter(None, results.split('\n')))
-        self.assertTrue(len(results) == 100)
+        self.assertEqual(len(results), 100)
 
     def test_query_execute_and_save(self):
         QUERY = 'CONSTRUCT WHERE { ?s ?p ?o. } LIMIT 100'
@@ -739,7 +739,7 @@ class TriplestoreTests(unittest.TestCase):
                                            {}))
         with open(os.path.join(DATA_DIR, 'shared', 'results.nt'), 'r') as f:
             results = list(filter(None, f.read().split('\n')))
-            self.assertTrue(len(results) == 100)
+            self.assertEqual(len(results), 100)
 
     def test_query_execute_from_file(self):
         QUERY_FILE = 'spo100.q'
@@ -748,7 +748,7 @@ class TriplestoreTests(unittest.TestCase):
         q = Query(DATA_DIR, CONFIG_DIR, False)
         results = q.execute_from_file(QUERY_FILE, DBPEDIA_SPARQL, {})
         results = list(filter(None, results.split('\n')))
-        self.assertTrue(len(results) == 100)
+        self.assertEqual(len(results), 100)
 
     def test_query_execute_from_file_and_save(self):
         QUERY_FILE = 'spo100.q'
@@ -759,7 +759,7 @@ class TriplestoreTests(unittest.TestCase):
                                                      'results.nt', {}))
         with open(os.path.join(DATA_DIR, 'shared', 'results.nt'), 'r') as f:
             results = list(filter(None, f.read().split('\n')))
-            self.assertTrue(len(results) == 100)
+            self.assertEqual(len(results), 100)
 
 class IntegrationTests(unittest.TestCase):
     def setUp(self):
@@ -808,8 +808,34 @@ class IntegrationTests(unittest.TestCase):
              f'{BASE_URL}/ontopendpoint/fuseki/'
              'transform-postgresql-to-ntriples']
         # We expect 28 cases
-        self.assertTrue(len(iris) == 28)
+        self.assertEqual(len(iris), 28)
         self.assertListEqual(e, iris)
+
+    def test_executor_stats(self):
+        path = os.path.join(DATA_DIR, 'test-cases', 'rmlmapper', 'fuseki')
+        executor = Executor(path, False)
+
+        # Limit to 3 cases to speed up tests
+        for case in executor.list():
+            directory = case['directory']
+
+            # Clean case
+            executor.clean(case)
+
+            # Run case
+            self.assertTrue(executor.run(case, 0.1, 1, True))
+
+            # Generate stats
+            executor.stats(case)
+
+            # Verify stats
+            aggregated_path = os.path.join(directory, 'results',
+                                           'aggregated.json')
+            self.assertTrue(os.path.exists(aggregated_path))
+            with open(aggregated_path, 'r') as f:
+                metrics = json.load(f)
+                self.assertIn('median_execution_time', metrics)
+                self.assertIn('median_run', metrics)
 
     def test_executor_run(self):
         path = os.path.join(DATA_DIR, 'test-cases')
@@ -904,7 +930,7 @@ class IntegrationTests(unittest.TestCase):
 
                 self.assertTrue(os.path.exists(checkpoint_file))
                 with open(checkpoint_file) as f:
-                    self.assertTrue(len(f.readlines()) == 1)
+                    self.assertEqual(len(f.readlines()), 1)
 
 if __name__ == '__main__':
     # SELinux causes weird permission denied issues, warn users
