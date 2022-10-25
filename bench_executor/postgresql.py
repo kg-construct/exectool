@@ -8,6 +8,7 @@ from psycopg2 import sql
 from csv import reader
 from time import sleep
 from container import Container
+from typing import List
 
 HOST = 'localhost'
 USER = 'root'
@@ -60,7 +61,7 @@ class PostgreSQL(Container):
     def load(self, csv_file: str, table: str) -> bool:
         return self._load_csv(csv_file, table, True)
 
-    def load_sql_schema(self, schema_file: str, csv_files: list[str]) -> bool:
+    def load_sql_schema(self, schema_file: str, csv_files: List[str]) -> bool:
         success = True
 
         # Load SQL schema

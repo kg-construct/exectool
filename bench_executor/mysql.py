@@ -6,6 +6,7 @@ import pymysql
 import tempfile
 from csv import reader
 from container import Container
+from typing import List
 
 VERSION = '8.0'
 HOST = 'localhost'
@@ -57,7 +58,7 @@ class MySQL(Container):
     def load(self, csv_file: str, table: str) -> bool:
         return self._load_csv(csv_file, table, True)
 
-    def load_sql_schema(self, schema_file: str, csv_files: list[str]) -> bool:
+    def load_sql_schema(self, schema_file: str, csv_files: List[str]) -> bool:
         success = True
 
         # Load SQL schema
