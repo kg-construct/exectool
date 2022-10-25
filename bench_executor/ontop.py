@@ -6,8 +6,7 @@ import psutil
 import configparser
 from container import Container
 
-#VERSION = '4.2.0'
-VERSION = '4.3.0-SNAPSHOT' # With N-Triples and N-Quads support
+VERSION = '4.2.1-PATCH' # 4.2.1 with N-Triples and N-Quads support
 
 class _Ontop(Container):
     def __init__(self, name: str, data_path: str, verbose: bool, mode: str):
@@ -57,6 +56,9 @@ class _Ontop(Container):
         else:
             print(f'Unknown Ontop mode "{self._mode}"', file=sys.stderr)
             success = False
+
+        for l in self.logs():
+            print(l.strip())
 
         return success
 

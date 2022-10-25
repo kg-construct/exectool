@@ -146,7 +146,9 @@ class Container():
         logs = self._container.logs(stream=True, follow=True)
         if logs is not None:
             for line in logs:
-                line = line.strip().decode()
+                line = line.decode()
+                self._logs.append(line)
+                line = line.strip()
 
                 if time() - start > TIMEOUT_TIME:
                     print(f'Starting container "{self._name}" timed out!',
@@ -164,6 +166,12 @@ class Container():
     def run_and_wait_for_exit(self, command: str = '') -> bool:
         if not self.run(command):
             return False
+
+        logs = self._container.logs(stream=True, follow=True)
+        if logs is not None:
+            for line in logs:
+                line = line.decode()
+                self._logs.append(line)
 
         if self._container.wait()['StatusCode'] == 0:
             return True

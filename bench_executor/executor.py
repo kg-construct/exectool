@@ -116,7 +116,8 @@ def _collect_metrics(stop_event: Event, active_resources: list,
         # Wait the specific interval but substract the time we needed to
         # collect the metrics so we still have our fixed interval
         delta = time() - timestamp
-        sleep(interval - delta)
+        if (interval - delta > 0.0):
+            sleep(interval - delta)
 
     # Some containers keep running throughout the whole case, write the stop
     # metric once the metric measurement thread exists as the case is finished

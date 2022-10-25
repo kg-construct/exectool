@@ -49,7 +49,7 @@ class Query():
             results = self.execute(query, sparql_endpoint, headers)
         except Exception as e:
             print(f'Failed to execute query "{query}" on endpoint '
-                  f'"{sparql_endpoint}"', file=sys.stderr)
+                  f'"{sparql_endpoint}": {e}', file=sys.stderr)
             self._logs.append(f'{e}\n')
             return False
         path = os.path.join(self._data_path, 'shared')
