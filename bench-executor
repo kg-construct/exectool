@@ -185,6 +185,8 @@ if __name__ == '__main__':
             sys.exit(EXIT_CODE_SELINUX)
     except subprocess.CalledProcessError:
         pass
+    except FileNotFoundError:
+        pass
 
     e = Executor(args.main_directory, verbose=args.verbose, cli=True)
 

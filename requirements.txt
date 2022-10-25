@@ -3,3 +3,7 @@ pymysql
 docker
 jsonschema
 psutil
+requests
+rdflib
+matplotlib
+numpy
