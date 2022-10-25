@@ -22,7 +22,7 @@ class Fuseki(Container):
         # Set Java heap to 1/2 of available memory instead of the default 1/4
         max_heap = int(psutil.virtual_memory().total * (1/2))
 
-        super().__init__(f'apache/fuseki:v{VERSION}', 'Fuseki',
+        super().__init__(f'dylanvanassche/fuseki:v{VERSION}', 'Fuseki',
                          ports={'3030':'3030'},
                          environment={
                              'JAVA_OPTIONS':f'-Xmx{max_heap} -Xms{max_heap}'

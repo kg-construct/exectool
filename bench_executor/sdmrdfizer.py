@@ -17,7 +17,7 @@ class SDMRDFizer(Container):
         self._config_path = os.path.abspath(config_path)
         self._verbose = verbose
         os.makedirs(os.path.join(self._data_path, 'sdmrdfizer'), exist_ok=True)
-        super().__init__(f'kg-construct/sdm-rdfizer:v{VERSION}', 'SDM-RDFizer',
+        super().__init__(f'dylanvanassche/sdm-rdfizer:v{VERSION}', 'SDM-RDFizer',
                          volumes=[f'{self._data_path}/sdmrdfizer:/data',
                                   f'{self._data_path}/shared:/data/shared'])
 

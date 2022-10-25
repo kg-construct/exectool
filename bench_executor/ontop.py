@@ -21,7 +21,7 @@ class _Ontop(Container):
         max_heap = int(psutil.virtual_memory().total * (1/2))
 
         environment = {'ONTOP_JAVA_ARGS': f'-Xmx{max_heap} -Xms{max_heap}'}
-        super().__init__(f'kg-construct/ontop:v{VERSION}', name,
+        super().__init__(f'dylanvanassche/ontop:v{VERSION}', name,
                          ports={'8888':'8888'},
                          environment=environment,
                          volumes=[f'{self._data_path}/'

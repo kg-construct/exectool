@@ -12,7 +12,7 @@ class MorphKGC(Container):
         self._config_path = os.path.abspath(config_path)
         self._verbose = verbose
         os.makedirs(os.path.join(self._data_path, 'morphkgc'), exist_ok=True)
-        super().__init__(f'kg-construct/morph-kgc:v{VERSION}', 'Morph-KGC',
+        super().__init__(f'dylanvanassche/morph-kgc:v{VERSION}', 'Morph-KGC',
                          volumes=[f'{self._data_path}/morphkgc:/data',
                                   f'{self._data_path}/shared:/data/shared'])
 

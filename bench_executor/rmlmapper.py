@@ -12,7 +12,7 @@ class RMLMapper(Container):
         self._data_path = os.path.abspath(data_path)
         self._config_path = os.path.abspath(config_path)
         os.makedirs(os.path.join(self._data_path, 'rmlmapper'), exist_ok=True)
-        super().__init__(f'kg-construct/rmlmapper:v{VERSION}', 'RMLMapper',
+        super().__init__(f'dylanvanassche/rmlmapper:v{VERSION}', 'RMLMapper',
                          volumes=[f'{self._data_path}/rmlmapper:/data',
                                   f'{self._data_path}/shared:/data/shared'])
 
