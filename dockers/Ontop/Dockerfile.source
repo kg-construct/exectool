@@ -3,8 +3,9 @@
 # https://github.com/ontop/ontop
 ################################################################################
 FROM ubuntu:22.04
-# Configure the Ontop version to use
-ARG COMMIT="627f98a44434152a226e69f3a99af864508e035d"
+# Configure the Ontop version to use: 4.2.1-PATCH
+# Branch: https://github.com/DylanVanAssche/ontop/tree/ontop-4.2.1-PATCH
+ARG COMMIT="8d24757cfbc0980459a09c679c03dbd10c1cdfdd"
 ARG URL=https://github.com/DylanVanAssche/ontop/archive/$COMMIT.zip
 
 # Install latest updates and dependencies
