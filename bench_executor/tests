@@ -196,7 +196,7 @@ class UnitTests(unittest.TestCase):
         postgresql.stop()
 
     def test_mysql(self):
-        mysql = MySQL(DATA_DIR, CONFIG_DIR, True)
+        mysql = MySQL(DATA_DIR, CONFIG_DIR, False)
         self.assertTrue(mysql.initialization())
         self.assertTrue(mysql.wait_until_ready())
         connection = pymysql.connect(host='localhost', user='root',
