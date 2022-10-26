@@ -45,7 +45,7 @@ class _JSONLWriter():
         self._writing_thread.start()
 
     def _write_queue(self, q: Queue):
-        while True:
+        while not self._stop_event.wait(0):
             try:
                 row = q.get(timeout=1)
             except Empty:
@@ -53,10 +53,6 @@ class _JSONLWriter():
             r = json.dumps(row, sort_keys=True).replace('\n', '') + '\n'
             self._file.write(r)
             q.task_done()
-
-            # Stop thread when queue is empty and the stop_event was set
-            if self._queue.empty() and self._stop_event.wait(0):
-                break
 
         self._file.close()
 
