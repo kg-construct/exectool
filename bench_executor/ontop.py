@@ -57,9 +57,6 @@ class _Ontop(Container):
             print(f'Unknown Ontop mode "{self._mode}"', file=sys.stderr)
             success = False
 
-        for l in self.logs():
-            print(l.strip())
-
         return success
 
     def execute_mapping(self, config_file: str, arguments: list,

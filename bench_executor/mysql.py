@@ -68,11 +68,6 @@ class MySQL(Container):
               f'< /data/shared/{schema_file}\''
         success, output = self.exec(cmd)
 
-        for l in output.split('\n'):
-            print(l.strip())
-
-        print('LOADING CSVs')
-
         # Load CSVs
         if success:
             for csv_file, table in csv_files:

@@ -32,10 +32,9 @@ class MorphRDB(Container):
               f'-cp .:morph-rdb-dist-3.12.6.jar:dependency/* ' + \
               f'es.upm.fi.dia.oeg.morph.r2rml.rdb.engine.MorphRDBRunner ' + \
               f'/data config.properties'
-        s =  self.run_and_wait_for_exit(cmd)
-        for l in self.logs():
-            print(l.strip())
-        return s
+        success =  self.run_and_wait_for_exit(cmd)
+
+        return success
 
     def execute_mapping(self, mapping_file: str, output_file: str,
                         serialization: str, rdb_username: str = None,

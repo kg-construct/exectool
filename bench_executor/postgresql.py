@@ -69,8 +69,6 @@ class PostgreSQL(Container):
         # Load SQL schema
         success, output = self.exec(f'psql -h {HOST} -p {PORT} -U {USER} '
                                     f'-d {DB} -f /data/shared/{schema_file}')
-        for l in output.split('\n'):
-            print(l)
         # Load CSVs
         if success:
             for csv_file, table in csv_files:
