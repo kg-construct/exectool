@@ -22,7 +22,7 @@ Cgroup Version: 2
 1. Install dependencies
 
 ```
-sudo apt install zlib1g zlib1g-dev libpq-dev libjpeg-dev
+sudo apt install zlib1g zlib1g-dev libpq-dev libjpeg-dev python3-pip
 ```
 
 ```
