@@ -244,8 +244,8 @@ class Container():
                     # <metric> <value>
                     cpu_raw = f.read()
                     for raw in cpu_raw.split('\n'):
-                        if 'usage_usec' in raw or 'user_usec' in raw \
-                            or 'system_usec' in raw:
+                        if 'usage_usec' in raw and 'user_usec' in raw \
+                            and 'system_usec' in raw:
                             metric, value = raw.split(' ')
                             if metric == 'usage_usec':
                                 stats['cpu_total_time'] = \
@@ -269,9 +269,18 @@ class Container():
                     # <major:minor> rbytes=<value> wbytes=<value> rios=<value>
                     # wios=<value> dbytes=<value> dios=<value>
                     io_raw = f.read()
+                    KEYS = ['rbytes', 'wbytes', 'rios', 'wios', 'dbytes',
+                            'dios']
                     for raw in io_raw.split('\n'):
-                        if raw == '':
+                        missing_key = False
+                        for k in KEYS:
+                            if k not in raw:
+                                missing_key = True
+                                break
+
+                        if missing_key:
                             continue
+
                         device_number = re.search(r"(\d*:\d*) ",
                                                   raw).groups()[0]
                         device = os.path.realpath(os.path.join(DEV_BLOCK_DIR,
@@ -314,7 +323,11 @@ class Container():
                     for raw in network_raw.split('\n'):
                         if raw == '' or 'Receive' in raw or 'packets' in raw:
                             continue
-                        network = re.search(NETWORK_REGEX, raw).groups()
+                        try:
+                            network = re.search(NETWORK_REGEX, raw).groups()
+                        except AttributeError:
+                            continue
+
                         device = network[0]
                         bytes_received = int(network[1])
                         packets_received = int(network[2])
