@@ -360,8 +360,24 @@ class Container():
                             'number_of_drops_transmitted': dropped_transmitted
                         })
 
-                if cpu_raw and memory_raw and io_raw and network_raw:
-                    return stats
+
+                # Check if the necessary keys are present
+                missing_key = False
+                KEYS = ['cpu_total_time', 'cpu_user_time', 'cpu_system_time',
+                        'memory_total_size', 'io', 'network']
+                for k in KEYS:
+                    if k not in stats:
+                        missing_key = True
+                        break
+
+                if missing_key:
+                    None
+
+                # At least one IO and network device must be present
+                if not stats['io'] or not stats['network']:
+                    return None
+
+                return stats
             except FileNotFoundError:
                 return None
 
