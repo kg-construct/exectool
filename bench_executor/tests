@@ -942,6 +942,8 @@ if __name__ == '__main__':
             sys.exit(-1)
     except subprocess.CalledProcessError:
         pass
+    except FileNotFoundError:
+        pass
 
     if len(manager.list_all()) != 0:
         print('Stopping all containers before starting tests...')
