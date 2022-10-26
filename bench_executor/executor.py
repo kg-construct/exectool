@@ -16,7 +16,7 @@ from datetime import datetime
 from time import time, sleep
 from typing import Tuple, Optional
 from threading import Thread, Event
-from queue import Queue
+from queue import Queue, Empty
 from statistics import mean, median
 
 METADATA_FILE = 'metadata.json'
@@ -46,7 +46,10 @@ class _JSONLWriter():
 
     def _write_queue(self, q: Queue):
         while True:
-            row = q.get()
+            try:
+                row = q.get(timeout=1)
+            except Empty:
+                continue
             r = json.dumps(row, sort_keys=True).replace('\n', '') + '\n'
             self._file.write(r)
             q.task_done()
