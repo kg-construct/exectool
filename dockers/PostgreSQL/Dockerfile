@@ -1,3 +1,3 @@
 ARG POSTGRESQL_VERSION
 
-FROM postgres:{POSTGRESQL_VERSION}-bullseye
+FROM postgres:${POSTGRESQL_VERSION}-bullseye

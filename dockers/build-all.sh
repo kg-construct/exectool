@@ -1,4 +1,5 @@
 #!/bin/sh
+set -e
 #
 # Build script for all Docker containers.
 #
@@ -60,7 +61,7 @@ cd ..
 # Ontop
 echo "*** Building Ontop $ONTOP_VERSION ... ***"
 cd Ontop
-docker build -f "Dockerfile.source" -t dylanvanassche/ontop:$ONTOP_VERSION .
+docker build --no-cache -f "Dockerfile.source" -t dylanvanassche/ontop:v$ONTOP_VERSION .
 docker push dylanvanassche/ontop:v$ONTOP_VERSION
 cd ..
 
