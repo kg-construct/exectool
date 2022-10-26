@@ -58,6 +58,14 @@ class SDMRDFizer(Container):
             'mapping': f'/data/shared/{os.path.basename(mapping_file)}'
         }
 
+        if serialization == 'ntriples':
+            config['datasets']['output_format'] = 'n-triples'
+        elif serialization == 'turtle':
+            config['datasets']['output_format'] = 'turtle'
+        else:
+            raise NotImplementedError('SDM-RDFizer does not support'
+                                      f'"serialization" output format')
+
         if rdb_username is not None and rdb_password is not None \
             and rdb_host is not None and rdb_port is not None \
             and rdb_name is not None and rdb_type is not None:
