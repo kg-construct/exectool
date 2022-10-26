@@ -244,8 +244,8 @@ class Container():
                     # <metric> <value>
                     cpu_raw = f.read()
                     for raw in cpu_raw.split('\n'):
-                        if 'usage_usec' in raw and 'user_usec' in raw \
-                            and 'system_usec' in raw:
+                        if 'usage_usec' in raw or 'user_usec' in raw \
+                            or 'system_usec' in raw:
                             metric, value = raw.split(' ')
                             if metric == 'usage_usec':
                                 stats['cpu_total_time'] = \
