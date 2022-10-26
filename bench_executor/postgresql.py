@@ -10,6 +10,7 @@ from time import sleep
 from container import Container
 from typing import List
 
+VERSION = '14.5'
 HOST = 'localhost'
 USER = 'root'
 PASSWORD = 'root'
@@ -28,7 +29,7 @@ class PostgreSQL(Container):
         os.makedirs(os.path.join(self._data_path, 'postgresql'), exist_ok=True)
         self._tables = []
 
-        super().__init__('postgres:14.5-bullseye', 'PostgreSQL',
+        super().__init__(f'dylanvanassche/postgresql:v{VERSION}', 'PostgreSQL',
                          ports={PORT: PORT},
                          environment={'POSTGRES_PASSWORD': PASSWORD,
                                       'POSTGRES_USER': USER,

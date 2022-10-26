@@ -15,7 +15,7 @@ class Virtuoso(Container):
         os.umask(0)
         os.makedirs(tmp_dir, exist_ok=True)
         os.makedirs(os.path.join(self._data_path, 'virtuoso'), exist_ok=True)
-        super().__init__(f'openlink/virtuoso-opensource-7:{VERSION}',
+        super().__init__(f'dylanvanassche/virtuoso:v{VERSION}',
                          'Virtuoso', ports={'8890':'8890', '1111':'1111'},
                          environment={'DBA_PASSWORD':'root'},
                          volumes=[f'{self._data_path}/shared:/usr/share/proj',
