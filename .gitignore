@@ -10,11 +10,12 @@ bench_executor/data/ontopmaterialize/
 bench_executor/data/sdmrdfizer/
 bench_executor/data/query/
 bench_executor/data/test-cases/*/data
-bench_executor/data/cases/*/results
+bench_executor/data/test-cases/*/results
 *.done
 *logs.txt
 *metrics.jsonl
 *results.nt
+*stats.csv
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
