@@ -11,6 +11,7 @@ class MorphKGC(Container):
         self._data_path = os.path.abspath(data_path)
         self._config_path = os.path.abspath(config_path)
         self._verbose = verbose
+        os.umask(0)
         os.makedirs(os.path.join(self._data_path, 'morphkgc'), exist_ok=True)
         super().__init__(f'dylanvanassche/morph-kgc:v{VERSION}', 'Morph-KGC',
                          volumes=[f'{self._data_path}/morphkgc:/data',
@@ -61,6 +62,7 @@ class MorphKGC(Container):
                       f'@{rdb_host}:{rdb_port}/{rdb_name}'
             config['DataSource0']['db_url'] = rdb_dsn
 
+        os.umask(0)
         os.makedirs(os.path.join(self._data_path, 'morphkgc'), exist_ok=True)
         path = os.path.join(self._data_path, 'morphkgc', 'config_morphkgc.ini')
         with open(path, 'w') as f:

@@ -73,15 +73,22 @@ class Container():
         if os.path.exists(CGROUPS_DIR_SYSTEMD_V1):
             self._cgroups_dir = CGROUPS_DIR_SYSTEMD_V1
             self._cgroups_mode = CGROUPS_MODE_SYSTEMD
+            raise NotImplementedError('CGroupsFSv1 SystemD driver is '
+                                      'unsupported, use CGroupFSv2 SystemD '
+                                      'driver instead')
         elif os.path.exists(CGROUPS_DIR_CGROUPFS_V1):
             self._cgroups_dir = CGROUPS_MODE_CGROUPSFS_V1
             self._cgroups_mode = CGROUPS_MODE_CGROUPSFS
+            raise NotImplementedError('CGroupsFSv1 plain driver is unsupported,'
+                                      ' use CGroupFSv2 SystemD driver instead')
         elif os.path.exists(CGROUPS_DIR_SYSTEMD_V2):
             self._cgroups_dir = CGROUPS_DIR_SYSTEMD_V2
             self._cgroups_mode = CGROUPS_MODE_SYSTEMD
         elif os.path.exists(CGROUPS_DIR_CGROUPFS_V2):
             self._cgroups_dir = CGROUPS_DIR_CGROUPSFS_V2
             self._cgroups_mode = CGROUPS_MODE_CGROUPSFS
+            raise NotImplementedError('CGroupsFSv2 plain driver is unsupported,'
+                                      'use CGroupFSv2 SystemD driver instead')
         else:
             print('CGroups not found, stats unsupported', file=sys.stderr)
 

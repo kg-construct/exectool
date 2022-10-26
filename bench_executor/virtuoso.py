@@ -12,6 +12,7 @@ class Virtuoso(Container):
         self._config_path = os.path.abspath(config_path)
         self._verbose = verbose
         tmp_dir = os.path.join(tempfile.gettempdir(), 'virtuoso')
+        os.umask(0)
         os.makedirs(tmp_dir, exist_ok=True)
         os.makedirs(os.path.join(self._data_path, 'virtuoso'), exist_ok=True)
         super().__init__(f'openlink/virtuoso-opensource-7:{VERSION}',

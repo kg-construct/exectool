@@ -16,6 +16,7 @@ class Fuseki(Container):
         self._config_path = os.path.abspath(config_path)
         self._verbose = verbose
         tmp_dir = os.path.join(tempfile.gettempdir(), 'fuseki')
+        os.umask(0)
         os.makedirs(tmp_dir, exist_ok=True)
         os.makedirs(os.path.join(self._data_path, 'fuseki'), exist_ok=True)
 

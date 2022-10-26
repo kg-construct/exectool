@@ -583,6 +583,7 @@ class Executor:
             self.clean(case)
 
         # create directories
+        os.umask(0)
         os.makedirs(data_path, exist_ok=True)
         os.makedirs(results_run_path, exist_ok=True)
 

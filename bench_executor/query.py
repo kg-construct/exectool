@@ -13,6 +13,7 @@ class Query():
         self._logs = []
         self._name = 'Query'
 
+        os.umask(0)
         os.makedirs(os.path.join(self._data_path, 'query'), exist_ok=True)
 
     @property
@@ -53,6 +54,7 @@ class Query():
             self._logs.append(f'{e}\n')
             return False
         path = os.path.join(self._data_path, 'shared')
+        os.umask(0)
         os.makedirs(path, exist_ok=True)
         results_file = os.path.join(path, results_file)
         with open(results_file, 'w') as f:

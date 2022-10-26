@@ -22,6 +22,7 @@ class MySQL(Container):
         self._verbose = verbose
         self._tables = []
         tmp_dir = os.path.join(tempfile.gettempdir(), 'mysql')
+        os.umask(0)
         os.makedirs(tmp_dir, exist_ok=True)
         os.makedirs(os.path.join(self._data_path, 'mysql'), exist_ok=True)
 

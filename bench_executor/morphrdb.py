@@ -13,6 +13,7 @@ class MorphRDB(Container):
         self._data_path = os.path.abspath(data_path)
         self._config_path = os.path.abspath(config_path)
         self._verbose = verbose
+        os.umask(0)
         os.makedirs(os.path.join(self._data_path, 'morphrdb'), exist_ok=True)
         super().__init__(f'dylanvanassche/morph-rdb:v{VERSION}', 'Morph-RDB',
                          volumes=[f'{self._data_path}/shared:/data/shared',
@@ -82,6 +83,7 @@ class MorphRDB(Container):
             config['root']['no_of_database'] = '1'
 
         path = os.path.join(self._data_path, 'morphrdb')
+        os.umask(0)
         os.makedirs(path, exist_ok=True)
         with open(os.path.join(path, 'config.properties'), 'w') as f:
             config.write(f, space_around_delimiters=False)
