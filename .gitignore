@@ -15,6 +15,7 @@ bench_executor/data/test-cases/*/*/*/data
 bench_executor/data/test-cases/*/results
 bench_executor/data/test-cases/*/*/results
 bench_executor/data/test-cases/*/*/*/results
+*tmp_student.csv
 *.done
 *logs.txt
 *metrics.jsonl

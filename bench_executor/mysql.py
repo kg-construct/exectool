@@ -82,6 +82,7 @@ class MySQL(Container):
         columns = None
         table = table.lower()
         path = os.path.join(self._data_path, 'shared', csv_file)
+        path2 = os.path.join(self._data_path, 'shared', f'tmp_{csv_file}')
 
         self._tables.append(table)
 
@@ -95,6 +96,15 @@ class MySQL(Container):
             columns = next(csv_reader)
             columns = [x.lower() for x in columns]
 
+        # MySQL cannot set NULL as NULL keyword, use their own specific syntax
+        # for this: \N
+        with open(path, 'r') as f:
+            data = f.read()
+            data = data.replace('NULL', '\\N')
+
+            with open(path2, 'w') as f2:
+                f2.write(data)
+
         # Load CSV
         connection = pymysql.connect(host=HOST, user=USER, password=PASSWORD,
                                      db=DB)
@@ -107,7 +117,7 @@ class MySQL(Container):
                 cursor.execute(f'CREATE TABLE {table} (k INT ZEROFILL NOT NULL '
                                f'AUTO_INCREMENT, {c}, PRIMARY KEY(k));')
             c = ','.join(columns)
-            cursor.execute(f'LOAD DATA INFILE \'/data/shared/{csv_file}\' '
+            cursor.execute(f'LOAD DATA INFILE \'/data/shared/tmp_{csv_file}\' '
                            f'INTO TABLE {table} FIELDS TERMINATED BY \',\' '
                            f'ENCLOSED BY \'\\"\' LINES TERMINATED BY \'\\n\' '
                            f'IGNORE 1 ROWS ({c});')

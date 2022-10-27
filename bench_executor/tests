@@ -142,7 +142,7 @@ class UnitTests(unittest.TestCase):
         results = []
         for record in cursor:
             results.append([record[0], record[1]])
-        expected = [['Jefke', '21'], ['Maria', '22'], ['Jos', '23']]
+        expected = [['Jefke', '21'], ['Maria', '22'], ['Jos', '23'], [None, None]]
         self.assertListEqual(results, expected)
 
         # Test invalid query
@@ -169,7 +169,7 @@ class UnitTests(unittest.TestCase):
         results = []
         for record in cursor:
             results.append([record[0], record[1]])
-        expected = [['Jefke', '21'], ['Maria', '22'], ['Jos', '23']]
+        expected = [['Jefke', '21'], ['Maria', '22'], ['Jos', '23'], [None, None]]
         self.assertListEqual(results, expected)
 
         # Check SQL schema loading with 2 tables
@@ -181,7 +181,7 @@ class UnitTests(unittest.TestCase):
         results = []
         for record in cursor:
             results.append([record[0], record[1]])
-        expected = [['Jefke', '21'], ['Maria', '22'], ['Jos', '23']]
+        expected = [['Jefke', '21'], ['Maria', '22'], ['Jos', '23'], [None, None]]
         self.assertListEqual(results, expected)
 
         # Verify table 2
@@ -189,7 +189,7 @@ class UnitTests(unittest.TestCase):
         results = []
         for record in cursor:
             results.append([record[0], record[1]])
-        expected = [['Jefke', '21'], ['Maria', '22'], ['Jos', '23']]
+        expected = [['Jefke', '21'], ['Maria', '22'], ['Jos', '23'], [None, None]]
         self.assertListEqual(results, expected)
 
         connection.close()
@@ -212,7 +212,7 @@ class UnitTests(unittest.TestCase):
         results = []
         for record in cursor:
             results.append([record[0], record[1]])
-        expected = [['Jefke', '21'], ['Maria', '22'], ['Jos', '23']]
+        expected = [['Jefke', '21'], ['Maria', '22'], ['Jos', '23'], [None, None]]
         self.assertListEqual(results, expected)
 
         # Test invalid query
@@ -238,7 +238,7 @@ class UnitTests(unittest.TestCase):
         results = []
         for record in cursor:
             results.append([record[0], record[1]])
-        expected = [['Jefke', '21'], ['Maria', '22'], ['Jos', '23']]
+        expected = [['Jefke', '21'], ['Maria', '22'], ['Jos', '23'], [None, None]]
         self.assertListEqual(results, expected)
 
         # Check SQL schema loading with 2 tables
@@ -256,7 +256,7 @@ class UnitTests(unittest.TestCase):
         results = []
         for record in cursor:
             results.append([record[0], record[1]])
-        expected = [['Jefke', '21'], ['Maria', '22'], ['Jos', '23']]
+        expected = [['Jefke', '21'], ['Maria', '22'], ['Jos', '23'], [None, None]]
         self.assertListEqual(results, expected)
 
         # Verify table 2
@@ -264,7 +264,7 @@ class UnitTests(unittest.TestCase):
         results = []
         for record in cursor:
             results.append([record[0], record[1]])
-        expected = [['Jefke', '21'], ['Maria', '22'], ['Jos', '23']]
+        expected = [['Jefke', '21'], ['Maria', '22'], ['Jos', '23'], [None, None]]
         self.assertListEqual(results, expected)
 
         connection.close()
