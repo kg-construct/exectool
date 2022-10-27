@@ -8,7 +8,7 @@ from time import time, sleep
 from typing import Optional, List, Tuple
 
 WAIT_TIME = 1 # seconds
-TIMEOUT_TIME = 100 # seconds
+TIMEOUT_TIME = 600 # seconds
 NETWORK_NAME = 'bench_executor'
 DEV_BLOCK_DIR = '/dev/block/'
 CGROUPS_DIR_SYSTEMD_V1 = '/sys/fs/cgroup/memory/system.slice/'
