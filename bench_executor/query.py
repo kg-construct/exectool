@@ -38,6 +38,8 @@ class Query():
             r = requests.post(sparql_endpoint, data=data, headers=headers)
         else:
             r = requests.post(sparql_endpoint, data=data)
+        if r.status_code != 200:
+            print(r.text, file=sys.stderr)
         r.raise_for_status()
         return r.text
 
