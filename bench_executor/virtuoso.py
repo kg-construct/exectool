@@ -2,9 +2,14 @@
 
 import os
 import tempfile
+import psutil
 from container import Container
 
 VERSION = '7.2.7'
+VIRTUOSO_MAX_ROWS = '10000000'
+VIRTUOSO_PASSWORD = 'root'
+VIRTUOSO_NUMBER_OF_BUFFERS_PER_GB = 85000
+VIRTUOSO_MAX_DIRTY_BUFFERS_PER_GB = 65000
 
 class Virtuoso(Container):
     def __init__(self, data_path: str, config_path: str, verbose: bool):
@@ -15,9 +20,17 @@ class Virtuoso(Container):
         os.umask(0)
         os.makedirs(tmp_dir, exist_ok=True)
         os.makedirs(os.path.join(self._data_path, 'virtuoso'), exist_ok=True)
+        number_of_buffers = int(psutil.virtual_memory().total / (10**9) \
+                                * VIRTUOSO_NUMBER_OF_BUFFERS_PER_GB)
+        max_dirty_buffers = int(psutil.virtual_memory().total / (10**9) \
+                                * VIRTUOSO_MAX_DIRTY_BUFFERS_PER_GB)
+        environment={'DBA_PASSWORD': VIRTUOSO_PASSWORD,
+                     'VIRT_SPARQL_ResultSetMaxRows': VIRTUOSO_MAX_ROWS,
+                     'VIRT_Parameters_NumberOfBuffers': number_of_buffers,
+                     'VIRT_Parameters_MaxDirtyBuffers': max_dirty_buffers}
         super().__init__(f'dylanvanassche/virtuoso:v{VERSION}',
                          'Virtuoso', ports={'8890':'8890', '1111':'1111'},
-                         environment={'DBA_PASSWORD':'root'},
+                         environment=environment,
                          volumes=[f'{self._data_path}/shared:/usr/share/proj',
                                   f'{tmp_dir}:/database'])
         self._endpoint = 'http://localhost:8890/sparql'
