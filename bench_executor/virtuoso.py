@@ -7,6 +7,7 @@ from container import Container
 
 VERSION = '7.2.7'
 VIRTUOSO_MAX_ROWS = '10000000'
+VIRTUOSO_MAX_VECTOR_SIZE = '3000000' # max value is 'around' 3,500,000 from docs
 VIRTUOSO_PASSWORD = 'root'
 VIRTUOSO_NUMBER_OF_BUFFERS_PER_GB = 85000
 VIRTUOSO_MAX_DIRTY_BUFFERS_PER_GB = 65000
@@ -26,6 +27,7 @@ class Virtuoso(Container):
                                 * VIRTUOSO_MAX_DIRTY_BUFFERS_PER_GB)
         environment={'DBA_PASSWORD': VIRTUOSO_PASSWORD,
                      'VIRT_SPARQL_ResultSetMaxRows': VIRTUOSO_MAX_ROWS,
+                     'VIRT_Parameters_MaxVectorSize': VIRTUOSO_MAX_VECTOR_SIZE,
                      'VIRT_Parameters_NumberOfBuffers': number_of_buffers,
                      'VIRT_Parameters_MaxDirtyBuffers': max_dirty_buffers}
         super().__init__(f'dylanvanassche/virtuoso:v{VERSION}',
