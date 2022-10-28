@@ -6,11 +6,12 @@ import psutil
 from container import Container
 
 VERSION = '7.2.7'
-VIRTUOSO_MAX_ROWS = '10000000'
-VIRTUOSO_MAX_VECTOR_SIZE = '3000000' # max value is 'around' 3,500,000 from docs
-VIRTUOSO_PASSWORD = 'root'
-VIRTUOSO_NUMBER_OF_BUFFERS_PER_GB = 85000
-VIRTUOSO_MAX_DIRTY_BUFFERS_PER_GB = 65000
+MAX_ROWS = '10000000'
+QUERY_TIMEOUT = '0' # no limit
+MAX_VECTOR_SIZE = '3000000' # max value is 'around' 3,500,000 from docs
+PASSWORD = 'root'
+NUMBER_OF_BUFFERS_PER_GB = 85000
+MAX_DIRTY_BUFFERS_PER_GB = 65000
 
 class Virtuoso(Container):
     def __init__(self, data_path: str, config_path: str, verbose: bool):
@@ -22,12 +23,14 @@ class Virtuoso(Container):
         os.makedirs(tmp_dir, exist_ok=True)
         os.makedirs(os.path.join(self._data_path, 'virtuoso'), exist_ok=True)
         number_of_buffers = int(psutil.virtual_memory().total / (10**9) \
-                                * VIRTUOSO_NUMBER_OF_BUFFERS_PER_GB)
+                                * NUMBER_OF_BUFFERS_PER_GB)
         max_dirty_buffers = int(psutil.virtual_memory().total / (10**9) \
-                                * VIRTUOSO_MAX_DIRTY_BUFFERS_PER_GB)
-        environment={'DBA_PASSWORD': VIRTUOSO_PASSWORD,
-                     'VIRT_SPARQL_ResultSetMaxRows': VIRTUOSO_MAX_ROWS,
-                     'VIRT_Parameters_MaxVectorSize': VIRTUOSO_MAX_VECTOR_SIZE,
+                                * MAX_DIRTY_BUFFERS_PER_GB)
+        environment={'DBA_PASSWORD': PASSWORD,
+                     'VIRT_SPARQL_ResultSetMaxRows': MAX_ROWS,
+                     'VIRT_SPARQL_MaxQueryExecutionTime': QUERY_TIMEOUT,
+                     'VIRT_SPARQL_ExecutionTimeout': QUERY_TIMEOUT,
+                     'VIRT_Parameters_MaxVectorSize': MAX_VECTOR_SIZE,
                      'VIRT_Parameters_NumberOfBuffers': number_of_buffers,
                      'VIRT_Parameters_MaxDirtyBuffers': max_dirty_buffers}
         super().__init__(f'dylanvanassche/virtuoso:v{VERSION}',
