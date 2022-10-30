@@ -78,6 +78,12 @@ class PostgreSQL(Container):
 
         return success
 
+    def load_multiple(self, csv_files: List[dict]) -> bool:
+        for entry in csv_files:
+            if not self._load_csv(entry['file'], entry['table']):
+                return False
+        return True
+
     def _load_csv(self, csv_file: str, table: str, create: bool):
         success = True
         columns = None

@@ -59,6 +59,12 @@ class MySQL(Container):
     def load(self, csv_file: str, table: str) -> bool:
         return self._load_csv(csv_file, table, True)
 
+    def load_multiple(self, csv_files: List[dict]) -> bool:
+        for entry in csv_files:
+            if not self._load_csv(entry['file'], entry['table']):
+                return False
+        return True
+
     def load_sql_schema(self, schema_file: str, csv_files: List[str]) -> bool:
         success = True
 
