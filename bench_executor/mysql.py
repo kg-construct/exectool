@@ -61,7 +61,7 @@ class MySQL(Container):
 
     def load_multiple(self, csv_files: List[dict]) -> bool:
         for entry in csv_files:
-            if not self._load_csv(entry['file'], entry['table']):
+            if not self._load_csv(entry['file'], entry['table'], True):
                 return False
         return True
 
