@@ -47,7 +47,8 @@ class Query():
         return self._logs
 
     def execute_and_save(self, query: str, sparql_endpoint: str,
-                         results_file: str, headers: dict = None) -> bool:
+                         results_file: str, headers: dict = None,
+                         expect_empty: bool = False) -> bool:
         try:
             results = self.execute(query, sparql_endpoint, headers)
         except Exception as e:
@@ -72,6 +73,11 @@ class Query():
 
         # Check results output
         if len(results) and 'Empty' not in results:
+            return True
+        elif expect_empty:
+            self._logs.append('No results found, but was expected!\n')
+            print('No results found for query, but was expected!',
+                  file=sys.stderr)
             return True
         else:
             self._logs.append('No results found!\n')
