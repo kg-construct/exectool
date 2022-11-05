@@ -6,7 +6,7 @@ from container import Container
 from rdflib import Graph, BNode, Namespace, Literal
 from rdflib import RDF
 
-VERSION = '4.6'
+VERSION = '4.6.2'
 R2RML = Namespace('http://www.w3.org/ns/r2rml#')
 RML = Namespace('http://semweb.mmlab.be/ns/rml#')
 D2RQ = Namespace('http://www.wiwiss.fu-berlin.de/suhl/bizer/D2RQ/0.1#')
@@ -29,7 +29,12 @@ class SDMRDFizer(Container):
     def execute(self, arguments) -> bool:
         cmd = f'python3 sdm-rdfizer/rdfizer/run_rdfizer.py ' + \
               f'/data/config_sdmrdfizer.ini'
-        return self.run_and_wait_for_exit(cmd)
+        s = self.run_and_wait_for_exit(cmd)
+
+        for l in self.logs():
+            print(l.strip())
+
+        return s
 
     def execute_mapping(self, mapping_file: str, output_file: str,
                         serialization: str, rdb_username: str = None,
