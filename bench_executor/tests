@@ -673,7 +673,7 @@ class TriplestoreTests(unittest.TestCase):
         self.assertTrue('# Empty NT' in results)
 
         # Test if we can now reload our RDF
-        self.assertTrue(virtuoso.load('student.nt'))
+        self.assertTrue(virtuoso.load_parallel('student.nt', 4))
 
         # Verify loaded data
         q = Query(DATA_DIR, CONFIG_DIR, False)
