@@ -30,6 +30,7 @@ class Virtuoso(Container):
                      'VIRT_SPARQL_ResultSetMaxRows': MAX_ROWS,
                      'VIRT_SPARQL_MaxQueryExecutionTime': QUERY_TIMEOUT,
                      'VIRT_SPARQL_ExecutionTimeout': QUERY_TIMEOUT,
+                     'VIRT_SPARQL_MaxQueryCostEstimationTime': QUERY_TIMEOUT,
                      'VIRT_Parameters_MaxVectorSize': MAX_VECTOR_SIZE,
                      'VIRT_Parameters_NumberOfBuffers': number_of_buffers,
                      'VIRT_Parameters_MaxDirtyBuffers': max_dirty_buffers}
@@ -59,6 +60,9 @@ class Virtuoso(Container):
         return self.run_and_wait_for_log('Server online at', command=command)
 
     def load(self, rdf_file: str) -> bool:
+        return self.load_parallel(rdf_file, 1)
+
+    def load_parallel(self, rdf_file: str, cores: int) -> bool:
         success = True
 
         success, logs = self.exec(f'ls /usr/share/proj/{rdf_file}')
@@ -74,11 +78,13 @@ class Virtuoso(Container):
         self._logs += logs
         if not success:
             return False
-        success, logs = self.exec('isql -U dba -P root '
-                                  'exec="rdf_loader_run();"')
-        self._logs += logs
-        if not success:
-            return False
+
+        for i in range(cores):
+            success, logs = self.exec('isql -U dba -P root '
+                                      'exec="rdf_loader_run();"')
+            self._logs += logs
+            if not success:
+                return False
 
         # Re-enable checkpoints and scheduler which are disabled automatically
         # after loading RDF with rdf_loader_run()
