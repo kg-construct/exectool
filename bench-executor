@@ -67,7 +67,7 @@ def print_cases(executor: Executor):
         print(f'{index+1 : >4}. {name : <65} {number_of_steps: >11}')
 
 def execute_cases(executor: Executor, interval: float, runs: int,
-                  fail_fast: bool):
+                  fail_fast: bool, wait_for_user: bool):
     global stop
     failures = []
 
@@ -77,6 +77,9 @@ def execute_cases(executor: Executor, interval: float, runs: int,
     if not cases:
         print('No cases discovered!')
         sys.exit(EXIT_CODE_NO_CASES)
+
+    if wait_for_user:
+        runs = 1
 
     print(f'Executing {len(cases)} cases:')
     start_time = datetime.now()
@@ -95,7 +98,7 @@ def execute_cases(executor: Executor, interval: float, runs: int,
 
         for i in range(1, runs+1):
             print(f'      ==> Run #{i} <==')
-            success, diff = e.run(case, interval, i, i == runs)
+            success, diff = e.run(case, interval, i, wait_for_user, i == runs)
 
             if not success:
                 if data['name'] not in failures:
@@ -160,6 +163,8 @@ if __name__ == '__main__':
                         help='Turn on verbose output', action='store_true')
     parser.add_argument('--fail-fast', dest='fail_fast',
                         help='Immediately exit when a case fails', action='store_true')
+    parser.add_argument('--wait-for-user', dest='wait_for_user',
+                        help='Show a prompt when a case is done before going to the next one', action='store_true')
     args = parser.parse_args()
 
     if args.verbose:
@@ -170,6 +175,7 @@ if __name__ == '__main__':
         print(f'Fail fast enabled: {args.fail_fast}')
         print(f'Number of runs: {args.number_of_runs}')
         print(f'Measurement sample interval: {args.interval}s')
+        print(f'Wait for user after case: {args.wait_for_user}')
 
     if args.interval % 2 == 0:
         print('Number of runs must be uneven for generating statistics',
@@ -193,7 +199,8 @@ if __name__ == '__main__':
     if args.command == 'list':
         print_cases(e)
     elif args.command == 'run':
-        execute_cases(e, args.interval, args.number_of_runs, args.fail_fast)
+        execute_cases(e, args.interval, args.number_of_runs, args.fail_fast,
+                      args.wait_for_user)
     elif args.command == 'clean':
         clean_cases(e)
     elif args.command == 'stats':

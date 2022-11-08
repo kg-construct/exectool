@@ -135,6 +135,8 @@ class OntopVirtualize(_Ontop):
             self._headers = { 'Accept': 'application/rdf+xml' }
         elif serialization == 'jsonld':
             self._headers = { 'Accept': 'application/ld+json' }
+        elif serialization == 'csv':
+            self._headers = { 'Accept': 'text/csv' }
         else:
             raise ValueError(f'Unsupported serialization format '
                              f'"{serialization}" for Ontop')

@@ -568,7 +568,7 @@ class Executor:
                 shutil.rmtree(data_dir)
 
     def run(self, case: dict, interval: float, run: int,
-            checkpoint: bool) -> Tuple[bool, float]:
+            wait_for_user: bool, checkpoint: bool) -> Tuple[bool, float]:
         success = True
         start = time()
         data = case['data']
@@ -698,6 +698,9 @@ class Executor:
         stop_event.set()
         metrics_thread.join()
         metrics_writer.join()
+
+        if wait_for_user:
+            input('Case completed, press any key to continue...')
 
         # Stop active containers
         for resource in active_resources:
