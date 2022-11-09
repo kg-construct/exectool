@@ -97,7 +97,8 @@ def execute_cases(executor: Executor, interval: float, runs: int,
             continue
 
         for i in range(1, runs+1):
-            print(f'      ==> Run #{i} <==')
+            if runs > 1:
+                print(f'      ==> Run #{i} <==')
             success, diff = e.run(case, interval, i, wait_for_user, i == runs)
 
             if not success:
@@ -167,10 +168,14 @@ if __name__ == '__main__':
                         help='Show a prompt when a case is done before going to the next one', action='store_true')
     args = parser.parse_args()
 
+    # Resolve path
+    main_directory = os.path.expanduser(args.main_directory)
+    main_directory = os.path.expandvars(main_directory)
+
     if args.verbose:
         print(f'{parser.prog} {VERSION}')
         print(f'Command: {args.command}')
-        print(f'Root directory: {args.main_directory}')
+        print(f'Root directory: {main_directory}')
         print(f'Verbose enabled: {args.verbose}')
         print(f'Fail fast enabled: {args.fail_fast}')
         print(f'Number of runs: {args.number_of_runs}')
@@ -183,18 +188,19 @@ if __name__ == '__main__':
         sys.exit(EXIT_CODE_EVEN_RUNS)
 
     # SELinux causes weird permission denied issues, warn users
-    try:
-        response = subprocess.check_output('getenforce')
-        if response.decode().strip() != 'Permissive':
-            print('SELinux must be set to "permissive" to allow containers '
-                  'accessing files in mounted directories', file=sys.stderr)
-            sys.exit(EXIT_CODE_SELINUX)
-    except subprocess.CalledProcessError:
-        pass
-    except FileNotFoundError:
-        pass
+    if 'run' in args.command or 'clean' in args.command:
+        try:
+            response = subprocess.check_output('getenforce')
+            if response.decode().strip() != 'Permissive':
+                print('SELinux must be set to "permissive" to allow containers '
+                      'accessing files in mounted directories', file=sys.stderr)
+                sys.exit(EXIT_CODE_SELINUX)
+        except subprocess.CalledProcessError:
+            pass
+        except FileNotFoundError:
+            pass
 
-    e = Executor(args.main_directory, verbose=args.verbose, cli=True)
+    e = Executor(main_directory, verbose=args.verbose, cli=True)
 
     if args.command == 'list':
         print_cases(e)
