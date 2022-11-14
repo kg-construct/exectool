@@ -29,7 +29,7 @@ class MorphKGC(Container):
                         serialization: str, rdb_username: str = None,
                         rdb_password: str = None, rdb_host: str = None,
                         rdb_port: str = None, rdb_name: str = None,
-                        rdb_type: str = None):
+                        rdb_type: str = None, multiple_files: bool = False):
 
         if serialization == 'nquads':
             serialization = 'N-QUADS'
@@ -42,12 +42,18 @@ class MorphKGC(Container):
         # Generate INI configuration file since no CLI is available
         config = configparser.ConfigParser()
         config['CONFIGURATION'] = {
-            'output_file': f'/data/shared/{output_file}',
             'output_format': serialization
         }
         config['DataSource0'] = {
             'mappings': f'/data/shared/{mapping_file}'
         }
+
+        # Morph-KGC can keep the mapping partition results separate, provide
+        # this option, default OFF
+        if multiple_files:
+            config['CONFIGURATION']['output_dir'] = f'/data/shared/'
+        else:
+            config['CONFIGURATION']['output_file'] = f'/data/shared/{output_file}'
 
         if rdb_username is not None and rdb_password is not None \
             and rdb_host is not None and rdb_port is not None \
