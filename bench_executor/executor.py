@@ -418,8 +418,9 @@ class Executor:
                                           linestyle='dotted')
 
                 ax[index].plot(x, y, color=color)
-                y_ticks.append(min(y))
-                y_ticks.append(max(y))
+                if y:
+                    y_ticks.append(min(y))
+                    y_ticks.append(max(y))
 
                 # Subplot titles
                 if metric == 'memory_total_size':
@@ -431,7 +432,8 @@ class Executor:
                 else:
                     raise ValueError(f'Cannot plot metric: "{metric}"')
 
-            ax[index].set_ylim(0.0, max(y_ticks) * PLOT_MARGIN)
+            if y_ticks:
+                ax[index].set_ylim(0.0, max(y_ticks) * PLOT_MARGIN)
 
         for index, metric in enumerate(['io', 'network']):
             y_ticks = []
@@ -740,7 +742,7 @@ class Executor:
                 p1 = os.path.join(directory, 'data/shared', results_file)
                 p2 = os.path.join(results_run_path, subdir, results_file)
                 shutil.move(p1, p2)
-            if step['parameters'].get('output_file', False):
+            if step['parameters'].get('output_file', False) and not step['parameters'].get('multiple_files', False):
                 output_file = step['parameters']['output_file']
                 p1 = os.path.join(directory, 'data/shared', output_file)
                 p2 = os.path.join(results_run_path, subdir, output_file)
