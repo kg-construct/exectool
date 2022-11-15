@@ -692,6 +692,8 @@ class Executor:
 
             # Step complete
             self._print_step(step['resource'], step['name'], success)
+            if wait_for_user:
+                input('Step completed, press any key to continue...')
 
         # Case finished, store diff time
         diff = time() - start
@@ -700,9 +702,6 @@ class Executor:
         stop_event.set()
         metrics_thread.join()
         metrics_writer.join()
-
-        if wait_for_user:
-            input('Case completed, press any key to continue...')
 
         # Stop active containers
         for resource in active_resources:

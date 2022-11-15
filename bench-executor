@@ -165,7 +165,8 @@ if __name__ == '__main__':
     parser.add_argument('--fail-fast', dest='fail_fast',
                         help='Immediately exit when a case fails', action='store_true')
     parser.add_argument('--wait-for-user', dest='wait_for_user',
-                        help='Show a prompt when a case is done before going to the next one', action='store_true')
+                        help='Show a prompt when a step is executed before '
+                             'going to the next one', action='store_true')
     args = parser.parse_args()
 
     # Resolve path

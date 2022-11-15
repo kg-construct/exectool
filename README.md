@@ -111,8 +111,8 @@ and the metrics will be collected every `1.0` seconds.
 
 #### Additional features
 
-If you want to pause the execution of your case after the last step was
-executed, you can add the `--wait-for-user` argument when running the cases:
+If you want to pause the execution of your case after each step,
+you can add the `--wait-for-user` argument when running the cases:
 
 ```
 bench-executor run --wait-for-user
