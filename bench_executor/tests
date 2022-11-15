@@ -23,6 +23,7 @@ from sdmrdfizer import SDMRDFizer
 from ontop import OntopMaterialize, OntopVirtualize
 from fuseki import Fuseki
 from query import Query
+from yarrrml import YARRRML
 from executor import Executor
 from time import sleep
 from rdflib import Graph
@@ -269,6 +270,26 @@ class UnitTests(unittest.TestCase):
 
         connection.close()
         mysql.stop()
+
+    def test_yarrrml_rml(self):
+        yarrrml = YARRRML(DATA_DIR, CONFIG_DIR, False)
+        yarrrml_file = 'mapping.yarrrml'
+
+        # YARRRML to RML
+        mapping_file = 'mapping_yarrrml.rml.ttl'
+        self.assertTrue(yarrrml.transform_mapping(yarrrml_file, mapping_file,
+                                                  False))
+        yarrrml.stop()
+
+    def test_yarrrml_r2rml(self):
+        yarrrml = YARRRML(DATA_DIR, CONFIG_DIR, False)
+        yarrrml_file = 'mapping.yarrrml'
+
+        # YARRRML to R2RML
+        mapping_file = 'mapping_yarrrml.r2rml.ttl'
+        self.assertTrue(yarrrml.transform_mapping(yarrrml_file, mapping_file,
+                                                  True))
+        yarrrml.stop()
 
 class FileTests(unittest.TestCase):
     def setUp(self):

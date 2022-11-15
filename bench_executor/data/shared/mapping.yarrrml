@@ -1,0 +1,11 @@
+prefixes:
+ ex: "http://example.com/"
+ foaf: "http://xmlns.com/foaf/0.1/"
+
+mappings:
+  person:
+    sources:
+      - ['/data/shared/data.csv~csv']
+    s: http://example.com/$(name)
+    po:
+      - [foaf:name, $(name)]
