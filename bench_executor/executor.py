@@ -711,7 +711,7 @@ class Executor:
         self._print_step('Cleaner', 'Clean up resources', True)
 
         # Mark checkpoint if necessary
-        if checkpoint:
+        if checkpoint and success:
             with open(checkpoint_file, 'w') as f:
                 d = datetime.now().replace(microsecond=0).isoformat()
                 f.write(f'{d}\n')
@@ -734,18 +734,21 @@ class Executor:
                                                    METRICS_FILE_NAME))
 
         # Results: all 'output_file' and 'result_file' values
-        for step in data['steps']:
-            subdir = step['resource'].lower().replace('_', '')
-            if step['parameters'].get('results_file', False):
-                results_file = step['parameters']['results_file']
-                p1 = os.path.join(directory, 'data/shared', results_file)
-                p2 = os.path.join(results_run_path, subdir, results_file)
-                shutil.move(p1, p2)
-            if step['parameters'].get('output_file', False) and not step['parameters'].get('multiple_files', False):
-                output_file = step['parameters']['output_file']
-                p1 = os.path.join(directory, 'data/shared', output_file)
-                p2 = os.path.join(results_run_path, subdir, output_file)
-                shutil.move(p1, p2)
+        if success:
+            for step in data['steps']:
+                subdir = step['resource'].lower().replace('_', '')
+                if step['parameters'].get('results_file', False):
+                    results_file = step['parameters']['results_file']
+                    p1 = os.path.join(directory, 'data/shared', results_file)
+                    p2 = os.path.join(results_run_path, subdir, results_file)
+                    shutil.move(p1, p2)
+
+                if step['parameters'].get('output_file', False) \
+                        and not step['parameters'].get('multiple_files', False):
+                    output_file = step['parameters']['output_file']
+                    p1 = os.path.join(directory, 'data/shared', output_file)
+                    p2 = os.path.join(results_run_path, subdir, output_file)
+                    shutil.move(p1, p2)
 
         self._print_step('Cooldown', f'Hardware cooldown period {WAIT_TIME}s',
                          success)

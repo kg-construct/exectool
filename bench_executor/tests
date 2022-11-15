@@ -314,7 +314,9 @@ class FileTests(unittest.TestCase):
         g = Graph()
         g.parse(os.path.join(DATA_DIR, 'shared', 'rmlmapper_file.nt'),
                 format='ntriples')
-        self.assertEqual(len(g), 3)
+        # 3 triples and 1 mapped as NULL <predicate> NULL because NULL values 
+        # are undefined in CSV.
+        self.assertEqual(len(g), 4)
         rmlmapper.stop()
 
     def test_morphkgc_file(self):
@@ -844,7 +846,7 @@ class IntegrationTests(unittest.TestCase):
             executor.clean(case)
 
             # Run case
-            self.assertTrue(executor.run(case, 0.1, 1, True))
+            self.assertTrue(executor.run(case, 0.1, 1, False, True))
 
             # Generate stats
             executor.stats(case)
@@ -881,7 +883,7 @@ class IntegrationTests(unittest.TestCase):
                 self.assertFalse(os.path.exists(checkpoint_file))
 
             # Run case
-            self.assertTrue(executor.run(case, 0.1, 1, True))
+            self.assertTrue(executor.run(case, 0.1, 1, False, True))
 
             # Check if all files are generated
             for step in case['data']['steps']:
