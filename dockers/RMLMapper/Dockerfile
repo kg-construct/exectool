@@ -4,7 +4,8 @@
 ################################################################################
 FROM ubuntu:22.04
 # Configure the RMLMapper version to use
-ARG URL=https://github.com/RMLio/rmlmapper-java/releases/download/v6.0.0/rmlmapper-6.0.0-r363-all.jar
+ARG RMLMAPPER_VERSION
+ARG RMLMAPPER_BUILD
 
 # Install latest updates and dependencies
 RUN apt-get update
@@ -12,7 +13,7 @@ RUN apt-get upgrade -y
 RUN apt-get install -y openjdk-8-jdk less vim wget unzip
 
 # Download RMLMapper release
-RUN mkdir rmlmapper && wget -O rmlmapper/rmlmapper.jar $URL
+RUN mkdir rmlmapper && wget -O rmlmapper/rmlmapper.jar https://github.com/RMLio/rmlmapper-java/releases/download/v${RMLMAPPER_VERSION}/rmlmapper-${RMLMAPPER_VERSION}-r${RMLMAPPER_BUILD}-all.jar
 
 # Expose data folder
 RUN mkdir /data
