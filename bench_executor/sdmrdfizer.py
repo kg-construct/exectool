@@ -6,7 +6,7 @@ from container import Container
 from rdflib import Graph, BNode, Namespace, Literal
 from rdflib import RDF
 
-VERSION = '4.6.2'
+VERSION = '4.6.3'
 R2RML = Namespace('http://www.w3.org/ns/r2rml#')
 RML = Namespace('http://semweb.mmlab.be/ns/rml#')
 D2RQ = Namespace('http://www.wiwiss.fu-berlin.de/suhl/bizer/D2RQ/0.1#')
