@@ -64,7 +64,7 @@ def print_cases(executor: Executor):
     for index, case in enumerate(cases):
         name = case['data']['name']
         number_of_steps = f'[ {len(case["data"]["steps"])} steps ]'
-        print(f'{index+1 : >4}. {name : <65} {number_of_steps: >11}')
+        print(f'{index+1 : >4}. {name : <85} {number_of_steps: >11}')
 
 def execute_cases(executor: Executor, interval: float, runs: int,
                   fail_fast: bool, wait_for_user: bool):
@@ -89,7 +89,7 @@ def execute_cases(executor: Executor, interval: float, runs: int,
         checkpoint_file = os.path.join(directory, '.done')
 
         progress = _format_progress(index, len(cases), start_time)
-        print(f'{index+1 : >4}. {data["name"] : <63} {progress : <13}')
+        print(f'{index+1 : >4}. {data["name"][0:62] : <83} {progress : <13}')
 
         # Skip cases which are already done
         if os.path.exists(checkpoint_file):
