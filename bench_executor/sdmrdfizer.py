@@ -3,8 +3,7 @@
 import os
 import configparser
 from container import Container
-from rdflib import Graph, BNode, Namespace, Literal
-from rdflib import RDF
+from rdflib import Graph, BNode, Namespace, Literal, RDF
 
 VERSION = '4.6.3'
 R2RML = Namespace('http://www.w3.org/ns/r2rml#')

@@ -5,8 +5,10 @@ import sys
 import psutil
 import configparser
 from container import Container
+from rdflib import Graph, Namespace, RDF, URIRef
 
 VERSION = '4.2.1-PATCH' # 4.2.1 with N-Triples and N-Quads support
+R2RML = Namespace('http://www.w3.org/ns/r2rml#')
 
 class _Ontop(Container):
     def __init__(self, name: str, data_path: str, verbose: bool, mode: str):
@@ -99,8 +101,69 @@ class _Ontop(Container):
         else:
             raise ValueError('Ontop only supports RDBs')
 
+        # Compatibility with Ontop requiring rr:class
+        # Replace any rdf:type construction with rr:class
+        # Without this, a strange error is raised: 'The definition of the
+        # predicate is not always a ground term triple(s,p,o)'
+        g = Graph()
+        g.bind('r2rml', R2RML)
+        g.bind('rdf', RDF)
+        g.parse(os.path.join(self._data_path, 'shared',
+                             os.path.basename(mapping_file)))
+
+        for triples_map_iri, p, o in g.triples((None, RDF.type,
+                                                R2RML.TriplesMap)):
+            subject_map_iri = g.value(triples_map_iri, R2RML.subjectMap)
+
+            for s, p, predicate_object_map_iri in g.triples((triples_map_iri, R2RML.predicateObjectMap, None)):
+                predicate_map_iri = g.value(predicate_object_map_iri,
+                                            R2RML.predicateMap)
+                object_map_iri = g.value(predicate_object_map_iri,
+                                         R2RML.objectMap)
+
+                if predicate_map_iri is None or object_map_iri is None:
+                    continue
+
+                # Check if PredicateObjectMap is pointing to a PredicateMap
+                # specifying rdf:type. Skip this PredicateObjectMap if not
+                if g.value(predicate_map_iri, R2RML.constant) != RDF.type:
+                    continue
+
+                # Retrieve the ObjectMap rr:constant value and add it as
+                # rr:class to the Subject Map is present
+                rdf_type_value = g.value(object_map_iri, R2RML.constant)
+                if rdf_type_value is not None:
+                    iri = URIRef(rdf_type_value.toPython())
+                    g.add((subject_map_iri, R2RML['class'], iri))
+                else:
+                    print('Cannot extract rr:class value, rdf:type value is not'
+                          ' a constant value!', file=sys.stderr)
+                    return False
+
+                # Remove all triples associated with the rdf:type PredicateMap
+                for s, p, o in g.triples((predicate_map_iri, None, None)):
+                    g.remove((s, p, o))
+
+                # Remove all triples associated with the rdf:type ObjectMap
+                for s, p, o in g.triples((object_map_iri, None, None)):
+                    g.remove((s, p, o))
+
+                # Remove all triples associated with the
+                # rdf:type PredicateObjectMap
+                for s, p, o in g.triples((object_map_iri, None, None)):
+                    g.remove((s, p, o))
+
+                # Remove PredicateObjectMap from Triples Map
+                g.remove((triples_map_iri, R2RML.predicateObjectMap,
+                          predicate_object_map_iri))
+
+            destination = os.path.join(self._data_path,
+                                       self.root_mount_directory,
+                                       'mapping_converted.r2rml.ttl')
+            g.serialize(destination=destination, format='turtle')
+
         arguments.append('-m')
-        arguments.append(os.path.join('/data/shared/', mapping_file))
+        arguments.append('/data/mapping_converted.r2rml.ttl')
         if output_file is not None:
             arguments.append('-o')
             arguments.append(os.path.join('/data/shared/', output_file))
