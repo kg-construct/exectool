@@ -156,6 +156,8 @@ class Container():
                 line = line.decode()
                 self._logs.append(line)
                 line = line.strip()
+                if self._verbose:
+                    print(line)
 
                 if time() - start > TIMEOUT_TIME:
                     print(f'Starting container "{self._name}" timed out!',
@@ -179,6 +181,8 @@ class Container():
             for line in logs:
                 line = line.decode()
                 self._logs.append(line)
+                if self._verbose:
+                    print(line.strip())
 
         if self._container.wait()['StatusCode'] == 0:
             return True
