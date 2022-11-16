@@ -117,6 +117,8 @@ class SDMRDFizer(Container):
                           logical_table_iri))
                 g.remove((logical_table_iri, R2RML.tableName,
                           table_name_literal))
+                g.remove((logical_table_iri, RDF.type, R2RML.LogicalTable))
+                g.remove((logical_table_iri, R2RML.sqlVersion, R2RML.SQL2008))
 
             # rr:column --> rml:reference
             for s, p, o in g.triples((None, R2RML.column, None)):
