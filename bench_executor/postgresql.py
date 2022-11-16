@@ -22,7 +22,6 @@ class PostgreSQL(Container):
     def __init__(self, data_path: str, config_path: str, verbose: bool):
         self._data_path = os.path.abspath(data_path)
         self._config_path = os.path.abspath(config_path)
-        self._verbose = verbose
         tmp_dir = os.path.join(tempfile.gettempdir(), 'postgresql')
         os.umask(0)
         os.makedirs(tmp_dir, exist_ok=True)
@@ -30,6 +29,7 @@ class PostgreSQL(Container):
         self._tables = []
 
         super().__init__(f'dylanvanassche/postgresql:v{VERSION}', 'PostgreSQL',
+                         verbose,
                          ports={PORT: PORT},
                          environment={'POSTGRES_PASSWORD': PASSWORD,
                                       'POSTGRES_USER': USER,

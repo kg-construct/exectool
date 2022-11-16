@@ -12,7 +12,6 @@ R2RML = Namespace('http://www.w3.org/ns/r2rml#')
 
 class _Ontop(Container):
     def __init__(self, name: str, data_path: str, verbose: bool, mode: str):
-        self._verbose = verbose
         self._mode = mode
         self._headers = {}
 
@@ -24,6 +23,7 @@ class _Ontop(Container):
 
         environment = {'ONTOP_JAVA_ARGS': f'-Xmx{max_heap} -Xms{max_heap}'}
         super().__init__(f'dylanvanassche/ontop:v{VERSION}', name,
+                         verbose,
                          ports={'8888':'8888'},
                          environment=environment,
                          volumes=[f'{self._data_path}/'

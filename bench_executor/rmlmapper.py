@@ -8,11 +8,11 @@ VERSION = '6.0.0'
 
 class RMLMapper(Container):
     def __init__(self, data_path: str, config_path: str, verbose: bool):
-        self._verbose = verbose
         self._data_path = os.path.abspath(data_path)
         self._config_path = os.path.abspath(config_path)
         os.makedirs(os.path.join(self._data_path, 'rmlmapper'), exist_ok=True)
         super().__init__(f'dylanvanassche/rmlmapper:v{VERSION}', 'RMLMapper',
+                         verbose,
                          volumes=[f'{self._data_path}/rmlmapper:/data',
                                   f'{self._data_path}/shared:/data/shared'])
 

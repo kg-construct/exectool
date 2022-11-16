@@ -65,7 +65,8 @@ class UnitTests(unittest.TestCase):
         manager.stop_all()
 
     def test_docker_run(self):
-        c = Container('nginx:alpine', 'test_docker_run', {'80/tcp': '8080/tcp'})
+        c = Container('nginx:alpine', 'test_docker_run', False,
+                      {'80/tcp': '8080/tcp'})
         self.assertTrue(c.run())
         sleep(5)
         r = requests.get('http://localhost:8080')
@@ -74,7 +75,7 @@ class UnitTests(unittest.TestCase):
         c.stop()
 
     def test_docker_run_and_wait_for_log(self):
-        c = Container('nginx:alpine', 'test_docker_run_and_wait_for_log',
+        c = Container('nginx:alpine', 'test_docker_run_and_wait_for_log', False,
                       {'80/tcp': '8081/tcp'})
         self.assertTrue(c.run_and_wait_for_log('start worker process'))
         r = requests.get('http://localhost:8081')
@@ -83,13 +84,13 @@ class UnitTests(unittest.TestCase):
         c.stop()
 
     def test_docker_run_and_wait_for_exit(self):
-        c = Container('alpine:edge', 'test_docker_run_and_wait_for_exit',
+        c = Container('alpine:edge', 'test_docker_run_and_wait_for_exit', False,
                       {'80/tcp': '8082/tcp'})
         self.assertTrue(c.run_and_wait_for_exit('sleep 5'))
         c.stop()
 
     def test_docker_logs(self):
-        c = Container('nginx:alpine', 'test_docker_logs',
+        c = Container('nginx:alpine', 'test_docker_logs', False,
                       {'80/tcp': '8083/tcp'})
         self.assertTrue(c.run_and_wait_for_log('start worker process'))
         self.assertIsNotNone(c.logs())
@@ -97,7 +98,7 @@ class UnitTests(unittest.TestCase):
         c.stop()
 
     def test_docker_stats(self):
-        c = Container('nginx:alpine', 'test_docker_stats',
+        c = Container('nginx:alpine', 'test_docker_stats', False,
                       {'80/tcp': '8084/tcp'})
         self.assertTrue(c.run_and_wait_for_log('start worker process'))
         stats1 = c.stats()
@@ -507,7 +508,7 @@ class RDBTests(unittest.TestCase):
         sdmrdfizer.stop()
 
     def test_ontopmaterialize_mysql(self):
-        ontop = OntopMaterialize(DATA_DIR, CONFIG_DIR, True)
+        ontop = OntopMaterialize(DATA_DIR, CONFIG_DIR, False)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared',
                                    'ontopmaterialize_mysql.nt'))
@@ -529,7 +530,7 @@ class RDBTests(unittest.TestCase):
         ontop.stop()
 
     def test_ontopmaterialize_postgresql(self):
-        ontop = OntopMaterialize(DATA_DIR, CONFIG_DIR, True)
+        ontop = OntopMaterialize(DATA_DIR, CONFIG_DIR, False)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared',
                                    'ontopmaterialize_postgresql.nt'))
@@ -555,7 +556,7 @@ class RDBTests(unittest.TestCase):
     def test_ontopendpoint_mysql(self):
         QUERY='PREFIX foaf: <http://xmlns.com/foaf/0.1/> ' + \
               'CONSTRUCT WHERE { ?s foaf:name ?o1 . }'
-        ontop = OntopVirtualize(DATA_DIR, CONFIG_DIR, True)
+        ontop = OntopVirtualize(DATA_DIR, CONFIG_DIR, False)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared',
                                    'ontopendpoint_mysql.nt'))

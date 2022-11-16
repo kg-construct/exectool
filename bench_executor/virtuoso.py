@@ -22,7 +22,6 @@ class Virtuoso(Container):
     def __init__(self, data_path: str, config_path: str, verbose: bool):
         self._data_path = os.path.abspath(data_path)
         self._config_path = os.path.abspath(config_path)
-        self._verbose = verbose
         tmp_dir = os.path.join(tempfile.gettempdir(), 'virtuoso')
         os.umask(0)
         os.makedirs(tmp_dir, exist_ok=True)
@@ -40,7 +39,8 @@ class Virtuoso(Container):
                      'VIRT_Parameters_NumberOfBuffers': number_of_buffers,
                      'VIRT_Parameters_MaxDirtyBuffers': max_dirty_buffers}
         super().__init__(f'dylanvanassche/virtuoso:v{VERSION}',
-                         'Virtuoso', ports={'8890':'8890', '1111':'1111'},
+                         'Virtuoso', verbose,
+                         ports={'8890':'8890', '1111':'1111'},
                          environment=environment,
                          volumes=[f'{self._data_path}/shared:/usr/share/proj',
                                   f'{tmp_dir}:/database'])

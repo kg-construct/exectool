@@ -47,8 +47,8 @@ class ContainerManager():
                   f'removed: {removed}')
 
 class Container():
-    def __init__(self, container: str, name: str, ports: dict = {},
-                 environment: dict = {}, volumes: dict = {}):
+    def __init__(self, container: str, name: str, verbose: bool,
+                 ports: dict = {}, environment: dict = {}, volumes: dict = {}):
         self._client = docker.from_env()
         self._container = None
         self._container_name = container
@@ -62,6 +62,7 @@ class Container():
         self._cgroups_mode = None
         self._cgroups_dir = None
         self._started = False
+        self._verbose = verbose
 
         # create network if not exist
         try:

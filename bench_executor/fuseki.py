@@ -14,7 +14,6 @@ class Fuseki(Container):
     def __init__(self, data_path: str, config_path: str, verbose: bool):
         self._data_path = os.path.abspath(data_path)
         self._config_path = os.path.abspath(config_path)
-        self._verbose = verbose
         tmp_dir = os.path.join(tempfile.gettempdir(), 'fuseki')
         os.umask(0)
         os.makedirs(tmp_dir, exist_ok=True)
@@ -24,6 +23,7 @@ class Fuseki(Container):
         max_heap = int(psutil.virtual_memory().total * (1/2))
 
         super().__init__(f'dylanvanassche/fuseki:v{VERSION}', 'Fuseki',
+                         verbose,
                          ports={'3030':'3030'},
                          environment={
                              'JAVA_OPTIONS':f'-Xmx{max_heap} -Xms{max_heap}'

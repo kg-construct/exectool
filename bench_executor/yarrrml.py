@@ -8,11 +8,11 @@ VERSION = '1.3.6'
 
 class YARRRML(Container):
     def __init__(self, data_path: str, config_path: str, verbose: bool):
-        self._verbose = verbose
         self._data_path = os.path.abspath(data_path)
         self._config_path = os.path.abspath(config_path)
         os.makedirs(os.path.join(self._data_path, 'yarrrml'), exist_ok=True)
         super().__init__(f'dylanvanassche/yarrrml:v{VERSION}', 'YARRRML',
+                         verbose,
                          volumes=[f'{self._data_path}/yarrrml:/data',
                                   f'{self._data_path}/shared:/data/shared'])
 

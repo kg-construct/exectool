@@ -19,7 +19,6 @@ class MySQL(Container):
     def __init__(self, data_path: str, config_path: str, verbose: bool):
         self._data_path = os.path.abspath(data_path)
         self._config_path = os.path.abspath(config_path)
-        self._verbose = verbose
         self._tables = []
         tmp_dir = os.path.join(tempfile.gettempdir(), 'mysql')
         os.umask(0)
@@ -27,6 +26,7 @@ class MySQL(Container):
         os.makedirs(os.path.join(self._data_path, 'mysql'), exist_ok=True)
 
         super().__init__(f'dylanvanassche/mysql:v{VERSION}', 'MySQL',
+                         verbose,
                          ports={PORT:PORT},
                          environment={'MYSQL_ROOT_PASSWORD': 'root',
                                       'MYSQL_DATABASE': 'db'},
