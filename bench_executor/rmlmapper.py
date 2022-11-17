@@ -42,7 +42,8 @@ class RMLMapper(Container):
                         rdb_name: str = None, rdb_type: str = None) -> bool:
         arguments = ['-m', os.path.join('/data/shared/', mapping_file),
                      '-s', serialization,
-                     '-o', os.path.join('/data/shared/', output_file)]
+                     '-o', os.path.join('/data/shared/', output_file),
+                     '-d'] # Enable duplicate removal
 
         if rdb_username is not None and rdb_password is not None \
             and rdb_host is not None and rdb_port is not None \
