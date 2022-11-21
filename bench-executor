@@ -37,7 +37,7 @@ def _format_progress(index: int, number_of_cases: int, start_time: datetime):
     minutes = int((delta.total_seconds() - hours * 3600) / 60)
     seconds = int(delta.total_seconds() - hours * 3600 - minutes * 60)
 
-    if minutes == 0:
+    if minutes == 0 and hours == 0:
         timestamp = f'{seconds : >5}s'
     elif hours == 0:
         timestamp = f'{minutes : >2}m{seconds : >2}s'
