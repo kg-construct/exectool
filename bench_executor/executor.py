@@ -77,7 +77,7 @@ def _collect_metrics(stop_event: Event, active_resources: list,
                 continue
 
             metrics = resource.stats(silence_failure=True)
-            name = resource.name
+            name = resource.name.replace('-', '')
             if metrics is None:
                 # Container was started but is not running anymore, write stop
                 # metric. This codepath is only triggered when the container
@@ -122,7 +122,7 @@ def _collect_metrics(stop_event: Event, active_resources: list,
     # metric once the metric measurement thread exists as the case is finished
     # then anyway.
     for resource in active_resources:
-        name = resource.name
+        name = resource.name.replace('-', '')
 
         # Exited containers do not need to log multiple times their exit
         if name in exit_done_containers or name in ['Query']:
@@ -334,7 +334,7 @@ class Executor:
                     except json.JSONDecodeError:
                         print(f'Cannot parse as JSON: "{line}"')
                         return None
-                    resource = m['resource']
+                    resource = m['resource'].replace('-', '') # FIX for unescaped metrics
                     m['index'] = index + 1
 
                     # Relative timestamp for the whole case
@@ -368,31 +368,67 @@ class Executor:
 
     def _aggregate_runs(self, metrics: dict) -> dict:
         # Each key of metrics dict is a run
-        execution_times = []
-        for run in metrics.keys():
-            # Latest STOP metric entry is the last step and thus the relative
-            # execution time of the whole case
-            for entry in reversed(metrics[run]):
-                if entry['type'] == METRIC_TYPE_STOP:
-                    execution_times.append(entry['relative_time'])
-                    break
+        execution_times = {}
+        steps_by_run = {}
+        for run in sorted(metrics.keys()):
+            # Store the execution time of each step for each run
+            step_number = 1
+            start_time = None
+            steps_by_run[run] = {}
+            for entry in metrics[run]:
+                step_name = f'step{step_number}'
+                if step_name not in steps_by_run[run]:
+                    steps_by_run[run][step_name] = []
+                steps_by_run[run][step_name].append(entry)
+                # Step started
+                if entry['type'] == METRIC_TYPE_START:
+                    start_time = entry['time']
+                # Remove Docker initialization time if applicable
+                elif entry['type'] == METRIC_TYPE_INIT:
+                    start_time = entry['time']
+                # Step ended
+                elif entry['type'] == METRIC_TYPE_STOP:
+                    diff = entry['time'] - start_time
+                    if step_name not in execution_times:
+                        execution_times[step_name] = []
+                    execution_times[step_name].append(diff)
+                    # Prepare for next step
+                    start_time = None
+                    step_number += 1
 
-        # Median execution time of all runs
-        median_time = median(execution_times)
-        median_run = f'run_{execution_times.index(median_time) + 1 }'
+        # Find the median step over all runs and calculate some stats on it
+        metrics['stats'] = {}
+        for step, values in execution_times.items():
+            try:
+                median_run_for_step = values.index(median(values)) + 1
+            except ValueError:
+                print(values, median(values))
+            measurements_for_step = steps_by_run[f'run_{median_run_for_step}'][step]
 
-        metrics['median_execution_time'] = median_time
-        metrics['median_run'] = median_run
+            metrics['stats'][step] = {
+                'execution_time_mean': mean(values),
+                'execution_time_median': median(values),
+                'execution_time_values': values,
+                'median_run_for_step': median_run_for_step,
+                'measurements': measurements_for_step
+            }
+
+        # Build a median run out of all median steps
+        median_run = []
+        for key, value in metrics['stats'].items():
+            median_run += value['measurements']
+        metrics['stats']['median_run'] = median_run
+
         return metrics
 
     def _generate_plots(self, metrics: dict, directory: str):
         fig_path = os.path.join(directory, 'results', 'graphs.png')
-        m = metrics[metrics['median_run']]
+        m = metrics['stats']['median_run']
 
         # Re-use the execution time X-axis, 4 metrics: CPU, memory, IO, network
         fig, ax = plt.subplots(4, 1, figsize=(12, 8))
         ax[len(ax) - 1].set_xlabel(f'Case execution time (s)')
-        resources = sorted([*set(x['resource'] for x in m)])
+        resources = sorted([*set(x['resource'].replace('-', '') for x in m)])
 
         for index, metric in enumerate(['cpu_total_time', 'memory_total_size']):
             y_ticks = []
@@ -400,7 +436,7 @@ class Executor:
                 x = []
                 y = []
                 color = self._colors[color_index % len(self._colors)]
-                for entry in filter(lambda y: y['resource'] == r, m):
+                for entry in filter(lambda y: y['resource'].replace('-', '') == r, m):
                     if entry['type'] == METRIC_TYPE_INIT:
                         x.append(entry['relative_time'])
                         y.append(0.0)
@@ -442,7 +478,7 @@ class Executor:
                 y1 = {}
                 y2 = {}
                 color = self._colors[color_index % len(self._colors)]
-                for entry in filter(lambda y: y['resource'] == r, m):
+                for entry in filter(lambda y: y['resource'].replace('-', '') == r, m):
                     if entry['type'] == METRIC_TYPE_START:
                         ax[index + 2].axvline(entry['relative_time'],
                                               color='grey', linestyle='dotted')

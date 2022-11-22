@@ -858,8 +858,7 @@ class IntegrationTests(unittest.TestCase):
             self.assertTrue(os.path.exists(aggregated_path))
             with open(aggregated_path, 'r') as f:
                 metrics = json.load(f)
-                self.assertIn('median_execution_time', metrics)
-                self.assertIn('median_run', metrics)
+                self.assertIn('stats', metrics)
 
     def test_executor_run(self):
         path = os.path.join(DATA_DIR, 'test-cases')
