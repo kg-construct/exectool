@@ -158,22 +158,26 @@ Cgroup Version: 2
 1. Install dependencies
 
 ```
-sudo apt install zlib1g zlib1g-dev libpq-dev libjpeg-dev python3-pip
-```
-
-```
+sudo apt install zlib1g zlib1g-dev libpq-dev libjpeg-dev python3-pip docker.io
 pip install --user -r requirements.txt
 ```
 
-2. Install Docker
+2. Configure Docker
 
 ```
-# Install docker packages
-sudo apt install docker.io
-
 # Add user to docker group
 sudo groupadd docker
 sudo usermod -aG docker $USER
+```
+
+Do not forget to logout so the user groups are properly updated!
+
+3. Verify installation
+
+```
+# Run all tests
+cd bench_executor
+./tests
 ```
 
 ## License
