@@ -648,6 +648,7 @@ class Executor:
 
         # Execute steps
         for step in data['steps']:
+            success = True
             module = self._class_module_mapping[step['resource']]
             resource = getattr(module, step['resource'])(data_path, CONFIG_DIR,
                                                          self._verbose)
@@ -690,8 +691,10 @@ class Executor:
             command = getattr(resource, step['command'])
             if not command(**step['parameters']):
                 success = False
-                self._print_step(step['resource'], step['name'], success)
-                break
+                # TODO: queries may fail, but are not critical, still continue
+                if step['resource'] not in ['Query']:
+                    self._print_step(step['resource'], step['name'], success)
+                    break
 
             # non-container resources do not have EXIT, add manually
             # TODO: figure out a better way for non-container resources
@@ -777,14 +780,20 @@ class Executor:
                     results_file = step['parameters']['results_file']
                     p1 = os.path.join(directory, 'data/shared', results_file)
                     p2 = os.path.join(results_run_path, subdir, results_file)
-                    shutil.move(p1, p2)
+                    try:
+                        shutil.move(p1, p2)
+                    except FileNotFoundError:
+                        print('Cannot find file: {p1}', file=sys.stderr)
 
                 if step['parameters'].get('output_file', False) \
                         and not step['parameters'].get('multiple_files', False):
                     output_file = step['parameters']['output_file']
                     p1 = os.path.join(directory, 'data/shared', output_file)
                     p2 = os.path.join(results_run_path, subdir, output_file)
-                    shutil.move(p1, p2)
+                    try:
+                        shutil.move(p1, p2)
+                    except FileNotFoundError:
+                        print('Cannot find file: {p1}', file=sys.stderr)
 
         self._print_step('Cooldown', f'Hardware cooldown period {WAIT_TIME}s',
                          success)
