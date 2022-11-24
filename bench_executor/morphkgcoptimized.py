@@ -13,7 +13,7 @@ class MorphKGCOptimized(Container):
         os.umask(0)
         os.makedirs(os.path.join(self._data_path, 'morphkgcoptimized'),
                     exist_ok=True)
-        super().__init__(f'blindreviewing/morph-kgc:v{VERSION}',
+        super().__init__(f'blindreviewing/morph-kgc-optimized:v{VERSION}',
                          'Morph-KGC-Optimized',
                          verbose,
                          volumes=[f'{self._data_path}/morphkgcoptimized:/data',
@@ -24,14 +24,15 @@ class MorphKGCOptimized(Container):
         return __name__.lower()
 
     def execute(self, arguments) -> bool:
-        cmd = f'python3 -m morph_kgc /data/config_morphkgc.ini'
+        cmd = f'python3 morphkgc-optimized {" ".join(arguments)}'
         return self.run_and_wait_for_exit(cmd)
 
     def execute_mapping(self, mapping_file: str, output_file: str,
-                        serialization: str, rdb_username: str = None,
-                        rdb_password: str = None, rdb_host: str = None,
-                        rdb_port: str = None, rdb_name: str = None,
-                        rdb_type: str = None, multiple_files: bool = False):
+                        serialization: str, query_file: str,
+                        rdb_username: str = None, rdb_password: str = None,
+                        rdb_host: str = None, rdb_port: str = None,
+                        rdb_name: str = None, rdb_type: str = None,
+                        multiple_files: bool = False):
 
         if serialization == 'nquads':
             serialization = 'N-QUADS'
@@ -78,4 +79,6 @@ class MorphKGCOptimized(Container):
         with open(path, 'w') as f:
             config.write(f)
 
-        return self.execute([])
+        return self.execute(['/data/config_morphkgc.ini',
+                             f'/data/shared/{query_file}',
+                             f'/data/shared/{output_file}'])

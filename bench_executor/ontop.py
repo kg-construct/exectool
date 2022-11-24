@@ -7,7 +7,7 @@ import configparser
 from container import Container
 from rdflib import Graph, Namespace, RDF, URIRef
 
-VERSION = '4.2.1-PATCH' # 4.2.1 with N-Triples and N-Quads support
+VERSION = '4.2.1' # 4.2.1 with N-Triples and N-Quads support
 R2RML = Namespace('http://www.w3.org/ns/r2rml#')
 
 class _Ontop(Container):

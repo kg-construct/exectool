@@ -9,6 +9,7 @@ bench_executor/data/ontopendpoint/
 bench_executor/data/ontopmaterialize/
 bench_executor/data/ontopvirtualize/
 bench_executor/data/sdmrdfizer/
+bench_executor/data/morphkgcoptimized/
 bench_executor/data/query/
 bench_executor/data/test-cases/*/data
 bench_executor/data/test-cases/*/*/data
