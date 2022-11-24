@@ -25,7 +25,7 @@ class MySQL(Container):
         os.makedirs(tmp_dir, exist_ok=True)
         os.makedirs(os.path.join(self._data_path, 'mysql'), exist_ok=True)
 
-        super().__init__(f'dylanvanassche/mysql:v{VERSION}', 'MySQL',
+        super().__init__(f'blindreviewing/mysql:v{VERSION}', 'MySQL',
                          verbose,
                          ports={PORT:PORT},
                          environment={'MYSQL_ROOT_PASSWORD': 'root',

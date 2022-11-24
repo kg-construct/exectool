@@ -1,5 +1,5 @@
 {
-    "@id": "http://dylanvanassche.be/cases/test-incomplete",
+    "@id": "http://example.com/cases/test-incomplete",
     "name": "test-incomplete",
     "description": "Incomplete description of a case"
 }

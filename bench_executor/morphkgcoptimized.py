@@ -6,15 +6,17 @@ from container import Container
 
 VERSION = '2.2.0'
 
-class MorphKGC(Container):
+class MorphKGCOptimized(Container):
     def __init__(self, data_path: str, config_path: str, verbose: bool):
         self._data_path = os.path.abspath(data_path)
         self._config_path = os.path.abspath(config_path)
         os.umask(0)
-        os.makedirs(os.path.join(self._data_path, 'morphkgc'), exist_ok=True)
-        super().__init__(f'blindreviewing/morph-kgc:v{VERSION}', 'Morph-KGC',
+        os.makedirs(os.path.join(self._data_path, 'morphkgcoptimized'),
+                    exist_ok=True)
+        super().__init__(f'blindreviewing/morph-kgc:v{VERSION}',
+                         'Morph-KGC-Optimized',
                          verbose,
-                         volumes=[f'{self._data_path}/morphkgc:/data',
+                         volumes=[f'{self._data_path}/morphkgcoptimized:/data',
                                   f'{self._data_path}/shared:/data/shared'])
 
     @property
@@ -69,8 +71,10 @@ class MorphKGC(Container):
             config['DataSource0']['db_url'] = rdb_dsn
 
         os.umask(0)
-        os.makedirs(os.path.join(self._data_path, 'morphkgc'), exist_ok=True)
-        path = os.path.join(self._data_path, 'morphkgc', 'config_morphkgc.ini')
+        os.makedirs(os.path.join(self._data_path, 'morphkgcoptimized'),
+                    exist_ok=True)
+        path = os.path.join(self._data_path, 'morphkgcoptimized',
+                            'config_morphkgc.ini')
         with open(path, 'w') as f:
             config.write(f)
 

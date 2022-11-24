@@ -1,10 +1,10 @@
 {
-    "@id": "http://dylanvanassche.be/test-cases/ontopendpoint/fuseki/transform-postgresql-to-ntriples",
+    "@id": "http://example.com/test-cases/ontopendpoint/fuseki/transform-postgresql-to-ntriples",
     "name": "Ontop Virtualize: PostgreSQL RDB",
     "description": "Transform PostgreSQL database into Turtle with Ontop Virtualize",
     "steps": [
         {
-            "@id": "http://dylanvanassche.be/test-cases/ontopendpoint/transform-postgresql-to-ntriples#step1",
+            "@id": "http://example.com/test-cases/ontopendpoint/transform-postgresql-to-ntriples#step1",
             "name": "Load RDB",
             "resource": "PostgreSQL",
             "command": "load",
@@ -14,7 +14,7 @@
             }
         },
         {
-            "@id": "http://dylanvanassche.be/test-cases/ontopendpoint/transform-postgresql-to-ntriples#step2",
+            "@id": "http://example.com/test-cases/ontopendpoint/transform-postgresql-to-ntriples#step2",
             "name": "Virtualize RDF access to PostgreSQL",
             "resource": "OntopVirtualize",
             "command": "execute_mapping",
@@ -30,7 +30,7 @@
             }
         },
         {
-            "@id": "http://dylanvanassche.be/test-cases/ontopendpoint/transform-postgresql-to-ntriples#step3",
+            "@id": "http://example.com/test-cases/ontopendpoint/transform-postgresql-to-ntriples#step3",
             "name": "Execute SPARQL query",
             "resource": "Query",
             "command": "execute_and_save",

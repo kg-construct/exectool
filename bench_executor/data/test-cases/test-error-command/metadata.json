@@ -1,10 +1,10 @@
 {
-    "@id": "http://dylanvanassche.be/cases/test-error-command",
+    "@id": "http://example.com/cases/test-error-command",
     "name": "test-error-command",
     "description": "Test error in command",
     "steps": [
         {
-            "@id": "http://dylanvanassche.be/cases/test-error-command#step1",
+            "@id": "http://example.com/cases/test-error-command#step1",
             "name": "Error Command",
             "resource": "RMLMapper",
             "command": "DOES_NOT_EXIST",

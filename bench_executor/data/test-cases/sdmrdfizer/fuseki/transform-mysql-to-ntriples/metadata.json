@@ -1,10 +1,10 @@
 {
-    "@id": "http://dylanvanassche.be/test-cases/sdmrdfizer/fuseki/transform-mysql-to-ntriples",
+    "@id": "http://example.com/test-cases/sdmrdfizer/fuseki/transform-mysql-to-ntriples",
     "name": "SDM-RDFizer: Fuseki: MySQL RDB",
     "description": "Transform MySQL database into N-Triples with SDM-RDFizer",
     "steps": [
         {
-            "@id": "http://dylanvanassche.be/test-cases/sdmrdfizer/fuseki/transform-mysql-to-ntriples#step1",
+            "@id": "http://example.com/test-cases/sdmrdfizer/fuseki/transform-mysql-to-ntriples#step1",
             "name": "Load RDB",
             "resource": "MySQL",
             "command": "load",
@@ -14,7 +14,7 @@
             }
         },
         {
-            "@id": "http://dylanvanassche.be/test-cases/sdmrdfizer/fuseki/transform-mysql-to-ntriples#step2",
+            "@id": "http://example.com/test-cases/sdmrdfizer/fuseki/transform-mysql-to-ntriples#step2",
             "name": "Transform MySQL into RDF",
             "resource": "SDMRDFizer",
             "command": "execute_mapping",
@@ -31,7 +31,7 @@
             }
         },
         {
-            "@id": "http://dylanvanassche.be/test-cases/sdmrdfizer/fuseki/transform-mysql-to-ntriples#step3",
+            "@id": "http://example.com/test-cases/sdmrdfizer/fuseki/transform-mysql-to-ntriples#step3",
             "name": "Load RDF",
             "resource": "Fuseki",
             "command": "load",
@@ -40,7 +40,7 @@
             }
         },
         {
-            "@id": "http://dylanvanassche.be/test-cases/sdmrdfizer/fuseki/transform-mysql-to-ntriples#step4",
+            "@id": "http://example.com/test-cases/sdmrdfizer/fuseki/transform-mysql-to-ntriples#step4",
             "name": "Execute SPARQL query",
             "resource": "Query",
             "command": "execute_and_save",

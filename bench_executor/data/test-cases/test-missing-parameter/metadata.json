@@ -1,10 +1,10 @@
 {
-    "@id": "http://dylanvanassche.be/cases/test-missing-parameter",
+    "@id": "http://example.com/cases/test-missing-parameter",
     "name": "test-missing-parameter",
     "description": "Test missing parameter",
     "steps": [
         {
-            "@id": "http://dylanvanassche.be/cases/test-missing-parameter#step1",
+            "@id": "http://example.com/cases/test-missing-parameter#step1",
             "name": "Missing Parameter",
             "resource": "RMLMapper",
             "command": "execute_mapping",

@@ -1,10 +1,10 @@
 {
-    "@id": "http://dylanvanassche.be/test-cases/sdmrdfizer/virtuoso/transform-csv-to-ntriples",
+    "@id": "http://example.com/test-cases/sdmrdfizer/virtuoso/transform-csv-to-ntriples",
     "name": "SDM-RDFizer: Virtuoso: CSV file",
     "description": "Transform student.csv into N-Triples with SDM-RDFizer with Virtuoso Triplestore",
     "steps": [
         {
-            "@id": "http://dylanvanassche.be/test-cases/sdmrdfizer/virtuoso/transform-csv-to-ntriples#step1",
+            "@id": "http://example.com/test-cases/sdmrdfizer/virtuoso/transform-csv-to-ntriples#step1",
             "name": "Transform CSV into RDF",
             "resource": "SDMRDFizer",
             "command": "execute_mapping",
@@ -15,7 +15,7 @@
             }
         },
         {
-            "@id": "http://dylanvanassche.be/test-cases/sdmrdfizer/virtuoso/transform-csv-to-ntriples#step2",
+            "@id": "http://example.com/test-cases/sdmrdfizer/virtuoso/transform-csv-to-ntriples#step2",
             "name": "Load RDF",
             "resource": "Virtuoso",
             "command": "load",
@@ -24,7 +24,7 @@
             }
         },
         {
-            "@id": "http://dylanvanassche.be/test-cases/sdmrdfizer/virtuoso/transform-csv-to-ntriples#step3",
+            "@id": "http://example.com/test-cases/sdmrdfizer/virtuoso/transform-csv-to-ntriples#step3",
             "name": "Execute SPARQL query",
             "resource": "Query",
             "command": "execute_and_save",

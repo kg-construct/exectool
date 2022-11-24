@@ -14,7 +14,7 @@ class MorphRDB(Container):
         self._config_path = os.path.abspath(config_path)
         os.umask(0)
         os.makedirs(os.path.join(self._data_path, 'morphrdb'), exist_ok=True)
-        super().__init__(f'dylanvanassche/morph-rdb:v{VERSION}', 'Morph-RDB',
+        super().__init__(f'blindreviewing/morph-rdb:v{VERSION}', 'Morph-RDB',
                          verbose,
                          volumes=[f'{self._data_path}/shared:/data/shared',
                                   f'{self._data_path}/morphrdb:/data'])

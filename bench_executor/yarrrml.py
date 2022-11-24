@@ -11,7 +11,7 @@ class YARRRML(Container):
         self._data_path = os.path.abspath(data_path)
         self._config_path = os.path.abspath(config_path)
         os.makedirs(os.path.join(self._data_path, 'yarrrml'), exist_ok=True)
-        super().__init__(f'dylanvanassche/yarrrml:v{VERSION}', 'YARRRML',
+        super().__init__(f'blindreviewing/yarrrml:v{VERSION}', 'YARRRML',
                          verbose,
                          volumes=[f'{self._data_path}/yarrrml:/data',
                                   f'{self._data_path}/shared:/data/shared'])

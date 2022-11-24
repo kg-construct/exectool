@@ -1,10 +1,10 @@
 {
-    "@id": "http://dylanvanassche.be/test-cases/morphkgc/fuseki/transform-postgresql-to-ntriples",
+    "@id": "http://example.com/test-cases/morphkgc/fuseki/transform-postgresql-to-ntriples",
     "name": "Morph-KGC: Fuseki: PostgreSQL",
     "description": "Transform PostgreSQL database into N-Triples with Morph-KGC and Fuseki Triplestore",
     "steps": [
         {
-            "@id": "http://dylanvanassche.be/test-cases/morphkgc/fuseki/transform-postgresql-to-ntriples#step1",
+            "@id": "http://example.com/test-cases/morphkgc/fuseki/transform-postgresql-to-ntriples#step1",
             "name": "Load CSV",
             "resource": "PostgreSQL",
             "command": "load",
@@ -14,7 +14,7 @@
             }
         },
         {
-            "@id": "http://dylanvanassche.be/test-cases/morphkgc/fuseki/transform-postgresql-to-ntriples#step2",
+            "@id": "http://example.com/test-cases/morphkgc/fuseki/transform-postgresql-to-ntriples#step2",
             "name": "Transform CSV into RDF",
             "resource": "MorphKGC",
             "command": "execute_mapping",
@@ -31,7 +31,7 @@
             }
         },
         {
-            "@id": "http://dylanvanassche.be/test-cases/morphkgc/fuseki/transform-postgresql-to-ntriples#step3",
+            "@id": "http://example.com/test-cases/morphkgc/fuseki/transform-postgresql-to-ntriples#step3",
             "name": "Load RDF",
             "resource": "Fuseki",
             "command": "load",
@@ -40,7 +40,7 @@
             }
         },
         {
-            "@id": "http://dylanvanassche.be/test-cases/morphkgc/fuseki/transform-postgresql-to-ntriples#step4",
+            "@id": "http://example.com/test-cases/morphkgc/fuseki/transform-postgresql-to-ntriples#step4",
             "name": "Execute SPARQL query",
             "resource": "Query",
             "command": "execute_and_save",

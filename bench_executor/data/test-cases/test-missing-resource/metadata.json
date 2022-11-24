@@ -1,10 +1,10 @@
 {
-    "@id": "http://dylanvanassche.be/cases/test-missing-resource",
+    "@id": "http://example.com/cases/test-missing-resource",
     "name": "test-missing-resource",
     "description": "Test missing resource error",
     "steps": [
         {
-            "@id": "http://dylanvanassche.be/cases/test-missing-resource#step1",
+            "@id": "http://example.com/cases/test-missing-resource#step1",
             "name": "Missing Resource",
             "resource": "DOES_NOT_EXIST",
             "command": "execute_mapping",

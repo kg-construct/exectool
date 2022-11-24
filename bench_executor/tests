@@ -798,7 +798,7 @@ class IntegrationTests(unittest.TestCase):
         executor = Executor(os.path.join(DATA_DIR, 'test-cases'), False)
         cases = executor.list()
         iris = [x['data']['@id'] for x in cases]
-        BASE_URL = 'http://dylanvanassche.be/test-cases'
+        BASE_URL = 'http://example.com/test-cases'
         e = [f'{BASE_URL}/rmlmapper/fuseki/transform-csv-to-ntriples',
              f'{BASE_URL}/rmlmapper/fuseki/transform-mysql-to-ntriples',
              f'{BASE_URL}/rmlmapper/fuseki/transform-postgresql-to-ntriples',

@@ -1,5 +1,5 @@
 {
-    "@id": "http://dylanvanassche.be/cases/test-no-steps",
+    "@id": "http://example.com/cases/test-no-steps",
     "name": "test-no-steps",
     "steps": []
 }
