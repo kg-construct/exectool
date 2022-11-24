@@ -539,7 +539,8 @@ class Executor:
                 else:
                     raise ValueError(f'Cannot plot metric: "{metric}"')
 
-            ax[index + 2].set_ylim(0.0, max(y_ticks) * PLOT_MARGIN)
+            if y_ticks:
+                ax[index + 2].set_ylim(0.0, max(y_ticks) * PLOT_MARGIN)
 
         handles = []
         for color_index, r in enumerate(resources):
