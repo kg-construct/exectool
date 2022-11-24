@@ -86,19 +86,37 @@ def execute_cases(executor: Executor, interval: float, runs: int,
     for index, case in enumerate(cases):
         data = case['data']
         directory = case['directory']
+        results_directory = os.path.join(directory, 'results')
         checkpoint_file = os.path.join(directory, '.done')
 
         progress = _format_progress(index, len(cases), start_time)
         print(f'{index+1 : >4}. {data["name"][0:62] : <83} {progress : <13}')
 
         # Skip cases which are already done
-        if os.path.exists(checkpoint_file):
-            print(f'        ⏩ SKIPPED')
+        all_runs_complete = True
+        start_run = 1
+        for i in range(1, runs+1):
+            run_checkpoint_file = os.path.join(results_directory,
+                                               f'run_{i}', '.done')
+            start_run = i
+            if not os.path.exists(run_checkpoint_file):
+                all_runs_complete = False
+                break
+
+        if os.path.exists(checkpoint_file) and all_runs_complete:
+            print(f'        ⏩ SKIPPED CASE')
             continue
 
-        for i in range(1, runs+1):
-            if runs > 1:
-                print(f'      ==> Run #{i} <==')
+        # Execute case with all runs
+        for i in range(start_run, runs+1):
+            run_checkpoint_file = os.path.join(results_directory,
+                                               f'run_{i}', '.done')
+
+            print(f'      ==> Run #{i} <==')
+            if os.path.exists(run_checkpoint_file):
+                print(f'        ⏩ SKIPPED RUN')
+                continue
+
             success, diff = e.run(case, interval, i, wait_for_user, i == runs)
 
             if not success:
@@ -132,14 +150,22 @@ def clean_cases(executor: Executor):
 
 def generate_statistics(executor: Executor):
     cases = e.list()
+    failures = []
 
     for case in cases:
         success = e.stats(case)
         if not success:
             name = case['data']['name']
+            if name not in failures:
+                failures.append(name)
             print(f'Could not generate statistics for case "{name}"',
                   file=sys.stderr)
-            sys.exit(EXIT_CODE_FAILED_CASE)
+    if failures:
+        print(f'{len(failures)}/{len(cases)} cases failed to execute:',
+              file=sys.stderr)
+        for index, f in enumerate(failures):
+            print(f'{index+1 : >4}. {f : <76}')
+        sys.exit(EXIT_CODE_FAILED_CASE)
 
     print(f'Generated statistics for {len(cases)} cases')
 

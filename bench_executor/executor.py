@@ -384,8 +384,8 @@ class Executor:
                 if entry['type'] == METRIC_TYPE_START:
                     start_time = entry['time']
                 # Remove Docker initialization time if applicable
-                elif entry['type'] == METRIC_TYPE_INIT:
-                    start_time = entry['time']
+                #elif entry['type'] == METRIC_TYPE_INIT:
+                #    start_time = entry['time']
                 # Step ended
                 elif entry['type'] == METRIC_TYPE_STOP:
                     diff = entry['time'] - start_time
@@ -397,6 +397,7 @@ class Executor:
                     step_number += 1
 
         # Find the median step over all runs and calculate some stats on it
+        print(execution_times)
         metrics['stats'] = {}
         for step, values in execution_times.items():
             try:
@@ -579,6 +580,7 @@ class Executor:
                   file=sys.stderr)
             return False
 
+        print(directory)
         aggregated_metrics = self._aggregate_runs(metrics)
         aggregated_metrics_path = os.path.join(directory, 'results',
                                                'aggregated.json')
@@ -596,7 +598,7 @@ class Executor:
         if os.path.exists(checkpoint_file):
             os.remove(checkpoint_file)
 
-        # Results: log files, metric measurements
+        # Results: log files, metric measurements, run checkpoints
         for result_dir in glob(f'{case["directory"]}/results'):
             shutil.rmtree(result_dir)
 
@@ -614,6 +616,7 @@ class Executor:
         data_path = os.path.join(directory, 'data')
         results_run_path = os.path.join(directory, 'results', f'run_{run}')
         checkpoint_file = os.path.join(directory, '.done')
+        run_checkpoint_file = os.path.join(results_run_path, '.done')
 
         # Make sure we start with a clean setup before the first run
         if run == 1:
@@ -794,6 +797,12 @@ class Executor:
                         shutil.move(p1, p2)
                     except FileNotFoundError:
                         print('Cannot find file: {p1}', file=sys.stderr)
+
+            # Run complete, mark it
+            run_checkpoint_file = os.path.join(results_run_path, '.done')
+            with open(run_checkpoint_file, 'w') as f:
+                d = datetime.now().replace(microsecond=0).isoformat()
+                f.write(f'{d}\n')
 
         self._print_step('Cooldown', f'Hardware cooldown period {WAIT_TIME}s',
                          success)
