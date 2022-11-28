@@ -4,6 +4,9 @@ import os
 import sys
 import requests
 from typing import Optional, List
+from timeout_decorator import timeout, TimeoutError
+
+TIMEOUT = 2 * 3600 # 2 hours
 
 class Query():
     def __init__(self, data_path: str, config_path: str, verbose: bool):
@@ -24,8 +27,10 @@ class Query():
     def root_mount_directory(self) -> str:
         return __name__.lower()
 
-    def execute(self, query: str, sparql_endpoint: str,
-                headers: dict = None) -> str:
+    @timeout(TIMEOUT)
+    def _execute_with_timeout(query: str, sparql_endpoint: str,
+                              headers: dict = None) -> str:
+
         self._logs.append(f'Executing query "{query}" on endpoint '
                           f'"{sparql_endpoint}"\n')
         data = {
@@ -42,6 +47,17 @@ class Query():
             print(r.text, file=sys.stderr)
         r.raise_for_status()
         return r.text
+
+    def execute(self, query: str, sparql_endpoint: str,
+                headers: dict = None) -> str:
+        try:
+            return self._execute_with_timeout(query, sparql_endpoint, headers)
+        except TimeoutError:
+            self._logs.append(f'Timeout reached for query "{query}"')
+        except Exception as e:
+            self._logs.append(f'Query failed with exception: "{e}"')
+
+        return ''
 
     def logs(self) -> Optional[List[str]]:
         return self._logs
