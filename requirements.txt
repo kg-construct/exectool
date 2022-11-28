@@ -7,3 +7,4 @@ requests
 rdflib
 matplotlib
 numpy
+timeout-decorator
