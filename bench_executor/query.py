@@ -6,7 +6,7 @@ import requests
 from typing import Optional, List
 from timeout_decorator import timeout, TimeoutError
 
-TIMEOUT = 2 * 3600 # 2 hours
+TIMEOUT = 1 * 3600 # 1 hour
 
 class Query():
     def __init__(self, data_path: str, config_path: str, verbose: bool):
@@ -28,7 +28,7 @@ class Query():
         return __name__.lower()
 
     @timeout(TIMEOUT)
-    def _execute_with_timeout(query: str, sparql_endpoint: str,
+    def _execute_with_timeout(self, query: str, sparql_endpoint: str,
                               headers: dict = None) -> str:
 
         self._logs.append(f'Executing query "{query}" on endpoint '
@@ -49,15 +49,15 @@ class Query():
         return r.text
 
     def execute(self, query: str, sparql_endpoint: str,
-                headers: dict = None) -> str:
+                headers: dict = None) -> Optional[str]:
         try:
             return self._execute_with_timeout(query, sparql_endpoint, headers)
         except TimeoutError:
-            self._logs.append(f'Timeout reached for query "{query}"')
-        except Exception as e:
-            self._logs.append(f'Query failed with exception: "{e}"')
+            msg = f'Timeout reached for query: "{query}"'
+            print(msg, file=sys.stderr)
+            self._logs.append(msg)
 
-        return ''
+        return None
 
     def logs(self) -> Optional[List[str]]:
         return self._logs
@@ -67,11 +67,14 @@ class Query():
                          expect_empty: bool = False) -> bool:
         try:
             results = self.execute(query, sparql_endpoint, headers)
+            if results is None:
+                return False
         except Exception as e:
             print(f'Failed to execute query "{query}" on endpoint '
                   f'"{sparql_endpoint}": {e}', file=sys.stderr)
             self._logs.append(f'{e}\n')
             return False
+
         path = os.path.join(self._data_path, 'shared')
         os.umask(0)
         os.makedirs(path, exist_ok=True)
@@ -116,12 +119,23 @@ class Query():
     def execute_from_file(self, query_file: str, sparql_endpoint: str,
                           headers: dict = None) -> bool:
         query = self._read_query_file(query_file)
-        return self.execute(query, sparql_endpoint, headers)
+        try:
+            results = self.execute(query, sparql_endpoint, headers)
+            if results is None:
+                return False
+        except Exception as e:
+            print(f'Failed to execute query "{query}" on endpoint '
+                  f'"{sparql_endpoint}": {e}', file=sys.stderr)
+            self._logs.append(f'{e}\n')
+            return False
+
+        return results
 
     def execute_from_file_and_save(self, query_file: str,
                                    sparql_endpoint: str,
                                    results_file: str,
                                    headers: dict = None) -> bool:
         query = self._read_query_file(query_file)
-        return self.execute_and_save(query, sparql_endpoint, results_file,
-                                     headers)
+        results = self.execute_and_save(query, sparql_endpoint, results_file,
+                                        headers)
+        return results
