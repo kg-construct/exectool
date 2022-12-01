@@ -17,6 +17,7 @@ EXIT_CODE_FAILED_CASE = -3
 EXIT_CODE_INTERRUPTED = -4
 EXIT_CODE_SELINUX = -5
 EXIT_CODE_EVEN_RUNS = -6
+EXIT_CODE_INTERRUPTED = -7
 
 stop = False
 manager = Manager()
@@ -47,11 +48,18 @@ def _format_progress(index: int, number_of_cases: int, start_time: datetime):
     # Format progress
     return f'[{percentage : >4} {timestamp : >6}]'
 
-def signal_handler(signum, frame):
+def signal_handler_interrupt(signum, frame):
     global stop
 
-    print('Waiting for case to finish before exiting...')
-    stop = True
+    if not stop:
+        print('Waiting for case to finish before exiting...')
+        stop = True
+        print('Pressing again CTRL+C will exit immediately!')
+    else:
+        if len(manager.list_all()) > 0:
+            print('Cleaning up before exiting...')
+            manager.stop_all()
+        sys.exit(EXIT_CODE_INTERRUPTED)
 
 def print_cases(executor: Executor):
     cases = e.list()
@@ -71,7 +79,8 @@ def execute_cases(executor: Executor, interval: float, runs: int,
     global stop
     failures = []
 
-    signal(SIGINT, signal_handler)
+    signal(SIGINT, signal_handler_interrupt)
+    signal(SIGKILL, signal_handler_kill)
 
     cases = e.list()
     if not cases:
