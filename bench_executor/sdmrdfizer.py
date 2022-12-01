@@ -37,7 +37,7 @@ class SDMRDFizer(Container):
         try:
             return self._execute_with_timeout(arguments)
         except TimeoutError:
-            msg = f'Timeout ({TIMEOUT}s) reached for {self.__name__}'
+            msg = f'Timeout ({TIMEOUT}s) reached for SDM-RDFizer'
             print(msg, file=sts.stderr)
             self._log.append(msg)
 

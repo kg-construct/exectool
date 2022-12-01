@@ -53,7 +53,7 @@ class Query():
         try:
             return self._execute_with_timeout(query, sparql_endpoint, headers)
         except TimeoutError:
-            msg = f'Timeout ({TIMEOUT}s) reached for {self.__name__}: "{query}"'
+            msg = f'Timeout ({TIMEOUT}s) reached for Query: "{query}"'
             print(msg, file=sys.stderr)
             self._logs.append(msg)
 

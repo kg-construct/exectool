@@ -253,7 +253,7 @@ class OntopMaterialize(_Ontop):
                                                       rdb_name,
                                                       rdb_type)
         except TimeoutError:
-            msg = f'Timeout ({TIMEOUT}s) reached for {self.__name__}'
+            msg = f'Timeout ({TIMEOUT}s) reached for Ontop Materialize'
             print(msg, file=sts.stderr)
             self._log.append(msg)
 
