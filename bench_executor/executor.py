@@ -696,7 +696,10 @@ class Executor:
             if not command(**step['parameters']):
                 success = False
                 # TODO: queries may fail, but are not critical, still continue
-                if step['resource'] not in ['Query']:
+                if step['resource'] in ['Query']:
+                    self._print_step(step['resource'], step['name'], success)
+                    continue
+                else:
                     self._print_step(step['resource'], step['name'], success)
                     break
 
