@@ -787,7 +787,7 @@ class Executor:
                     try:
                         shutil.move(p1, p2)
                     except FileNotFoundError:
-                        print('Cannot find file: {p1}', file=sys.stderr)
+                        print(f'Cannot find file: {p1}', file=sys.stderr)
 
                 if step['parameters'].get('output_file', False) \
                         and not step['parameters'].get('multiple_files', False):
@@ -797,7 +797,7 @@ class Executor:
                     try:
                         shutil.move(p1, p2)
                     except FileNotFoundError:
-                        print('Cannot find file: {p1}', file=sys.stderr)
+                        print(f'Cannot find file: {p1}', file=sys.stderr)
 
             # Run complete, mark it
             run_checkpoint_file = os.path.join(results_run_path, '.done')
