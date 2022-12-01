@@ -70,7 +70,7 @@ class Virtuoso(Container):
     def load_parallel(self, rdf_file: str, cores: int) -> bool:
         success = True
 
-        success, logs = self.exec(f'ls /usr/share/proj/{rdf_file}')
+        success, logs = self.exec(f'sh -c "ls /usr/share/proj/{rdf_file}"')
         self._logs += logs
         if not success:
             return False
