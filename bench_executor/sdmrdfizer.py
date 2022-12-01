@@ -4,8 +4,10 @@ import os
 import configparser
 from container import Container
 from rdflib import Graph, BNode, Namespace, Literal, RDF
+from timeout_decorator import timeout, TimeoutError
 
 VERSION = '4.6.3.4'
+TIMEOUT = 6 * 3600 # 6 hours
 R2RML = Namespace('http://www.w3.org/ns/r2rml#')
 RML = Namespace('http://semweb.mmlab.be/ns/rml#')
 D2RQ = Namespace('http://www.wiwiss.fu-berlin.de/suhl/bizer/D2RQ/0.1#')
@@ -25,10 +27,21 @@ class SDMRDFizer(Container):
     def root_mount_directory(self) -> str:
         return __name__.lower()
 
-    def execute(self, arguments) -> bool:
+    @timeout(TIMEOUT)
+    def _execute_with_timeout(self, arguments) -> bool:
         cmd = f'python3 sdm-rdfizer/rdfizer/run_rdfizer.py ' + \
               f'/data/config_sdmrdfizer.ini'
         return self.run_and_wait_for_exit(cmd)
+
+    def execute(self, arguments: list) -> bool:
+        try:
+            return self._execute_with_timeout(arguments)
+        except TimeoutError:
+            msg = f'Timeout ({TIMEOUT}s) reached for {self.__name__}'
+            print(msg, file=sts.stderr)
+            self._log.append(msg)
+
+        return False
 
     def execute_mapping(self, mapping_file: str, output_file: str,
                         serialization: str, rdb_username: str = None,

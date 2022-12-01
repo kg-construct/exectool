@@ -17,6 +17,7 @@ bench_executor/data/test-cases/*/*/*/data
 bench_executor/data/test-cases/*/results
 bench_executor/data/test-cases/*/*/results
 bench_executor/data/test-cases/*/*/*/results
+bench_executor/data/test-cases/morphkgcoptimized/*
 bench_executor/data/shared/mapping_yarrrml*
 *tmp_student.csv
 *.done

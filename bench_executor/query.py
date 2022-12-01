@@ -48,12 +48,12 @@ class Query():
         r.raise_for_status()
         return r.text
 
-    def execute(self, query: str, sparql_endpoint: str,
-                headers: dict = None) -> Optional[str]:
+    def _execute(self, query: str, sparql_endpoint: str,
+                 headers: dict = None) -> Optional[str]:
         try:
             return self._execute_with_timeout(query, sparql_endpoint, headers)
         except TimeoutError:
-            msg = f'Timeout reached for query: "{query}"'
+            msg = f'Timeout ({TIMEOUT}s) reached for {self.__name__}: "{query}"'
             print(msg, file=sys.stderr)
             self._logs.append(msg)
 
@@ -66,7 +66,7 @@ class Query():
                          results_file: str, headers: dict = None,
                          expect_empty: bool = False) -> bool:
         try:
-            results = self.execute(query, sparql_endpoint, headers)
+            results = self._execute(query, sparql_endpoint, headers)
             if results is None:
                 return False
         except Exception as e:
@@ -120,7 +120,7 @@ class Query():
                           headers: dict = None) -> bool:
         query = self._read_query_file(query_file)
         try:
-            results = self.execute(query, sparql_endpoint, headers)
+            results = self._execute(query, sparql_endpoint, headers)
             if results is None:
                 return False
         except Exception as e:

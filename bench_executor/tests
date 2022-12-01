@@ -484,7 +484,7 @@ class RDBTests(unittest.TestCase):
         morphkgc.stop()
 
     def test_morphkgcoptimized_mysql(self):
-        morphkgcoptimized = MorphKGCOptimized(DATA_DIR, CONFIG_DIR, True)
+        morphkgcoptimized = MorphKGCOptimized(DATA_DIR, CONFIG_DIR, False)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared', 'morphkgc_mysql.nt'))
         except FileNotFoundError:
@@ -636,7 +636,7 @@ class RDBTests(unittest.TestCase):
                                               'MySQL', '3306', 'db', 'MySQL'))
         # Verify loaded data
         q = Query(DATA_DIR, CONFIG_DIR, False)
-        results = q.execute(QUERY, ontop.endpoint, ontop.headers)
+        results = q._execute(QUERY, ontop.endpoint, ontop.headers)
         results = list(filter(None, results.split('\n')))
         self.assertEqual(len(results), 3)
 
@@ -658,7 +658,7 @@ class RDBTests(unittest.TestCase):
                                               'PostgreSQL'))
         # Verify loaded data
         q = Query(DATA_DIR, CONFIG_DIR, False)
-        results = q.execute(QUERY, ontop.endpoint, ontop.headers)
+        results = q._execute(QUERY, ontop.endpoint, ontop.headers)
         results = list(filter(None, results.split('\n')))
         self.assertEqual(len(results), 3)
 
@@ -748,7 +748,7 @@ class TriplestoreTests(unittest.TestCase):
 
         # Verify loaded data
         q = Query(DATA_DIR, CONFIG_DIR, False)
-        results = q.execute(QUERY, virtuoso.endpoint, virtuoso.headers)
+        results = q._execute(QUERY, virtuoso.endpoint, virtuoso.headers)
         results = list(filter(None, results.split('\n')))
         self.assertEqual(len(results), 3)
 
@@ -761,7 +761,7 @@ class TriplestoreTests(unittest.TestCase):
 
         # Verify removed data
         q = Query(DATA_DIR, CONFIG_DIR, False)
-        results = q.execute(QUERY, virtuoso.endpoint, virtuoso.headers)
+        results = q._execute(QUERY, virtuoso.endpoint, virtuoso.headers)
         self.assertTrue('# Empty NT' in results)
 
         # Test if we can now reload our RDF
@@ -769,7 +769,7 @@ class TriplestoreTests(unittest.TestCase):
 
         # Verify loaded data
         q = Query(DATA_DIR, CONFIG_DIR, False)
-        results = q.execute(QUERY, virtuoso.endpoint, virtuoso.headers)
+        results = q._execute(QUERY, virtuoso.endpoint, virtuoso.headers)
         results = list(filter(None, results.split('\n')))
         self.assertEqual(len(results), 3)
 
@@ -787,7 +787,7 @@ class TriplestoreTests(unittest.TestCase):
 
         # Verify loaded data
         q = Query(DATA_DIR, CONFIG_DIR, False)
-        results = q.execute(QUERY, fuseki.endpoint, fuseki.headers)
+        results = q._execute(QUERY, fuseki.endpoint, fuseki.headers)
         results = list(filter(None, results.split('\n')))
         self.assertEqual(len(results), 3)
 
@@ -798,7 +798,7 @@ class TriplestoreTests(unittest.TestCase):
         self.assertTrue(fuseki.wait_until_ready())
 
         q = Query(DATA_DIR, CONFIG_DIR, False)
-        results = q.execute(QUERY, fuseki.endpoint, fuseki.headers)
+        results = q._execute(QUERY, fuseki.endpoint, fuseki.headers)
         results = list(filter(None, results.split('\n')))
         self.assertEqual(len(results), 0)
 
@@ -807,7 +807,7 @@ class TriplestoreTests(unittest.TestCase):
 
         # Verify loaded data
         q = Query(DATA_DIR, CONFIG_DIR, False)
-        results = q.execute(QUERY, fuseki.endpoint, fuseki.headers)
+        results = q._execute(QUERY, fuseki.endpoint, fuseki.headers)
         results = list(filter(None, results.split('\n')))
         self.assertEqual(len(results), 3)
 
@@ -818,7 +818,7 @@ class TriplestoreTests(unittest.TestCase):
         DBPEDIA_SPARQL = 'https://dbpedia.org/sparql'
 
         q = Query(DATA_DIR, CONFIG_DIR, False)
-        results = q.execute(QUERY, DBPEDIA_SPARQL)
+        results = q._execute(QUERY, DBPEDIA_SPARQL)
         results = list(filter(None, results.split('\n')))
         self.assertEqual(len(results), 100)
 

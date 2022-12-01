@@ -6,8 +6,10 @@ import psutil
 import configparser
 from container import Container
 from rdflib import Graph, Namespace, RDF, URIRef
+from timeout_decorator import timeout, TimeoutError
 
 VERSION = '4.2.1' # 4.2.1 with N-Triples and N-Quads support
+TIMEOUT = 6 * 3600 # 6 hours
 R2RML = Namespace('http://www.w3.org/ns/r2rml#')
 
 class _Ontop(Container):
@@ -216,11 +218,16 @@ class OntopMaterialize(_Ontop):
                     exist_ok=True)
         super().__init__('Ontop-Materialize', data_path, verbose, 'materialize')
 
-    def execute_mapping(self, mapping_file: str, output_file: str,
-                        serialization: str, rdb_username: str = None,
-                        rdb_password: str = None, rdb_host: str = None,
-                        rdb_port: str = None, rdb_name: str = None,
-                        rdb_type: str = None) -> bool:
+    @timeout(TIMEOUT)
+    def _execute_mapping_with_timeout(self, mapping_file: str,
+                                      output_file: str,
+                                      serialization: str,
+                                      rdb_username: str = None,
+                                      rdb_password: str = None,
+                                      rdb_host: str = None,
+                                      rdb_port: str = None,
+                                      rdb_name: str = None,
+                                      rdb_type: str = None) -> bool:
         config_file = f'{self._data_path}/{self.root_mount_directory}' + \
                       '/config.properties'
         arguments = [ '-f', serialization ]
@@ -229,3 +236,25 @@ class OntopMaterialize(_Ontop):
                                        mapping_file, output_file, rdb_username,
                                        rdb_password, rdb_host, rdb_port,
                                        rdb_name, rdb_type)
+
+    def execute_mapping(self, mapping_file: str, output_file: str,
+                        serialization: str, rdb_username: str = None,
+                        rdb_password: str = None, rdb_host: str = None,
+                        rdb_port: str = None, rdb_name: str = None,
+                        rdb_type: str = None) -> bool:
+        try:
+            return self._execute_mapping_with_timeout(mapping_file,
+                                                      output_file,
+                                                      serialization,
+                                                      rdb_username,
+                                                      rdb_password,
+                                                      rdb_host,
+                                                      rdb_port,
+                                                      rdb_name,
+                                                      rdb_type)
+        except TimeoutError:
+            msg = f'Timeout ({TIMEOUT}s) reached for {self.__name__}'
+            print(msg, file=sts.stderr)
+            self._log.append(msg)
+
+        return False

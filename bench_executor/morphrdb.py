@@ -7,6 +7,7 @@ from io import StringIO
 from container import Container
 
 VERSION = '3.12.5'
+TIMEOUT = 6 * 3600 # 6 hours
 
 class MorphRDB(Container):
     def __init__(self, data_path: str, config_path: str, verbose: bool):
@@ -23,7 +24,7 @@ class MorphRDB(Container):
     def root_mount_directory(self) -> str:
         return __name__.lower()
 
-    def execute(self, arguments) -> bool:
+    def _execute_with_timeout(self, arguments) -> bool:
         # Set Java heap to 1/2 of available memory instead of the default 1/4
         max_heap = int(psutil.virtual_memory().total * (1/2))
 
@@ -35,6 +36,16 @@ class MorphRDB(Container):
         success =  self.run_and_wait_for_exit(cmd)
 
         return success
+
+    def execute(self, arguments: list) -> bool:
+        try:
+            return self._execute_with_timeout(arguments)
+        except TimeoutError:
+            msg = f'Timeout ({TIMEOUT}s) reached for {self.__name__}'
+            print(msg, file=sts.stderr)
+            self._log.append(msg)
+
+        return False
 
     def execute_mapping(self, mapping_file: str, output_file: str,
                         serialization: str, rdb_username: str = None,

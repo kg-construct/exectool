@@ -3,8 +3,10 @@
 import os
 import configparser
 from container import Container
+from timeout_decorator import timeout, TimeoutError
 
 VERSION = '2.2.0'
+TIMEOUT = 6 * 3600 # 6 hours
 
 class MorphKGCOptimized(Container):
     def __init__(self, data_path: str, config_path: str, verbose: bool):
@@ -23,9 +25,20 @@ class MorphKGCOptimized(Container):
     def root_mount_directory(self) -> str:
         return __name__.lower()
 
-    def execute(self, arguments) -> bool:
+    @timeout(TIMEOUT)
+    def _execute_with_timeout(self, arguments) -> bool:
         cmd = f'python3 morphkgc-optimized {" ".join(arguments)}'
         return self.run_and_wait_for_exit(cmd)
+
+    def execute(self, arguments: list) -> bool:
+        try:
+            return self._execute_with_timeout(arguments)
+        except TimeoutError:
+            msg = f'Timeout ({TIMEOUT}s) reached for {self.__name__}'
+            print(msg, file=sts.stderr)
+            self._log.append(msg)
+
+        return False
 
     def execute_mapping(self, mapping_file: str, output_file: str,
                         serialization: str, query_file: str,

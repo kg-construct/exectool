@@ -3,8 +3,10 @@
 import os
 import psutil
 from container import Container
+from timeout_decorator import timeout, TimeoutError
 
 VERSION = '6.0.0'
+TIMEOUT = 6 * 3600 # 6 hours
 
 class RMLMapper(Container):
     def __init__(self, data_path: str, config_path: str, verbose: bool):
@@ -20,7 +22,8 @@ class RMLMapper(Container):
     def root_mount_directory(self) -> str:
         return __name__.lower()
 
-    def execute(self, arguments: list) -> bool:
+    @timeout(TIMEOUT)
+    def _execute_with_timeout(self, arguments: list) -> bool:
         if self._verbose:
             arguments.append('-vvvvvvvvvvv')
 
@@ -35,6 +38,18 @@ class RMLMapper(Container):
               f'-jar rmlmapper/rmlmapper.jar ' + \
               f'{" ".join(arguments)}'
         return self.run_and_wait_for_exit(cmd)
+
+        return False
+
+    def execute(self, arguments: list) -> bool:
+        try:
+            return self._execute_with_timeout(arguments)
+        except TimeoutError:
+            msg = f'Timeout ({TIMEOUT}s) reached for {self.__name__}'
+            print(msg, file=sts.stderr)
+            self._log.append(msg)
+
+        return False
 
     def execute_mapping(self, mapping_file, output_file, serialization,
                         rdb_username: str = None, rdb_password: str = None,
