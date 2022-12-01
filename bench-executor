@@ -6,7 +6,7 @@ import argparse
 import subprocess
 import atexit
 from datetime import datetime
-from signal import signal, SIGINT, SIGKILL
+from signal import signal, SIGINT
 from time import sleep
 from bench_executor import Executor, Manager
 
@@ -80,7 +80,6 @@ def execute_cases(executor: Executor, interval: float, runs: int,
     failures = []
 
     signal(SIGINT, signal_handler_interrupt)
-    signal(SIGKILL, signal_handler_kill)
 
     cases = e.list()
     if not cases:
