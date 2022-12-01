@@ -7,6 +7,7 @@ import tempfile
 from csv import reader
 from container import Container
 from typing import List
+from timeout_decorator import timeout, TimeoutError
 
 VERSION = '8.0'
 HOST = 'localhost'
@@ -14,6 +15,7 @@ USER = 'root'
 PASSWORD = 'root'
 DB = 'db'
 PORT = '3306'
+CLEAR_TABLES_TIMEOUT = 5 * 60 # 5 minutes
 
 class MySQL(Container):
     def __init__(self, data_path: str, config_path: str, verbose: bool):
@@ -151,7 +153,8 @@ class MySQL(Container):
 
         return success
 
-    def stop(self) -> bool:
+    @timeout(CLEAR_TABLES_TIMEOUT)
+    def _clear_tables(self):
         connection = pymysql.connect(host=HOST, database=DB,
                                      user=PASSWORD, password=PASSWORD)
         cursor = connection.cursor()
@@ -160,5 +163,12 @@ class MySQL(Container):
             cursor.execute(f'COMMIT;')
         self._tables = []
         connection.close()
+
+    def stop(self) -> bool:
+        try:
+            self._clear_tables()
+        except TimeoutError:
+            print('Clearing MySQL tables timed out after '
+                  f'{CLEAR_TABLES_TIMEOUT}s!', file=sys.stderr)
 
         return super().stop()

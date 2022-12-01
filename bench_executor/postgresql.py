@@ -9,6 +9,7 @@ from csv import reader
 from time import sleep
 from container import Container
 from typing import List
+from timeout_decorator import timeout, TimeoutError
 
 VERSION = '14.5'
 HOST = 'localhost'
@@ -17,6 +18,7 @@ PASSWORD = 'root'
 DB = 'db'
 PORT = '5432'
 WAIT_TIME = 3
+CLEAR_TABLES_TIMEOUT = 5 * 60 # 5 minutes
 
 class PostgreSQL(Container):
     def __init__(self, data_path: str, config_path: str, verbose: bool):
@@ -141,7 +143,8 @@ class PostgreSQL(Container):
 
         return success
 
-    def stop(self) -> bool:
+    @timeout(CLEAR_TABLES_TIMEOUT)
+    def _clear_tables(self):
         connection = psycopg2.connect(host=HOST, database=DB,
                                       user=PASSWORD, password=PASSWORD)
         cursor = connection.cursor()
@@ -150,5 +153,12 @@ class PostgreSQL(Container):
             cursor.execute(f'COMMIT;')
         self._tables = []
         connection.close()
+
+    def stop(self) -> bool:
+        try:
+            self._clear_tables()
+        except TimeoutError:
+            print('Clearing PostgreSQL tables timed out after '
+                  f'{CLEAR_TABLES_TIMEOUT}s!', file=sys.stderr)
 
         return super().stop()
