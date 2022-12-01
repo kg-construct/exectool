@@ -6,7 +6,7 @@ import argparse
 import subprocess
 import atexit
 from datetime import datetime
-from signal import signal, SIGINT
+from signal import signal, SIGINT, SIGKILL
 from time import sleep
 from bench_executor import Executor, Manager
 
