@@ -741,6 +741,10 @@ class Executor:
             if wait_for_user:
                 input('Step completed, press any key to continue...')
 
+            # TODO: find a proper way to run the same container multiple times
+            if resource in ['MorphKGCOptimized']:
+                resource.stop()
+
         # Case finished, store diff time
         diff = time() - start
 
