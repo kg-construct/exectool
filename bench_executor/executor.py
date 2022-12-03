@@ -581,7 +581,6 @@ class Executor:
                   file=sys.stderr)
             return False
 
-        print(directory)
         aggregated_metrics = self._aggregate_runs(metrics)
         aggregated_metrics_path = os.path.join(directory, 'results',
                                                'aggregated.json')

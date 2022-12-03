@@ -8,6 +8,7 @@ import atexit
 from datetime import datetime
 from signal import signal, SIGINT
 from time import sleep
+from zipfile import ZipFile
 from bench_executor import Executor, Manager
 
 VERSION = '0.1.0'
@@ -161,6 +162,11 @@ def generate_statistics(executor: Executor):
     failures = []
 
     for case in cases:
+        # Skip already generated stats
+        if os.path.exists(os.path.join(case['directory'], 'results',
+                                       'aggregated.json')):
+            continue
+
         success = e.stats(case)
         if not success:
             name = case['data']['name']
@@ -168,6 +174,7 @@ def generate_statistics(executor: Executor):
                 failures.append(name)
             print(f'Could not generate statistics for case "{name}"',
                   file=sys.stderr)
+
     if failures:
         print(f'{len(failures)}/{len(cases)} cases failed to execute:',
               file=sys.stderr)
@@ -176,6 +183,16 @@ def generate_statistics(executor: Executor):
         sys.exit(EXIT_CODE_FAILED_CASE)
 
     print(f'Generated statistics for {len(cases)} cases')
+
+    archive_name = os.path.join(e.main_directory, 'aggregated_results.zip')
+    with ZipFile(archive_name, 'w') as archive:
+        for case in cases:
+            directory = case['directory']
+            aggregated_file = os.path.join(directory, 'results', 'aggregated.json')
+            if os.path.exists(aggregated_file):
+                archive.write(aggregated_file)
+
+    print(f'Generated statistics archive')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Copyright by (c) Dylan Van Assche (2022), available under GPLv3 license',
