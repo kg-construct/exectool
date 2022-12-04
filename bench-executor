@@ -161,7 +161,11 @@ def generate_statistics(executor: Executor):
     cases = e.list()
     failures = []
 
+    print('Generating statistics for cases:')
+
     for case in cases:
+        print(f"\t{case['data']['name']}")
+
         # Skip already generated stats
         if os.path.exists(os.path.join(case['directory'], 'results',
                                        'aggregated.json')):

@@ -397,7 +397,6 @@ class Executor:
                     step_number += 1
 
         # Find the median step over all runs and calculate some stats on it
-        print(execution_times)
         metrics['stats'] = {}
         for step, values in execution_times.items():
             try:
