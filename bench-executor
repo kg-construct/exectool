@@ -118,6 +118,8 @@ def execute_cases(executor: Executor, interval: float, runs: int,
         runs = 1
 
     print(f'Executing {len(cases)} cases:')
+    notifier.send('Execution STARTED',
+                  f'Executing {len(cases)} cases\nRoot: "{e.main_directory}"')
     start_time = datetime.now()
     for index, case in enumerate(cases):
         data = case['data']
