@@ -5,10 +5,12 @@ import sys
 import argparse
 import subprocess
 import atexit
+import smtplib
 from datetime import datetime
 from signal import signal, SIGINT
 from time import sleep
 from zipfile import ZipFile
+from email.mime.text import MIMEText
 from bench_executor import Executor, Manager
 
 VERSION = '0.1.0'
@@ -22,6 +24,30 @@ EXIT_CODE_INTERRUPTED = -7
 
 stop = False
 manager = Manager()
+
+class Notifier():
+    def __init__(self, server, port, username, password, sender, receiver):
+        self._server = server
+        self._port = port
+        self._username = username
+        self._password = password
+        self._sender = sender
+        self._receiver = receiver
+
+    def send(self, title, message):
+        if self._server is not None and self._port is not None \
+           and self._username is not None and self._password is not None \
+           and self._sender is not None and self._password is not None:
+            msg = MIMEText(message)
+            msg['Subject'] = title
+            msg['From'] = self._sender
+            msg['To'] = self._receiver
+
+            with smtplib.SMTP(self._server, self._port) as server:
+                server.starttls()
+                server.login(self._username, self._password)
+                server.sendmail(self._sender, [self._receiver], msg.as_string())
+                print(f'Notification send to {self._receiver}')
 
 @atexit.register
 def _clean():
@@ -76,7 +102,7 @@ def print_cases(executor: Executor):
         print(f'{index+1 : >4}. {name : <85} {number_of_steps: >11}')
 
 def execute_cases(executor: Executor, interval: float, runs: int,
-                  fail_fast: bool, wait_for_user: bool):
+                  fail_fast: bool, wait_for_user: bool, notifier: Notifier):
     global stop
     failures = []
 
@@ -136,20 +162,27 @@ def execute_cases(executor: Executor, interval: float, runs: int,
                     break
 
             if stop:
+                notifier.send('Execution INTERRUPTED',
+                              'Execution was interrupted by the user\n'
+                              f'Root: {e.main_directory}')
                 sys.exit(EXIT_CODE_INTERRUPTED)
 
     # Exit with error code when we have a failed case
     if failures:
-        print(f'{len(failures)}/{len(cases)} cases failed to execute:',
-              file=sys.stderr)
+        msg = f'{len(failures)}/{len(cases)} cases failed to execute:\n'
         for index, f in enumerate(failures):
-            print(f'{index+1 : >4}. {f : <76}')
+            msg += f'{index+1 : >4}. {f : <76}\n'
+        print(msg, file=sys.stderr)
+        msg += f'\nRoot: "{e.main_directory}"'
+        notifier.send('Execution FAILED', msg)
         sys.exit(EXIT_CODE_FAILED_CASE)
     else:
-        msg = f'{len(cases)} executed succesfully'
+        text = f'{len(cases)} cases executed succesfully'
         progress = _format_progress(len(cases), len(cases), start_time)
-        print(f'{msg : <69} {progress : <13}')
-
+        msg = f'{text : <89} {progress : <13}'
+        print(msg, file=sys.stderr)
+        msg = f'{text : <89}\nRoot: "{e.main_directory}"'
+        notifier.send('Execution FINISHED', msg)
 
 def clean_cases(executor: Executor):
     cases = e.list()
@@ -163,7 +196,6 @@ def generate_statistics(executor: Executor):
     failures = []
 
     print('Generating statistics for cases:')
-
     for case in cases:
         print(f"\t{case['data']['name']}")
 
@@ -193,41 +225,77 @@ def generate_statistics(executor: Executor):
     with ZipFile(archive_name, 'w') as archive:
         for case in cases:
             directory = case['directory']
-            aggregated_file = os.path.join(directory, 'results', 'aggregated.json')
+            aggregated_file = os.path.join(directory, 'results',
+                                           'aggregated.json')
             if os.path.exists(aggregated_file):
                 archive.write(aggregated_file)
 
     print(f'Generated statistics archive')
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Copyright by (c) Dylan Van Assche (2022), available under GPLv3 license',
-                                     epilog='Please cite our paper if you make use of this tool')
+    parser = argparse.ArgumentParser(description='Copyright by (c) '
+                                                 'Dylan Van Assche (2022), '
+                                                 'available under GPLv3 '
+                                                 'license',
+                                     epilog='Please cite our paper if you '
+                                            'make use of this tool')
     parser.add_argument('--version', action='version',
                         version=f'{parser.prog} {VERSION}')
     parser.add_argument(dest='command',
-                        help='Command to execute, available commands: "list", "run"',
+                        help='Command to execute, available commands: '
+                             '"list", "run"',
                         type=str)
     parser.add_argument('--root', dest='main_directory', default='.',
-                        help='Root directory of all cases to execute, defaults to the current working directory',
+                        help='Root directory of all cases to execute, '
+                             'defaults to the current working directory',
                         type=str)
     parser.add_argument('--runs', dest='number_of_runs', default=3,
-                        help='Number of runs to execute a case. The value must be uneven for generating stats. Default 3 runs',
+                        help='Number of runs to execute a case. '
+                             'The value must be uneven for generating stats. '
+                             'Default 3 runs',
                         type=int)
     parser.add_argument('--interval', dest='interval', default=0.1,
-                        help='Measurement sample interval for metrics, default 0.1s',
+                        help='Measurement sample interval for metrics, '
+                             'default 0.1s',
                         type=float)
     parser.add_argument('--verbose', dest='verbose',
                         help='Turn on verbose output', action='store_true')
     parser.add_argument('--fail-fast', dest='fail_fast',
-                        help='Immediately exit when a case fails', action='store_true')
+                        help='Immediately exit when a case fails',
+                        action='store_true')
     parser.add_argument('--wait-for-user', dest='wait_for_user',
                         help='Show a prompt when a step is executed before '
                              'going to the next one', action='store_true')
+    parser.add_argument('--smtp-server', dest='smtp_server', default=None,
+                        help='SMTP server to use for sending e-mails',
+                        type=str)
+    parser.add_argument('--smtp-port', dest='smtp_port', default=None,
+                        help='SMTP port to use for sending e-mails',
+                        type=int)
+    parser.add_argument('--smtp-username', dest='smtp_username', default=None,
+                        help='Username to authenticate with SMTP server '
+                             'for sending e-mails',
+                        type=str)
+    parser.add_argument('--smtp-password', dest='smtp_password', default=None,
+                        help='Password to authenticate with SMTP server '
+                             'for sending e-mails',
+                        type=str)
+    parser.add_argument('--smtp-sender', dest='smtp_sender', default=None,
+                        help='Sender e-mailaddress to use for sending e-mails',
+                        type=str)
+    parser.add_argument('--smtp-receiver', dest='smtp_receiver', default=None,
+                        help='Receiver e-mailaddress to use for sending emails',
+                        type=str)
     args = parser.parse_args()
 
     # Resolve path
     main_directory = os.path.expanduser(args.main_directory)
     main_directory = os.path.expandvars(main_directory)
+
+    notifications = False
+    if args.smtp_server and args.smtp_port and args.smtp_username \
+       and args.smtp_password and args.smtp_sender and args.smtp_receiver:
+        notifications = True
 
     if args.verbose:
         print(f'{parser.prog} {VERSION}')
@@ -238,6 +306,13 @@ if __name__ == '__main__':
         print(f'Number of runs: {args.number_of_runs}')
         print(f'Measurement sample interval: {args.interval}s')
         print(f'Wait for user after case: {args.wait_for_user}')
+        if notifications:
+            print(f'SMTP server: {args.smtp_server}')
+            print(f'SMTP port: {args.smtp_port}')
+            print(f'SMTP username: {args.smtp_username}')
+            print(f'SMTP password: {args.smtp_password}')
+            print(f'SMTP sender: {args.smtp_sender}')
+            print(f'SMTP receiver: {args.smtp_receiver}')
 
     if args.interval % 2 == 0:
         print('Number of runs must be uneven for generating statistics',
@@ -257,13 +332,16 @@ if __name__ == '__main__':
         except FileNotFoundError:
             pass
 
+    notifier = Notifier(args.smtp_server, args.smtp_port,
+                        args.smtp_username, args.smtp_password,
+                        args.smtp_sender, args.smtp_receiver)
     e = Executor(main_directory, verbose=args.verbose, cli=True)
 
     if args.command == 'list':
         print_cases(e)
     elif args.command == 'run':
         execute_cases(e, args.interval, args.number_of_runs, args.fail_fast,
-                      args.wait_for_user)
+                      args.wait_for_user, notifier)
     elif args.command == 'clean':
         clean_cases(e)
     elif args.command == 'stats':
