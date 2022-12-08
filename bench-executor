@@ -83,7 +83,7 @@ def execute_cases(executor: Executor, interval: float, runs: int,
     signal(SIGINT, signal_handler_interrupt)
 
     cases = e.list()
-    cases = cases.sort()
+    cases = sorted(cases, key=lambda c: c['directory'])
     if not cases:
         print('No cases discovered!')
         sys.exit(EXIT_CODE_NO_CASES)
