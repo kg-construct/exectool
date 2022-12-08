@@ -83,6 +83,7 @@ def execute_cases(executor: Executor, interval: float, runs: int,
     signal(SIGINT, signal_handler_interrupt)
 
     cases = e.list()
+    cases = cases.sort()
     if not cases:
         print('No cases discovered!')
         sys.exit(EXIT_CODE_NO_CASES)
@@ -92,7 +93,7 @@ def execute_cases(executor: Executor, interval: float, runs: int,
 
     print(f'Executing {len(cases)} cases:')
     start_time = datetime.now()
-    for index, case in enumerate(sorted(cases)):
+    for index, case in enumerate(cases):
         data = case['data']
         directory = case['directory']
         results_directory = os.path.join(directory, 'results')
