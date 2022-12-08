@@ -92,7 +92,7 @@ def execute_cases(executor: Executor, interval: float, runs: int,
 
     print(f'Executing {len(cases)} cases:')
     start_time = datetime.now()
-    for index, case in enumerate(cases):
+    for index, case in enumerate(sorted(cases)):
         data = case['data']
         directory = case['directory']
         results_directory = os.path.join(directory, 'results')
