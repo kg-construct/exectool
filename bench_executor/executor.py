@@ -740,7 +740,7 @@ class Executor:
                 input('Step completed, press any key to continue...')
 
             # TODO: find a proper way to run the same container multiple times
-            if resource in ['MorphKGCOptimized']:
+            if resource in ['MorphKGCOptimized', 'OntopVirtualize']:
                 resource.stop()
 
         # Case finished, store diff time
