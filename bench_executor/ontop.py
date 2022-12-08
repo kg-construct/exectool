@@ -258,3 +258,11 @@ class OntopMaterialize(_Ontop):
             self._log.append(msg)
 
         return False
+
+if __name__ == '__main__':
+    print('ℹ️  Starting up...')
+    o = OntopVirtualize('data', 'config', True)
+    o.wait_until_ready()
+    input('ℹ️  Press any key to stop')
+    o.stop()
+    print('ℹ️  Stopped')

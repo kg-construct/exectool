@@ -83,6 +83,10 @@ class MySQL(Container):
                 if not success:
                     break
 
+        import time
+        print('WAITING 1h')
+        #time.sleep(3600)
+
         return success
 
     def _load_csv(self, csv_file: str, table: str, create: bool) -> bool:
@@ -172,3 +176,11 @@ class MySQL(Container):
                   f'{CLEAR_TABLES_TIMEOUT}s!', file=sys.stderr)
 
         return super().stop()
+
+if __name__ == '__main__':
+    print('ℹ️  Starting up...')
+    m = MySQL('data', 'config', True)
+    m.wait_until_ready()
+    input('ℹ️  Press any key to stop')
+    m.stop()
+    print('ℹ️  Stopped')

@@ -95,3 +95,11 @@ class Fuseki(Container):
     @property
     def endpoint(self):
         return self._endpoint
+
+if __name__ == '__main__':
+    print('ℹ️  Starting up...')
+    f = Fuseki('data', 'config', True)
+    f.wait_until_ready()
+    input('ℹ️  Press any key to stop')
+    f.stop()
+    print('ℹ️  Stopped')

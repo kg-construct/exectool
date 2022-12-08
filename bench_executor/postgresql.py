@@ -162,3 +162,11 @@ class PostgreSQL(Container):
                   f'{CLEAR_TABLES_TIMEOUT}s!', file=sys.stderr)
 
         return super().stop()
+
+if __name__ == '__main__':
+    print('ℹ️  Starting up...')
+    p = PostgreSQL('data', 'config', True)
+    p.wait_until_ready()
+    input('ℹ️  Press any key to stop')
+    p.stop()
+    print('ℹ️  Stopped')

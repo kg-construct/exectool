@@ -135,3 +135,11 @@ class Virtuoso(Container):
     @property
     def headers(self):
         return {}
+
+if __name__ == '__main__':
+    print('ℹ️  Starting up...')
+    v = Virtuoso('data', 'config', True)
+    v.wait_until_ready()
+    input('ℹ️  Press any key to stop')
+    v.stop()
+    print('ℹ️  Stopped')
