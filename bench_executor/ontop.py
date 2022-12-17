@@ -8,7 +8,7 @@ from container import Container
 from rdflib import Graph, Namespace, RDF, URIRef
 from timeout_decorator import timeout, TimeoutError
 
-VERSION = '4.2.1' # 4.2.1 with N-Triples and N-Quads support
+VERSION = '4.2.1'
 TIMEOUT = 6 * 3600 # 6 hours
 R2RML = Namespace('http://www.w3.org/ns/r2rml#')
 

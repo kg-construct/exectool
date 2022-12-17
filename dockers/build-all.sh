@@ -3,7 +3,7 @@ set -e
 #
 # Build script for all Docker containers.
 #
-# Copyright (c) by Dylan Van Assche (2022)
+# Copyright (c) by ANONYMOUS (2022)
 # License: GPLv3
 #
 

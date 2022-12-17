@@ -236,7 +236,7 @@ def generate_statistics(executor: Executor):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Copyright by (c) '
-                                                 'Dylan Van Assche (2022), '
+                                                 'ANONYMOUS (2022), '
                                                  'available under GPLv3 '
                                                  'license',
                                      epilog='Please cite our paper if you '

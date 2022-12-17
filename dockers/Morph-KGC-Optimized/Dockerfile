@@ -1,6 +1,6 @@
 ################################################################################
 # Morph-KGC-Optimized
-# https://github.com/DylanVanAssche/morph-kgc/tree/optimized
+# https://github.com/oeg-upm/morph-kgc
 ################################################################################
 FROM ubuntu:22.04
 
@@ -11,8 +11,9 @@ RUN apt-get update && apt-get install -y python3 python3-pip gcc libpq-dev wget
 
 # Download Morph-KGC release
 RUN pip3 install psycopg2 pymysql pymssql cryptography
-RUN pip3 install https://github.com/DylanVanAssche/morph-kgc/archive/c3a7056447350c3a8c085169b05b6fc5442f2f06.zip
-RUN wget -O morphkgc-optimized https://raw.githubusercontent.com/DylanVanAssche/morph-kgc/optimized/examples/morphkgc-optimized
+COPY c3a7056447350c3a8c085169b05b6fc5442f2f06.zip /c3a7056447350c3a8c085169b05b6fc5442f2f06.zip
+RUN pip3 install /c3a7056447350c3a8c085169b05b6fc5442f2f06.zip
+COPY morphkgc-optimized /morphkgc-optimized
 RUN chmod +x /morphkgc-optimized
 
 # Expose gtfs-bench folders

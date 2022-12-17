@@ -12,7 +12,7 @@ usage: bench-executor [-h] [--version] [--root MAIN_DIRECTORY] [--runs NUMBER_OF
                       [--verbose] [--fail-fast] [--wait-for-user]
                       command
 
-Copyright by (c) Dylan Van Assche (2022), available under GPLv3 license
+Copyright by (c) ANONYMOUS (2022), available under GPLv3 license
 
 positional arguments:
   command               Command to execute, available commands: "list", "run"
@@ -183,5 +183,5 @@ cd bench_executor
 ## License
 
 Licensed under the GPLv3 license
-Copyright (c) by Dylan Van Assche (2022)
+Copyright (c) by ANONYMOUS (2022)
 

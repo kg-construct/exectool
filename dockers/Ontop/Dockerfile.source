@@ -4,10 +4,8 @@
 ################################################################################
 FROM ubuntu:22.04
 # Configure the Ontop version to use
-# Branch: https://github.com/DylanVanAssche/ontop/tree/ontop-4.2.1-PATCH
 ARG COMMIT="8d24757cfbc0980459a09c679c03dbd10c1cdfdd"
 ARG ONTOP_VERSION="4.2.1"
-ARG URL=https://github.com/DylanVanAssche/ontop/archive/$COMMIT.zip
 
 # Install latest updates and dependencies
 RUN apt-get update
@@ -20,7 +18,7 @@ ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
 RUN echo "JAVA_HOME value: ${JAVA_HOME}"
 
 # Build Ontop from source
-RUN wget -O ontop.zip $URL
+COPY 8d24757cfbc0980459a09c679c03dbd10c1cdfdd.zip ontop.zip
 RUN unzip ontop.zip -d /ontop-src
 WORKDIR /ontop-src/ontop-$COMMIT
 RUN mvn -Prelease -DskipTests
