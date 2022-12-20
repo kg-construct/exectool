@@ -819,15 +819,16 @@ class Executor:
     def list(self):
         cases = []
 
-        for root, dirs, files in os.walk(self._main_directory):
-            for file in files:
-                if os.path.basename(file) == METADATA_FILE:
-                    path = os.path.join(root, file)
-                    with open(path, 'r') as f:
-                        data = json.load(f)
-                        if self._validate_case(data, path):
-                            cases.append({'directory': os.path.dirname(path),
-                                          'data': data})
+        for directory in glob(self._main_directory):
+            for root, dirs, files in os.walk(directory):
+                for file in files:
+                    if os.path.basename(file) == METADATA_FILE:
+                        path = os.path.join(root, file)
+                        with open(path, 'r') as f:
+                            data = json.load(f)
+                            if self._validate_case(data, path):
+                                cases.append({'directory': os.path.dirname(path),
+                                              'data': data})
 
         return cases
 
