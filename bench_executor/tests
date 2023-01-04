@@ -28,11 +28,14 @@ from yarrrml import YARRRML
 from executor import Executor
 from time import sleep
 from rdflib import Graph
+from collector import Collector
+from threading import Event
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 CONFIG_DIR = os.path.join(os.path.dirname(__file__), 'config')
 LOGS_FILE_NAME = 'logs.txt'
 METRICS_FILE_NAME = 'metrics.jsonl'
+HWINFO_FILE_NAME = 'hwinfo.txt'
 CHECKPOINT_FILE_NAME = '.done'
 EXIT_CODE_INTERRUPTED = -4
 METRIC_TYPE_STOP = 'STOP'
@@ -292,6 +295,19 @@ class UnitTests(unittest.TestCase):
         self.assertTrue(yarrrml.transform_mapping(yarrrml_file, mapping_file,
                                                   True))
         yarrrml.stop()
+
+    def test_collector_hwinfo(self);
+        e = Event()
+        collector = Collector(DATA_DIR, e)
+
+        try:
+            os.remove(os.path.join(DATA_DIR, HWINFO_FILE_NAME))
+        except FileNotFoundError:
+            pass
+
+        self.assertTrue(os.path.exists(os.path.join(DATA_DIR,
+                                                    HWINFO_FILE_NAME)))
+        e.stop()
 
 class FileTests(unittest.TestCase):
     def setUp(self):

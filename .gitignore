@@ -1,4 +1,5 @@
 # Project specific ignores
+bench_executor/data/hwinfo.txt
 bench_executor/data/rmlmapper/
 bench_executor/data/postgresql/
 bench_executor/data/virtuoso/

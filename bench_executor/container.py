@@ -10,16 +10,6 @@ from typing import Optional, List, Tuple
 WAIT_TIME = 1 # seconds
 TIMEOUT_TIME = 600 # seconds
 NETWORK_NAME = 'bench_executor'
-DEV_BLOCK_DIR = '/dev/block/'
-CGROUPS_DIR_SYSTEMD_V1 = '/sys/fs/cgroup/memory/system.slice/'
-CGROUPS_DIR_CGROUPFS_V1 = '/sys/fs/cgroup/memory/docker/'
-CGROUPS_DIR_SYSTEMD_V2 = '/sys/fs/cgroup/system.slice/'
-CGROUPS_DIR_CGROUPFS_V2 = '/sys/fs/cgroup/docker/'
-CGROUPS_MODE_SYSTEMD = 'systemd'
-CGROUPS_MODE_CGROUPSFS = 'cgroupfs'
-NETWORK_REGEX = r"(\w*):\s*(\d*)\s*(\d*)\s*(\d*)\s*(\d*)\s*(\d*)\s*(\d*)" + \
-                r"\s*(\d*)\s*(\d*)\s*(\d*)\s*(\d*)\s*(\d*)\s*(\d*)\s*(\d*)" + \
-                r"\s*(\d*)\s*(\d*)\s*(\d*)"
 
 class ContainerManager():
     def __init__(self):
@@ -64,38 +54,19 @@ class Container():
         self._started = False
         self._verbose = verbose
 
-        # create network if not exist
+        # create network if not exist and create it if necessary
         try:
             self._client.networks.get(NETWORK_NAME)
         except docker.errors.NotFound:
             self._client.networks.create(NETWORK_NAME)
 
-        # detect CGroups location
-        if os.path.exists(CGROUPS_DIR_SYSTEMD_V1):
-            self._cgroups_dir = CGROUPS_DIR_SYSTEMD_V1
-            self._cgroups_mode = CGROUPS_MODE_SYSTEMD
-            raise NotImplementedError('CGroupsFSv1 SystemD driver is '
-                                      'unsupported, use CGroupFSv2 SystemD '
-                                      'driver instead')
-        elif os.path.exists(CGROUPS_DIR_CGROUPFS_V1):
-            self._cgroups_dir = CGROUPS_MODE_CGROUPSFS_V1
-            self._cgroups_mode = CGROUPS_MODE_CGROUPSFS
-            raise NotImplementedError('CGroupsFSv1 plain driver is unsupported,'
-                                      ' use CGroupFSv2 SystemD driver instead')
-        elif os.path.exists(CGROUPS_DIR_SYSTEMD_V2):
-            self._cgroups_dir = CGROUPS_DIR_SYSTEMD_V2
-            self._cgroups_mode = CGROUPS_MODE_SYSTEMD
-        elif os.path.exists(CGROUPS_DIR_CGROUPFS_V2):
-            self._cgroups_dir = CGROUPS_DIR_CGROUPSFS_V2
-            self._cgroups_mode = CGROUPS_MODE_CGROUPSFS
-            raise NotImplementedError('CGroupsFSv2 plain driver is unsupported,'
-                                      'use CGroupFSv2 SystemD driver instead')
-        else:
-            print('CGroups not found, stats unsupported', file=sys.stderr)
-
     @property
     def started(self):
         return self._started
+
+    @property
+    def name(self):
+        return self._name
 
     def run(self, command: str = '', detach=True) -> bool:
         try:
@@ -202,198 +173,3 @@ class Container():
             pass
 
         return True
-
-    def stats(self, silence_failure=False) -> Optional[dict]:
-        # Docker API is slow for retrieving stats, use underlying cgroups and
-        # proc file systems instead to retrieve the raw data without the
-        # processing overhead of the Docker daemon
-        if self._container is not None and self._cgroups_dir is not None:
-            stats = {}
-
-            # Get IDs to access metrics on filesystem
-            if self._proc_pid is None or self._long_id is None:
-                self._container.reload()
-                pid = self._container.attrs['State']['Pid']
-                if pid != 0:
-                    self._proc_pid = pid
-                self._long_id = self._container.id
-            cgroup_path = None
-            proc_path = None
-
-            if self._cgroups_mode == CGROUPS_MODE_SYSTEMD:
-                cgroup_path = os.path.join(self._cgroups_dir,
-                                           f'docker-{self._long_id}.scope')
-            elif self._cgroups_mode == CGROUPS_MODE_CGROUPSFS:
-                cgroup_path = os.path.join(self._cgroups_dir, self._long_id)
-            else:
-                raise ValueError('Unknown CGroup mode, this statement should '
-                                 'be unreachable. Please report this as a bug.')
-
-            proc_path = os.path.join(f'/proc/{self._proc_pid}')
-
-            if not os.path.exists(cgroup_path):
-                if not silence_failure:
-                    print(f'Container {self._cgroups_dir} files do not exist',
-                          file=sys.stderr)
-                return None
-
-            if not os.path.exists(proc_path):
-                if not silence_failure:
-                    print('Container /proc files do not exist',
-                          file=sys.stderr)
-                return None
-
-            try:
-                p = os.path.join(cgroup_path, 'cpu.stat')
-                with open(p, 'r') as f:
-                    # <metric> <value>
-                    cpu_raw = f.read()
-                    for raw in cpu_raw.split('\n'):
-                        if 'usage_usec' in raw or 'user_usec' in raw \
-                            or 'system_usec' in raw:
-                            metric, value = raw.split(' ')
-                            if metric == 'usage_usec':
-                                stats['cpu_total_time'] = \
-                                    int(value) / (10**6)
-                            elif metric == 'user_usec':
-                                stats['cpu_user_time'] = \
-                                    int(value) / (10**6)
-                            elif metric == 'system_usec':
-                                stats['cpu_system_time'] = \
-                                    int(value) / (10**6)
-
-                p = os.path.join(cgroup_path, 'memory.current')
-                with open(p, 'r') as f:
-                    # <value>
-                    memory_raw = f.read()
-                    stats['memory_total_size'] = int(memory_raw) / (10**3)
-
-                p = os.path.join(cgroup_path, 'io.stat')
-                stats['io'] = []
-                with open(p, 'r') as f:
-                    # <major:minor> rbytes=<value> wbytes=<value> rios=<value>
-                    # wios=<value> dbytes=<value> dios=<value>
-                    io_raw = f.read()
-                    KEYS = ['rbytes', 'wbytes', 'rios', 'wios', 'dbytes',
-                            'dios']
-                    for raw in io_raw.split('\n'):
-                        missing_key = False
-                        for k in KEYS:
-                            if k not in raw:
-                                missing_key = True
-                                break
-
-                        if missing_key:
-                            continue
-
-                        device_number = re.search(r"(\d*:\d*) ",
-                                                  raw).groups()[0]
-                        device = os.path.realpath(os.path.join(DEV_BLOCK_DIR,
-                                                               device_number))
-                        bytes_read = int(re.search(r"rbytes=(\d*)",
-                                                   raw).groups()[0])
-                        bytes_write = int(re.search(r"wbytes=(\d*)",
-                                                    raw).groups()[0])
-                        number_of_reads = int(re.search(r"rios=(\d*)",
-                                                        raw).groups()[0])
-                        number_of_writes = int(re.search(r"wios=(\d*)",
-                                                         raw).groups()[0])
-                        bytes_discarded = int(re.search(r"dbytes=(\d*)",
-                                                        raw).groups()[0])
-                        number_of_discards = int(re.search(r"dios=(\d*)",
-                                                           raw).groups()[0])
-                        # Multiple disks will results in multiple list entries
-                        stats['io'].append({
-                            'device': device,
-                            'total_size_read': bytes_read / (10**3),
-                            'total_size_write': bytes_write / (10**3),
-                            'total_size_discard': bytes_discarded / (10**3),
-                            'number_of_read': number_of_reads,
-                            'number_of_write': number_of_writes,
-                            'number_of_discard': number_of_discards
-                        })
-
-                p = os.path.join(proc_path, 'net', 'dev')
-                stats['network'] = []
-                with open(p, 'r') as f:
-                    # header Interface | Receive | Transmist
-                    # header <metrics>
-                    # <interface>: <received bytes> <received_packets>
-                    # <received_errs> <received_drop> <received_fifo>
-                    # <received_frame> <received_compressed>
-                    # <received_multicast> <send_bytes> <send_packets>
-                    # <send_errs> <send_drop> <send_fifo> <send_colls>
-                    # <send_carrier> <send_compressed>
-                    network_raw = f.read()
-                    for raw in network_raw.split('\n'):
-                        if raw == '' or 'Receive' in raw or 'packets' in raw:
-                            continue
-                        try:
-                            network = re.search(NETWORK_REGEX, raw).groups()
-                        except AttributeError:
-                            continue
-
-                        device = network[0]
-                        bytes_received = int(network[1])
-                        packets_received = int(network[2])
-                        errors_received = int(network[3])
-                        dropped_received = int(network[4])
-                        fifo_received = int(network[5])
-                        frame_received = int(network[6])
-                        compressed_received = int(network[7])
-                        multicast_received = int(network[8])
-                        bytes_transmitted = int(network[9])
-                        packets_transmitted = int(network[10])
-                        errors_transmitted = int(network[11])
-                        dropped_transmitted = int(network[12])
-                        fifo_transmitted = int(network[13])
-                        colls_transmitted = int(network[14])
-                        carrier_transmitted = int(network[15])
-                        compressed_transmitted = int(network[16])
-
-                        # Multiple network interfaces will results
-                        # in multiple list entries
-                        stats['network'].append({
-                            'device': device,
-                            'total_size_received': bytes_received / (10**3),
-                            'total_size_transmitted': bytes_transmitted / (10**3),
-                            'number_of_packets_received': packets_received,
-                            'number_of_packets_transmitted': packets_transmitted,
-                            'number_of_errors_received': errors_received,
-                            'number_of_errors_transmitted': errors_transmitted,
-                            'number_of_drops_received': dropped_received,
-                            'number_of_drops_transmitted': dropped_transmitted
-                        })
-
-
-                # Check if the necessary keys are present
-                missing_key = False
-                KEYS = ['cpu_total_time', 'cpu_user_time', 'cpu_system_time',
-                        'memory_total_size', 'io', 'network']
-                for k in KEYS:
-                    if k not in stats:
-                        missing_key = True
-                        break
-
-                if missing_key:
-                    None
-
-                # At least one IO and network device must be present
-                if not stats['io'] or not stats['network']:
-                    return None
-
-                return stats
-            except FileNotFoundError:
-                return None
-
-        # Metrics measurement threads may try to race for a metrics dump
-        # a soon as the container is started by polling this continuously.
-        # Silence the error message in such cases to avoid log spam
-        if not silence_failure:
-            print(f'Retrieving container "{self._name}" stats failed!',
-                  file=sys.stderr)
-        return None
-
-    @property
-    def name(self):
-        return self._name
