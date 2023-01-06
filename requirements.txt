@@ -5,6 +5,4 @@ jsonschema
 psutil
 requests
 rdflib
-matplotlib
-numpy
 timeout-decorator
