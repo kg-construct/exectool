@@ -27,6 +27,7 @@
             "@id": "http://example.com/test-cases/rmlmapper/fuseki/transform-csv-to-ntriples#step3",
             "name": "Execute SPARQL query",
             "resource": "Query",
+            "may_fail": true,
             "command": "execute_and_save",
             "parameters": {
                 "query": "PREFIX foaf: <http://xmlns.com/foaf/0.1/> CONSTRUCT WHERE { ?s foaf:name ?o1 . }",

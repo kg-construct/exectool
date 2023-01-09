@@ -285,8 +285,10 @@ class Executor:
             command = getattr(resource, step['command'])
             if not command(**step['parameters']):
                 success = False
-                # TODO: queries may fail, but are not critical, still continue
-                if step['resource'] in ['Query']:
+                # Some steps are non-critical like queries, they may fail but
+                # should not cause a complete case failure. Allow these
+                # failures if the may_fail key is present
+                if step.get('may_fail', False):
                     self._print_step(step['resource'], step['name'], success)
                     continue
                 else:
