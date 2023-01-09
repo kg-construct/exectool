@@ -5,13 +5,11 @@ import sys
 import argparse
 import subprocess
 import atexit
-import smtplib
 from datetime import datetime
 from signal import signal, SIGINT
 from time import sleep
 from zipfile import ZipFile
-from email.mime.text import MIMEText
-from bench_executor import Executor, Manager
+from bench_executor import Executor, Manager, Notifier
 
 VERSION = '0.1.0'
 EXIT_CODE_UNKNOWN_COMMAND = -1
@@ -24,30 +22,6 @@ EXIT_CODE_INTERRUPTED = -7
 
 stop = False
 manager = Manager()
-
-class Notifier():
-    def __init__(self, server, port, username, password, sender, receiver):
-        self._server = server
-        self._port = port
-        self._username = username
-        self._password = password
-        self._sender = sender
-        self._receiver = receiver
-
-    def send(self, title, message):
-        if self._server is not None and self._port is not None \
-           and self._username is not None and self._password is not None \
-           and self._sender is not None and self._password is not None:
-            msg = MIMEText(message)
-            msg['Subject'] = title
-            msg['From'] = self._sender
-            msg['To'] = self._receiver
-
-            with smtplib.SMTP(self._server, self._port) as server:
-                server.starttls()
-                server.login(self._username, self._password)
-                server.sendmail(self._sender, [self._receiver], msg.as_string())
-                print(f'Notification send to {self._receiver}')
 
 @atexit.register
 def _clean():
@@ -155,7 +129,17 @@ def execute_cases(executor: Executor, interval: float, runs: int,
                 print(f'        ⏩ SKIPPED RUN')
                 continue
 
-            success, diff = e.run(case, interval, i, wait_for_user, i == runs)
+            try:
+                success, diff = e.run(case, interval, i, wait_for_user,
+                                      i == runs)
+            except Exception as exception:
+                print(f'Case failure due to exception: {exception}',
+                      file=sys.stderr)
+                notifier.send('Execution FAILED',
+                              'Execution failed due to exception\n'
+                              f'Root: {e.main_directory}\n'
+                              f'Exception: {exception})')
+                sys.exit(EXIT_CODE_FAILED_CASE)
 
             if not success:
                 if data['name'] not in failures:
