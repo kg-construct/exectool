@@ -102,7 +102,7 @@ def print_cases(executor: Executor):
         print(f'{index+1 : >4}. {name : <85} {number_of_steps: >11}')
 
 def execute_cases(executor: Executor, interval: float, runs: int,
-                  fail_fast: bool, wait_for_user: bool, notifier: Notifier):
+                  wait_for_user: bool, notifier: Notifier):
     global stop
     failures = []
 
@@ -160,8 +160,6 @@ def execute_cases(executor: Executor, interval: float, runs: int,
             if not success:
                 if data['name'] not in failures:
                     failures.append(data['name'])
-                if fail_fast:
-                    break
 
             if stop:
                 notifier.send('Execution INTERRUPTED',
@@ -262,9 +260,6 @@ if __name__ == '__main__':
                         type=float)
     parser.add_argument('--verbose', dest='verbose',
                         help='Turn on verbose output', action='store_true')
-    parser.add_argument('--fail-fast', dest='fail_fast',
-                        help='Immediately exit when a case fails',
-                        action='store_true')
     parser.add_argument('--wait-for-user', dest='wait_for_user',
                         help='Show a prompt when a step is executed before '
                              'going to the next one', action='store_true')
@@ -304,7 +299,6 @@ if __name__ == '__main__':
         print(f'Command: {args.command}')
         print(f'Root directory: {main_directory}')
         print(f'Verbose enabled: {args.verbose}')
-        print(f'Fail fast enabled: {args.fail_fast}')
         print(f'Number of runs: {args.number_of_runs}')
         print(f'Measurement sample interval: {args.interval}s')
         print(f'Wait for user after case: {args.wait_for_user}')
@@ -342,8 +336,8 @@ if __name__ == '__main__':
     if args.command == 'list':
         print_cases(e)
     elif args.command == 'run':
-        execute_cases(e, args.interval, args.number_of_runs, args.fail_fast,
-                      args.wait_for_user, notifier)
+        execute_cases(e, args.interval, args.number_of_runs, args.wait_for_user,
+                      notifier)
     elif args.command == 'clean':
         clean_cases(e)
     elif args.command == 'stats':
