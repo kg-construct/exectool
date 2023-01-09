@@ -2,7 +2,6 @@
 
 import os
 import sys
-import csv
 import json
 import jsonschema
 import importlib
@@ -10,10 +9,8 @@ import inspect
 import shutil
 from glob import glob
 from datetime import datetime
-from time import time, sleep
+from time import sleep
 from typing import Tuple, Optional
-from threading import Thread, Event
-from queue import Queue, Empty
 try:
     from bench_executor import Collector, METRICS_FILE_NAME, Stats
 except ModuleNotFoundError:
@@ -226,7 +223,6 @@ class Executor:
     def run(self, case: dict, interval: float,
             run: int, checkpoint: bool) -> Tuple[bool, float]:
         success = True
-        start = time()
         data = case['data']
         directory = case['directory']
         data_path = os.path.join(directory, 'data')
@@ -304,9 +300,6 @@ class Executor:
             if (index + 1) < len(data['steps']):
                 collector.next_step()
 
-        # Case finished, store diff time
-        diff = time() - start
-
         # Stop metrics collection
         collector.stop()
 
@@ -374,7 +367,7 @@ class Executor:
                           True)
         sleep(WAIT_TIME)
 
-        return success, diff
+        return success
 
     def list(self):
         cases = []
