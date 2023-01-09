@@ -29,17 +29,19 @@ WAIT_TIME = 15 # seconds
 LOGS_FILE_NAME = 'logs.txt'
 PLOT_MARGIN = 1.1
 
+# Dummy callback in case no callback was provided
+def _progress_cb(resource: str, name: str, success: bool):
+    pass
 
 class Executor:
     def __init__(self, main_directory: str, verbose: bool = False,
-                 cli: bool = False):
+                 progress_cb = _progress_cb):
         self._main_directory = main_directory
         self._schema = {}
         self._resources = None
         self._class_module_mapping = {}
         self._verbose = verbose
-        self._cli = cli
-        self._colors = [ 'red', 'green', 'blue', 'orange', 'purple' ]
+        self._progress_cb = progress_cb
 
         self._init_resources()
 
@@ -191,15 +193,6 @@ class Executor:
 
         return True
 
-    def _print_step(self, resource: str, name: str, success: bool):
-        if not self._cli:
-            return
-
-        if success:
-            print(f'        ✅ {resource : <20}: {name : <50}')
-        else:
-            print(f'        ❌ {resource : <20}: {name : <50}')
-
     def stats(self, case: dict) -> bool:
         data = case['data']
         directory = case['directory']
@@ -230,8 +223,8 @@ class Executor:
             if not data_dir.endswith('shared'):
                 shutil.rmtree(data_dir)
 
-    def run(self, case: dict, interval: float, run: int,
-            wait_for_user: bool, checkpoint: bool) -> Tuple[bool, float]:
+    def run(self, case: dict, interval: float,
+            run: int, checkpoint: bool) -> Tuple[bool, float]:
         success = True
         start = time()
         data = case['data']
@@ -260,7 +253,7 @@ class Executor:
                                                          self._verbose)
             if hasattr(resource, 'initialization'):
                 success = resource.initialization()
-                self._print_step('Initializing', step['resource'], success)
+                self._progress_cb('Initializing', step['resource'], success)
 
         # Launch metrics collection
         collector = Collector(results_run_path, directory, interval,
@@ -278,7 +271,7 @@ class Executor:
             if hasattr(resource, 'wait_until_ready'):
                 if not resource.wait_until_ready():
                     success = False
-                    self._print_step(step['resource'], step['name'], success)
+                    self._progress_cb(step['resource'], step['name'], success)
                     break
 
             # Execute command
@@ -289,10 +282,10 @@ class Executor:
                 # should not cause a complete case failure. Allow these
                 # failures if the may_fail key is present
                 if step.get('may_fail', False):
-                    self._print_step(step['resource'], step['name'], success)
+                    self._progress_cb(step['resource'], step['name'], success)
                     continue
                 else:
-                    self._print_step(step['resource'], step['name'], success)
+                    self._progress_cb(step['resource'], step['name'], success)
                     break
 
             # Store logs
@@ -305,9 +298,7 @@ class Executor:
                     f.writelines(resource.logs())
 
             # Step complete
-            self._print_step(step['resource'], step['name'], success)
-            if wait_for_user:
-                input('Step completed, press any key to continue...')
+            self._progress_cb(step['resource'], step['name'], success)
 
             # Step finished, let metric collector know
             if (index + 1) < len(data['steps']):
@@ -324,7 +315,7 @@ class Executor:
             if resource is not None and hasattr(resource, 'stop'):
                 resource.stop()
 
-        self._print_step('Cleaner', 'Clean up resources', True)
+        self._progress_cb('Cleaner', 'Clean up resources', True)
 
         # Mark checkpoint if necessary
         if checkpoint and success:
@@ -379,8 +370,8 @@ class Executor:
                 d = datetime.now().replace(microsecond=0).isoformat()
                 f.write(f'{d}\n')
 
-        self._print_step('Cooldown', f'Hardware cooldown period {WAIT_TIME}s',
-                         success)
+        self._progress_cb('Cooldown', f'Hardware cooldown period {WAIT_TIME}s',
+                          True)
         sleep(WAIT_TIME)
 
         return success, diff

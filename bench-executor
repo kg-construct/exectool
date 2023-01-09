@@ -21,6 +21,7 @@ EXIT_CODE_EVEN_RUNS = -6
 EXIT_CODE_INTERRUPTED = -7
 
 stop = False
+wait_for_user = False
 manager = Manager()
 
 @atexit.register
@@ -76,7 +77,7 @@ def print_cases(executor: Executor):
         print(f'{index+1 : >4}. {name : <85} {number_of_steps: >11}')
 
 def execute_cases(executor: Executor, interval: float, runs: int,
-                  wait_for_user: bool, notifier: Notifier):
+                  notifier: Notifier):
     global stop
     failures = []
 
@@ -87,9 +88,6 @@ def execute_cases(executor: Executor, interval: float, runs: int,
     if not cases:
         print('No cases discovered!')
         sys.exit(EXIT_CODE_NO_CASES)
-
-    if wait_for_user:
-        runs = 1
 
     print(f'Executing {len(cases)} cases:')
     notifier.send('Execution STARTED',
@@ -130,8 +128,7 @@ def execute_cases(executor: Executor, interval: float, runs: int,
                 continue
 
             try:
-                success, diff = e.run(case, interval, i, wait_for_user,
-                                      i == runs)
+                success, diff = e.run(case, interval, i, i == runs)
             except Exception as exception:
                 print(f'Case failure due to exception: {exception}',
                       file=sys.stderr)
@@ -205,16 +202,31 @@ def generate_statistics(executor: Executor):
 
     print(f'Generated statistics for {len(cases)} cases')
 
-    archive_name = os.path.join(e.main_directory, 'aggregated_results.zip')
+    archive_name = os.path.join(e.main_directory, 'results.zip')
     with ZipFile(archive_name, 'w') as archive:
         for case in cases:
             directory = case['directory']
             aggregated_file = os.path.join(directory, 'results',
-                                           'aggregated.json')
+                                           'aggregated.csv')
+            summary_file = os.path.join(directory, 'results',
+                                        'summary.csv')
+
             if os.path.exists(aggregated_file):
                 archive.write(aggregated_file)
 
-    print(f'Generated statistics archive')
+            if os.path.exists(summary_file):
+                archive.write(summary_file)
+
+    print(f'Generated statistics archive: {archive_name)')
+
+def progress_cb (resource: str, name: str, success: bool):
+    if success:
+        print(f'        ✅ {resource : <20}: {name : <50}')
+    else:
+        print(f'        ❌ {resource : <20}: {name : <50}')
+
+    if wait_for_user:
+        input(f'        ℹ️  Step completed, press any key to continue...')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Copyright by (c) '
@@ -299,6 +311,8 @@ if __name__ == '__main__':
               file=sys.stderr)
         sys.exit(EXIT_CODE_EVEN_RUNS)
 
+    wait_for_user = args.wait_for_user
+
     # SELinux causes weird permission denied issues, warn users
     if 'run' in args.command or 'clean' in args.command:
         try:
@@ -315,13 +329,12 @@ if __name__ == '__main__':
     notifier = Notifier(args.smtp_server, args.smtp_port,
                         args.smtp_username, args.smtp_password,
                         args.smtp_sender, args.smtp_receiver)
-    e = Executor(main_directory, verbose=args.verbose, cli=True)
+    e = Executor(main_directory, verbose=args.verbose, progress_cb)
 
     if args.command == 'list':
         print_cases(e)
     elif args.command == 'run':
-        execute_cases(e, args.interval, args.number_of_runs, args.wait_for_user,
-                      notifier)
+        execute_cases(e, args.interval, args.number_of_runs, notifier)
     elif args.command == 'clean':
         clean_cases(e)
     elif args.command == 'stats':
