@@ -309,10 +309,6 @@ class Executor:
             if wait_for_user:
                 input('Step completed, press any key to continue...')
 
-            # TODO: find a proper way to run the same container multiple times
-            if resource in ['MorphKGCOptimized', 'OntopVirtualize']:
-                resource.stop()
-
             # Step finished, let metric collector know
             if (index + 1) < len(data['steps']):
                 collector.next_step()
