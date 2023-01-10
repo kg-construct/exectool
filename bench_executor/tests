@@ -29,7 +29,9 @@ from yarrrml import YARRRML
 from executor import Executor
 from time import sleep
 from rdflib import Graph
+from rdflib.compare import to_isomorphic
 from threading import Event
+from io import StringIO
 from collector import Collector, METRICS_FILE_NAME
 from stats import Stats, METRICS_AGGREGATED_FILE_NAME, METRICS_SUMMARY_FILE_NAME
 from logger import Logger, LOG_FILE_NAME
@@ -45,6 +47,7 @@ METRIC_TYPE_START = 'START'
 METRIC_TYPE_INIT = 'INIT'
 METRIC_TYPE_MEASUREMENT = 'MEASUREMENT'
 METRIC_TYPE_EXIT = 'EXIT'
+
 
 manager = ContainerManager()
 
@@ -637,7 +640,8 @@ class RDBTests(unittest.TestCase):
                                               'MySQL', '3306', 'db', 'MySQL'))
         # Verify loaded data
         q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
-        results = q._execute(QUERY, ontop.endpoint, False, ontop.headers)
+        results = q._execute(QUERY, ontop.endpoint, False,
+                             ontop.headers['ntriples'])
         results = list(filter(None, results.split('\n')))
         self.assertEqual(len(results), 3, str(results))
 
@@ -659,7 +663,8 @@ class RDBTests(unittest.TestCase):
                                               'PostgreSQL'))
         # Verify loaded data
         q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
-        results = q._execute(QUERY, ontop.endpoint, False, ontop.headers)
+        results = q._execute(QUERY, ontop.endpoint, False,
+                             ontop.headers['ntriples'])
         results = list(filter(None, results.split('\n')))
         self.assertEqual(len(results), 3, str(results))
 
@@ -708,6 +713,195 @@ class RDBTests(unittest.TestCase):
 
         morphrdb.stop()
 
+class QueryTests(unittest.TestCase):
+    def setUp(self):
+        warnings.filterwarnings(action='ignore', message='unclosed',
+                                category=ResourceWarning)
+
+    @classmethod
+    def tearDownClass(cls):
+        manager.stop_all()
+
+    def test_query_formats_virtuoso(self):
+        QUERY='PREFIX foaf: <http://xmlns.com/foaf/0.1/> ' + \
+              'CONSTRUCT WHERE { ?s foaf:name ?o1 . }'
+        virtuoso = Virtuoso(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
+        self.assertTrue(virtuoso.initialization())
+        self.assertTrue(virtuoso.wait_until_ready())
+        self.assertTrue(virtuoso.load('student.nt'))
+
+        # N-Triples
+        q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
+        results = q._execute(QUERY, virtuoso.endpoint, False,
+                             virtuoso.headers['ntriples']).replace('\t', ' ')
+        g1 = Graph()
+        g1.parse(StringIO(results))
+        g2 = Graph()
+        g2.parse(os.path.join(DATA_DIR, 'shared', 'student.nt'))
+        self.assertEqual(to_isomorphic(g1), to_isomorphic(g2))
+        self.assertNotIn('@prefix', results)
+
+        # Turtle
+        q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
+        results = q._execute(QUERY, virtuoso.endpoint, False,
+                             virtuoso.headers['turtle'])
+        g1 = Graph()
+        g1.parse(StringIO(results), format='turtle')
+        g2 = Graph()
+        g2.parse(os.path.join(DATA_DIR, 'shared', 'student.nt'))
+        self.assertEqual(to_isomorphic(g1), to_isomorphic(g2))
+        self.assertIn('@prefix', results)
+
+        # RDF/XML
+        q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
+        results = q._execute(QUERY, virtuoso.endpoint, False,
+                             virtuoso.headers['rdfxml'])
+        g1 = Graph()
+        g1.parse(StringIO(results), format='xml')
+        g2 = Graph()
+        g2.parse(os.path.join(DATA_DIR, 'shared', 'student.nt'))
+        self.assertEqual(to_isomorphic(g1), to_isomorphic(g2))
+        self.assertIn('<rdf:RDF', results, results)
+        self.assertIn('</rdf:RDF>', results, results)
+
+        # JSON-LD
+        q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
+        results = q._execute(QUERY, virtuoso.endpoint, False,
+                             virtuoso.headers['jsonld'])
+        g1 = Graph()
+        g1.parse(StringIO(results), format='json-ld')
+        g2 = Graph()
+        g2.parse(os.path.join(DATA_DIR, 'shared', 'student.nt'))
+        self.assertEqual(to_isomorphic(g1), to_isomorphic(g2))
+        self.assertIn('@context', results, results)
+        self.assertIn('@graph', results, results)
+
+        virtuoso.stop()
+
+    def test_query_formats_ontopendpoint(self):
+        QUERY='PREFIX foaf: <http://xmlns.com/foaf/0.1/> ' + \
+              'CONSTRUCT WHERE { ?s foaf:name ?o1 . }'
+        mysql = MySQL(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
+        mysql.wait_until_ready()
+        mysql.load('student.csv', 'student')
+
+        ontop = OntopVirtualize(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
+        try:
+            os.remove(os.path.join(DATA_DIR, 'shared',
+                                   'ontopendpoint_mysql.nt'))
+        except FileNotFoundError:
+            pass
+        self.assertTrue(ontop.execute_mapping('mapping.r2rml.ttl',
+                                              'ontopendpoint_mysql.nt',
+                                              'ntriples', 'root', 'root',
+                                              'MySQL', '3306', 'db', 'MySQL'))
+
+        # N-Triples
+        q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
+        results = q._execute(QUERY, ontop.endpoint, False,
+                             ontop.headers['ntriples'])
+        g1 = Graph()
+        g1.parse(StringIO(results))
+        g2 = Graph()
+        g2.parse(os.path.join(DATA_DIR, 'shared', 'student.nt'))
+        self.assertEqual(to_isomorphic(g1), to_isomorphic(g2))
+        self.assertNotIn('@prefix', results, results)
+
+        # Turtle
+        q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
+        results = q._execute(QUERY, ontop.endpoint, False,
+                             ontop.headers['turtle'])
+        g1 = Graph()
+        g1.parse(StringIO(results), format='turtle')
+        g2 = Graph()
+        g2.parse(os.path.join(DATA_DIR, 'shared', 'student.nt'))
+        self.assertEqual(to_isomorphic(g1), to_isomorphic(g2))
+        self.assertIn('@prefix', results, results)
+
+        # RDF/XML
+        q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
+        results = q._execute(QUERY, ontop.endpoint, False,
+                             ontop.headers['rdfxml'])
+        g1 = Graph()
+        g1.parse(StringIO(results), format='xml')
+        g2 = Graph()
+        g2.parse(os.path.join(DATA_DIR, 'shared', 'student.nt'))
+        self.assertEqual(to_isomorphic(g1), to_isomorphic(g2))
+        self.assertIn('<rdf:RDF', results, results)
+        self.assertIn('</rdf:RDF>', results, results)
+
+        # JSON-LD
+        q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
+        results = q._execute(QUERY, ontop.endpoint, False,
+                             ontop.headers['jsonld'])
+        g1 = Graph()
+        g1.parse(StringIO(results), format='json-ld')
+        g2 = Graph()
+        g2.parse(os.path.join(DATA_DIR, 'shared', 'student.nt'))
+        self.assertEqual(to_isomorphic(g1), to_isomorphic(g2))
+        self.assertIn('@id', results, results)
+        self.assertIn('@value', results, results)
+
+        ontop.stop()
+        mysql.stop()
+
+    def test_query_formats_fuseki(self):
+        QUERY='PREFIX foaf: <http://xmlns.com/foaf/0.1/> ' + \
+              'CONSTRUCT WHERE { ?s foaf:name ?o1 . }'
+        fuseki = Fuseki(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
+        self.assertTrue(fuseki.initialization())
+        self.assertTrue(fuseki.wait_until_ready())
+        self.assertTrue(fuseki.load('student.nt'))
+
+        # N-Triples
+        q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
+        results = q._execute(QUERY, fuseki.endpoint, False,
+                             fuseki.headers['ntriples'])
+        g1 = Graph()
+        g1.parse(StringIO(results))
+        g2 = Graph()
+        g2.parse(os.path.join(DATA_DIR, 'shared', 'student.nt'))
+        self.assertEqual(to_isomorphic(g1), to_isomorphic(g2))
+        self.assertNotIn('@prefix', results, results)
+
+        # Turtle
+        q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
+        results = q._execute(QUERY, fuseki.endpoint, False,
+                             fuseki.headers['turtle'])
+        g1 = Graph()
+        g1.parse(StringIO(results), format='turtle')
+        g2 = Graph()
+        g2.parse(os.path.join(DATA_DIR, 'shared', 'student.nt'))
+        self.assertEqual(to_isomorphic(g1), to_isomorphic(g2))
+        # Fuseki does not return prefixes if the original loaded file 
+        # was N-Triples
+
+        # RDF/XML
+        q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
+        results = q._execute(QUERY, fuseki.endpoint, False,
+                             fuseki.headers['rdfxml'])
+        g1 = Graph()
+        g1.parse(StringIO(results), format='xml')
+        g2 = Graph()
+        g2.parse(os.path.join(DATA_DIR, 'shared', 'student.nt'))
+        self.assertEqual(to_isomorphic(g1), to_isomorphic(g2))
+        self.assertIn('<rdf:RDF', results, results)
+        self.assertIn('</rdf:RDF>', results, results)
+
+        # JSON-LD
+        q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
+        results = q._execute(QUERY, fuseki.endpoint, False,
+                             fuseki.headers['jsonld'])
+        g1 = Graph()
+        g1.parse(StringIO(results), format='json-ld')
+        g2 = Graph()
+        g2.parse(os.path.join(DATA_DIR, 'shared', 'student.nt'))
+        self.assertEqual(to_isomorphic(g1), to_isomorphic(g2))
+        self.assertIn('@context', results, results)
+        self.assertIn('@graph', results, results)
+
+        fuseki.stop()
+
 class TriplestoreTests(unittest.TestCase):
     def setUp(self):
         warnings.filterwarnings(action='ignore', message='unclosed',
@@ -749,7 +943,8 @@ class TriplestoreTests(unittest.TestCase):
 
         # Verify loaded data
         q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
-        results = q._execute(QUERY, virtuoso.endpoint, False, virtuoso.headers)
+        results = q._execute(QUERY, virtuoso.endpoint, False,
+                             virtuoso.headers['ntriples'])
         results = list(filter(None, results.split('\n')))
         self.assertEqual(len(results), 3, str(results))
 
@@ -762,7 +957,8 @@ class TriplestoreTests(unittest.TestCase):
 
         # Verify removed data
         q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
-        results = q._execute(QUERY, virtuoso.endpoint, True, virtuoso.headers)
+        results = q._execute(QUERY, virtuoso.endpoint, True,
+                             virtuoso.headers['ntriples'])
         self.assertIsNone(results, str(results))
 
         # Test if we can now reload our RDF
@@ -770,7 +966,8 @@ class TriplestoreTests(unittest.TestCase):
 
         # Verify loaded data
         q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
-        results = q._execute(QUERY, virtuoso.endpoint, False, virtuoso.headers)
+        results = q._execute(QUERY, virtuoso.endpoint, False,
+                             virtuoso.headers['ntriples'])
         results = list(filter(None, results.split('\n')))
         self.assertEqual(len(results), 3, str(results))
 
@@ -788,7 +985,8 @@ class TriplestoreTests(unittest.TestCase):
 
         # Verify loaded data
         q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
-        results = q._execute(QUERY, fuseki.endpoint, False, fuseki.headers)
+        results = q._execute(QUERY, fuseki.endpoint, False,
+                             fuseki.headers['ntriples'])
         results = list(filter(None, results.split('\n')))
         self.assertEqual(len(results), 3, str(results))
 
@@ -799,7 +997,8 @@ class TriplestoreTests(unittest.TestCase):
         self.assertTrue(fuseki.wait_until_ready())
 
         q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
-        results = q._execute(QUERY, fuseki.endpoint, True, fuseki.headers)
+        results = q._execute(QUERY, fuseki.endpoint, True,
+                             fuseki.headers['ntriples'])
         self.assertIsNone(results, str(results))
 
         # Test if we can now reload our RDF
@@ -807,7 +1006,8 @@ class TriplestoreTests(unittest.TestCase):
 
         # Verify loaded data
         q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
-        results = q._execute(QUERY, fuseki.endpoint, False, fuseki.headers)
+        results = q._execute(QUERY, fuseki.endpoint, False,
+                             fuseki.headers['ntriples'])
         results = list(filter(None, results.split('\n')))
         self.assertEqual(len(results), 3, str(results))
 
@@ -984,6 +1184,8 @@ if __name__ == '__main__':
         unittest.main(defaultTest='FileTests', exit=False)
         print('*' * 3 + ' RDB TESTS ' + '*' * 3)
         unittest.main(defaultTest='RDBTests', exit=False)
+        print('*' * 3 + ' QUERY TESTS ' + '*' * 3)
+        unittest.main(defaultTest='QueryTests', exit=False)
         print('*' * 3 + ' TRIPLE STORE TESTS ' + '*' * 3)
         unittest.main(defaultTest='TriplestoreTests', exit=False)
         print('*' * 3 + 'INTEGRATION TESTS' + '*' * 3)

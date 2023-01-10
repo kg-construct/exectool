@@ -197,21 +197,14 @@ class OntopVirtualize(_Ontop):
         config_file = f'{self._data_path}/{self.root_mount_directory}' + \
                       '/config.properties'
         arguments = ['--cors-allowed-origins=*', '--port=8888']
-        if serialization == 'ntriples':
-            self._headers = { 'Accept': 'application/n-triples' }
-        elif serialization == 'nquads':
-            self._headers = { 'Accept': 'application/n-quads' }
-        elif serialization == 'turtle':
-            self._headers = { 'Accept': 'text/turtle' }
-        elif serialization == 'rdfjson':
-            self._headers = { 'Accept': 'application/rdf+json' }
-        elif serialization == 'rdfxml':
-            self._headers = { 'Accept': 'application/rdf+xml' }
-        elif serialization == 'jsonld':
-            self._headers = { 'Accept': 'application/ld+json' }
-        elif serialization == 'csv':
-            self._headers = { 'Accept': 'text/csv' }
-        else:
+        self._headers['ntriples'] = { 'Accept': 'application/n-triples' }
+        self._headers['nquads'] = { 'Accept': 'application/n-quads' }
+        self._headers['turtle'] = { 'Accept': 'text/turtle' }
+        self._headers['rdfjson'] = { 'Accept': 'application/rdf+json' }
+        self._headers['rdfxml'] = { 'Accept': 'application/rdf+xml' }
+        self._headers['jsonld'] = { 'Accept': 'application/ld+json' }
+        self._headers['csv'] = { 'Accept': 'text/csv' }
+        if serialization not in self._headers.keys():
             msg = f'Unsupported serialization format ' + \
                   f'"{serialization}" for Ontop'
             self._logger.error(msg)
@@ -245,7 +238,7 @@ class OntopMaterialize(_Ontop):
         config_file = f'{self._data_path}/{self.root_mount_directory}' + \
                       '/config.properties'
         arguments = [ '-f', serialization ]
-        self._headers = { }
+        self._headers = {}
         return super().execute_mapping(config_file, arguments,
                                        mapping_file, output_file, rdb_username,
                                        rdb_password, rdb_host, rdb_port,

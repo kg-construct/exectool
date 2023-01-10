@@ -37,8 +37,7 @@ class Query():
                           f'"{sparql_endpoint}"')
         data = {
             'query': query,
-            'format': 'text/plain', # N-Triples Virtuoso
-            'maxrows': '2000000' # Overwrite Virtuoso SPARQL limit
+            'maxrows': '3000000' # Overwrite Virtuoso SPARQL limit
         }
         # Hardcoded to N-Triples
         if headers is not None:

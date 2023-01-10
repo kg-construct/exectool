@@ -54,7 +54,14 @@ class Fuseki(Container):
 
     @property
     def headers(self) -> str:
-        return {}
+        headers = {}
+        headers['ntriples'] = { 'Accept': 'text/plain' }
+        headers['turtle'] = { 'Accept': 'text/turtle' }
+        headers['csv'] = { 'Accept': 'text/csv' }
+        headers['rdfjson'] = { 'Accept': 'application/rdf+json' }
+        headers['rdfxml'] = { 'Accept': 'application/rdf+xml' }
+        headers['jsonld'] = { 'Accept': 'application/ld+json' }
+        return headers
 
     def wait_until_ready(self, command: str = '') -> bool:
         command = f'{command} {CMD_ARGS}'

@@ -156,7 +156,14 @@ class Virtuoso(Container):
 
     @property
     def headers(self):
-        return {}
+        headers = {}
+        headers['ntriples'] = { 'Accept': 'text/ntriples' }
+        headers['turtle'] = { 'Accept': 'text/turtle' }
+        headers['rdfxml'] = { 'Accept': 'application/rdf+xml' }
+        headers['rdfjson'] = { 'Accept': 'application/rdf+json' }
+        headers['csv'] = { 'Accept': 'text/csv' }
+        headers['jsonld'] = { 'Accept': 'application/ld+json' }
+        return headers
 
 if __name__ == '__main__':
     print('ℹ️  Starting up...')
