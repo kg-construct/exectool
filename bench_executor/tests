@@ -637,9 +637,9 @@ class RDBTests(unittest.TestCase):
                                               'MySQL', '3306', 'db', 'MySQL'))
         # Verify loaded data
         q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
-        results = q._execute(QUERY, ontop.endpoint, ontop.headers)
+        results = q._execute(QUERY, ontop.endpoint, False, ontop.headers)
         results = list(filter(None, results.split('\n')))
-        self.assertEqual(len(results), 10, str(results))
+        self.assertEqual(len(results), 3, str(results))
 
         ontop.stop()
 
@@ -770,7 +770,7 @@ class TriplestoreTests(unittest.TestCase):
 
         # Verify loaded data
         q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
-        results = q._execute(QUERY, virtuoso.endpoint, virtuoso.headers)
+        results = q._execute(QUERY, virtuoso.endpoint, False, virtuoso.headers)
         results = list(filter(None, results.split('\n')))
         self.assertEqual(len(results), 3, str(results))
 
@@ -788,7 +788,7 @@ class TriplestoreTests(unittest.TestCase):
 
         # Verify loaded data
         q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
-        results = q._execute(QUERY, fuseki.endpoint, fuseki.headers)
+        results = q._execute(QUERY, fuseki.endpoint, False, fuseki.headers)
         results = list(filter(None, results.split('\n')))
         self.assertEqual(len(results), 3, str(results))
 

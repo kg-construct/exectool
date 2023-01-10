@@ -46,7 +46,7 @@ class Query():
         else:
             r = requests.post(sparql_endpoint, data=data)
         if r.status_code != 200:
-            print(r.text, file=sys.stderr)
+            self._logger.error('Query failed: {r.text} (HTTP {r.status_code})')
         r.raise_for_status()
         return r.text
 
