@@ -1,6 +1,6 @@
 ===> CASE <===
-Timestamp: 2023-01-06T10:13:13.565263
-Directory: /home/dylan/Projects/metrics-execution-tool/bench_executor/./data/collector
+Timestamp: 2023-01-10T09:55:45.650423
+Directory: /home/dylan/Projects/metrics-execution-tool/bench_executor/./log
 Run: 1
 Number of steps: 4
 
@@ -24,16 +24,15 @@ Storage
 	Disk "/home": 510.48 GB
 	Disk "/boot": 1.02 GB
 	Disk "/boot/efi": 0.54 GB
-	Disk "/run/media/dylan/pmOS_root": 229.15 GB
 Network
 	Interface "lo": UNKNOWN mbps
 	Interface "enp0s31f6": UNKNOWN mbps
 	Interface "wlp2s0": UNKNOWN mbps
+	Interface "br-e35e8c84b838": UNKNOWN mbps
 	Interface "br-0b46b8270d29": UNKNOWN mbps
 	Interface "br-199916b8f7a4": UNKNOWN mbps
 	Interface "br-8121eb5f4e6f": UNKNOWN mbps
 	Interface "br-82f8d8cfa22d": UNKNOWN mbps
-	Interface "br-e35e8c84b838": UNKNOWN mbps
 	Interface "docker0": UNKNOWN mbps
 
 ===> DOCKER <===

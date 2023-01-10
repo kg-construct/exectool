@@ -217,7 +217,7 @@ def generate_statistics(executor: Executor):
             if os.path.exists(summary_file):
                 archive.write(summary_file)
 
-    print(f'Generated statistics archive: {archive_name)')
+    print(f'Generated statistics archive: {archive_name}')
 
 def progress_cb (resource: str, name: str, success: bool):
     if success:
@@ -328,8 +328,9 @@ if __name__ == '__main__':
 
     notifier = Notifier(args.smtp_server, args.smtp_port,
                         args.smtp_username, args.smtp_password,
-                        args.smtp_sender, args.smtp_receiver)
-    e = Executor(main_directory, verbose=args.verbose, progress_cb)
+                        args.smtp_sender, args.smtp_receiver, main_directory,
+                        args.verbose)
+    e = Executor(main_directory, verbose=args.verbose, progress_cb=progress_cb)
 
     if args.command == 'list':
         print_cases(e)

@@ -3,16 +3,20 @@
 import os
 import psutil
 from container import Container
+from logger import Logger
 
 VERSION = '1.3.6'
 
 class YARRRML(Container):
-    def __init__(self, data_path: str, config_path: str, verbose: bool):
+    def __init__(self, data_path: str, config_path: str, directory: str,
+                 verbose: bool):
         self._data_path = os.path.abspath(data_path)
         self._config_path = os.path.abspath(config_path)
+        self._logger = Logger(__name__, directory, verbose)
+
         os.makedirs(os.path.join(self._data_path, 'yarrrml'), exist_ok=True)
         super().__init__(f'blindreviewing/yarrrml:v{VERSION}', 'YARRRML',
-                         verbose,
+                         self._logger,
                          volumes=[f'{self._data_path}/yarrrml:/data',
                                   f'{self._data_path}/shared:/data/shared'])
 
@@ -32,8 +36,8 @@ class YARRRML(Container):
         if pretty:
             arguments.append('-p')
 
-        self._logs.append(f'Executing YARRRML with arguments '
-                          f'"{" ".join(arguments)}"\n')
+        self._logger.debug(f'Executing YARRRML with arguments '
+                           f'"{" ".join(arguments)}"\n')
 
         cmd = f'{" ".join(arguments)}'
         success = self.run_and_wait_for_exit(cmd)

@@ -5,18 +5,23 @@ import psutil
 import configparser
 from io import StringIO
 from container import Container
+from logger import Logger
 
 VERSION = '3.12.5'
 TIMEOUT = 6 * 3600 # 6 hours
 
+
 class MorphRDB(Container):
-    def __init__(self, data_path: str, config_path: str, verbose: bool):
+    def __init__(self, data_path: str, config_path: str, directory: str,
+                 verbose: bool):
         self._data_path = os.path.abspath(data_path)
         self._config_path = os.path.abspath(config_path)
+        self._logger = Logger(__name__, directory, verbose)
+
         os.umask(0)
         os.makedirs(os.path.join(self._data_path, 'morphrdb'), exist_ok=True)
         super().__init__(f'blindreviewing/morph-rdb:v{VERSION}', 'Morph-RDB',
-                         verbose,
+                         self._logger,
                          volumes=[f'{self._data_path}/shared:/data/shared',
                                   f'{self._data_path}/morphrdb:/data'])
 
@@ -42,8 +47,7 @@ class MorphRDB(Container):
             return self._execute_with_timeout(arguments)
         except TimeoutError:
             msg = f'Timeout ({TIMEOUT}s) reached for Morph-RDB'
-            print(msg, file=sts.stderr)
-            self._log.append(msg)
+            self._logger.warning(msg)
 
         return False
 

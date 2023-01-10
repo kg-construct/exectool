@@ -11,6 +11,10 @@ from time import time, sleep
 from datetime import datetime
 from subprocess import run, CalledProcessError
 from threading import Thread, Event
+try:
+    from bench_executor import Logger
+except ModuleNotFoundError:
+    from logger import Logger
 
 #
 # Hardware and case information is logged to 'case-info.txt' on construction.
@@ -146,14 +150,14 @@ def _collect_metrics(stop_event: Event, metrics_path: str,
             sleep(sample_interval - (timestamp - time()))
 
 class Collector():
-    def __init__(self, results_run_path: str, directory: str,
-                 sample_interval: float, number_of_steps: int,
-                 run_id: int):
+    def __init__(self, results_run_path: str, sample_interval: float,
+                 number_of_steps: int, run_id: int, directory: str,
+                 verbose: bool):
         self._started: bool = False
         self._data_path: str = os.path.abspath(results_run_path)
-        self._directory: str = os.path.abspath(directory)
         self._number_of_steps: int = number_of_steps
         self._stop_event: Event = Event()
+        self._logger = Logger(__name__, directory, verbose)
 
         global step_id
         step_id = 1

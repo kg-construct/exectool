@@ -2,16 +2,22 @@
 
 import smtplib
 from email.mime.text import MIMEText
+try:
+    from bench_executor import Logger
+except ModuleNotFoundError:
+    from logger import Logger
 
 
 class Notifier():
-    def __init__(self, server, port, username, password, sender, receiver):
+    def __init__(self, server, port, username, password, sender, receiver,
+                 directory: str, verbose: bool):
         self._server = server
         self._port = port
         self._username = username
         self._password = password
         self._sender = sender
         self._receiver = receiver
+        self._logger = Logger(__name__, directory, verbose)
 
     def send(self, title, message):
         if self._server is not None and self._port is not None \
@@ -26,4 +32,4 @@ class Notifier():
                 server.starttls()
                 server.login(self._username, self._password)
                 server.sendmail(self._sender, [self._receiver], msg.as_string())
-                print(f'Notification send to {self._receiver}')
+                self._logger.info(f'Notification send to {self._receiver}')

@@ -6,6 +6,10 @@ import sys
 import docker
 from time import time, sleep
 from typing import Optional, List, Tuple
+try:
+    from bench_executor import Logger
+except ModuleNotFoundError:
+    from logger import Logger
 
 WAIT_TIME = 1 # seconds
 TIMEOUT_TIME = 600 # seconds
@@ -36,9 +40,17 @@ class ContainerManager():
             print(f'Container {container.name}: stopped: {stopped} '
                   f'removed: {removed}')
 
+    def create_network(self, name: str):
+        try:
+            self._client.networks.get(name)
+        except docker.errors.NotFound:
+            self._client.networks.create(name)
+
+
 class Container():
-    def __init__(self, container: str, name: str, verbose: bool,
+    def __init__(self, container: str, name: str, logger: Logger,
                  ports: dict = {}, environment: dict = {}, volumes: dict = {}):
+        self._manager = ContainerManager()
         self._client = docker.from_env()
         self._container = None
         self._container_name = container
@@ -52,13 +64,10 @@ class Container():
         self._cgroups_mode = None
         self._cgroups_dir = None
         self._started = False
-        self._verbose = verbose
+        self._logger = logger
 
-        # create network if not exist and create it if necessary
-        try:
-            self._client.networks.get(NETWORK_NAME)
-        except docker.errors.NotFound:
-            self._client.networks.create(NETWORK_NAME)
+        # create network if not exist
+        self._manager.create_network(NETWORK_NAME)
 
     @property
     def started(self):
@@ -93,9 +102,8 @@ class Container():
         try:
             exit_code, output = self._container.exec_run(command)
             logs = output.decode()
-            if self._verbose:
-                for line in logs.split('\n'):
-                    print(line)
+            for line in logs.split('\n'):
+                self._logger.debug(line.strip())
             if exit_code == 0:
                 return True, logs
         except docker.errors.APIError as e:
@@ -125,11 +133,8 @@ class Container():
         logs = self._container.logs(stream=True, follow=True)
         if logs is not None:
             for line in logs:
-                line = line.decode()
-                self._logs.append(line)
-                line = line.strip()
-                if self._verbose:
-                    print(line)
+                line = line.decode().strip()
+                self._logger.debug(line)
 
                 if time() - start > TIMEOUT_TIME:
                     print(f'Starting container "{self._name}" timed out!',
@@ -151,10 +156,8 @@ class Container():
         logs = self._container.logs(stream=True, follow=True)
         if logs is not None:
             for line in logs:
-                line = line.decode()
-                self._logs.append(line)
-                if self._verbose:
-                    print(line.strip())
+                line = line.decode().strip()
+                self._logger.debug(line)
 
         if self._container.wait()['StatusCode'] == 0:
             return True
@@ -165,7 +168,7 @@ class Container():
         try:
             if self._container is not None:
                 self._container.stop()
-                self._container.remove()
+                self._container.remove(v=True)
             return True
         # Containers which are already stopped will raise an error which we can
         # ignore

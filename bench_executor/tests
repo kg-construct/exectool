@@ -31,11 +31,12 @@ from time import sleep
 from rdflib import Graph
 from threading import Event
 from collector import Collector, METRICS_FILE_NAME
-from stats import Stats, METRICS_AGGREGATED_FILE_NAME, METRICS_SUMMARY_FILE_NAME, Stats
+from stats import Stats, METRICS_AGGREGATED_FILE_NAME, METRICS_SUMMARY_FILE_NAME
+from logger import Logger, LOG_FILE_NAME
 
+LOG_DIR = os.path.join(os.path.dirname(__file__), 'log')
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 CONFIG_DIR = os.path.join(os.path.dirname(__file__), 'config')
-LOGS_FILE_NAME = 'logs.txt'
 CASE_INFO_FILE_NAME = 'case-info.txt'
 CHECKPOINT_FILE_NAME = '.done'
 EXIT_CODE_INTERRUPTED = -4
@@ -70,7 +71,8 @@ class UnitTests(unittest.TestCase):
         manager.stop_all()
 
     def test_docker_run(self):
-        c = Container('nginx:alpine', 'test_docker_run', False,
+        logger = Logger('test_docker_run', LOG_DIR, True)
+        c = Container('nginx:alpine', 'test_docker_run', logger,
                       {'80/tcp': '8080/tcp'})
         self.assertTrue(c.run())
         sleep(5)
@@ -80,8 +82,9 @@ class UnitTests(unittest.TestCase):
         c.stop()
 
     def test_docker_run_and_wait_for_log(self):
-        c = Container('nginx:alpine', 'test_docker_run_and_wait_for_log', False,
-                      {'80/tcp': '8081/tcp'})
+        logger = Logger('test_docker_run_and_wait_for_log', LOG_DIR, True)
+        c = Container('nginx:alpine', 'test_docker_run_and_wait_for_log',
+                      logger, {'80/tcp': '8081/tcp'})
         self.assertTrue(c.run_and_wait_for_log('start worker process'))
         r = requests.get('http://localhost:8081')
         self.assertEqual(r.status_code, 200)
@@ -89,13 +92,15 @@ class UnitTests(unittest.TestCase):
         c.stop()
 
     def test_docker_run_and_wait_for_exit(self):
-        c = Container('alpine:edge', 'test_docker_run_and_wait_for_exit', False,
-                      {'80/tcp': '8082/tcp'})
+        logger = Logger('test_docker_run_and_wait_for_exit', LOG_DIR, True)
+        c = Container('alpine:edge', 'test_docker_run_and_wait_for_exit',
+                      logger, {'80/tcp': '8082/tcp'})
         self.assertTrue(c.run_and_wait_for_exit('sleep 5'))
         c.stop()
 
     def test_docker_logs(self):
-        c = Container('nginx:alpine', 'test_docker_logs', False,
+        logger = Logger('test_docker_logs', LOG_DIR, True)
+        c = Container('nginx:alpine', 'test_docker_logs', logger,
                       {'80/tcp': '8083/tcp'})
         self.assertTrue(c.run_and_wait_for_log('start worker process'))
         self.assertIsNotNone(c.logs())
@@ -103,7 +108,7 @@ class UnitTests(unittest.TestCase):
         c.stop()
 
     def test_postgresql(self):
-        postgresql = PostgreSQL(DATA_DIR, CONFIG_DIR, False)
+        postgresql = PostgreSQL(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         self.assertTrue(postgresql.initialization())
         self.assertTrue(postgresql.wait_until_ready())
         connection = psycopg2.connect(host='localhost', database='db',
@@ -131,7 +136,7 @@ class UnitTests(unittest.TestCase):
         postgresql.stop()
 
         # Check if the tables are really dropped
-        postgresql = PostgreSQL(DATA_DIR, CONFIG_DIR, False)
+        postgresql = PostgreSQL(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         self.assertTrue(postgresql.wait_until_ready())
         connection = psycopg2.connect(host='localhost', user='root',
                                       password='root', database='db')
@@ -173,7 +178,7 @@ class UnitTests(unittest.TestCase):
         postgresql.stop()
 
     def test_mysql(self):
-        mysql = MySQL(DATA_DIR, CONFIG_DIR, False)
+        mysql = MySQL(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         self.assertTrue(mysql.initialization())
         self.assertTrue(mysql.wait_until_ready())
         connection = pymysql.connect(host='localhost', user='root',
@@ -201,7 +206,7 @@ class UnitTests(unittest.TestCase):
         mysql.stop()
 
         # Check if the tables are really dropped
-        mysql = MySQL(DATA_DIR, CONFIG_DIR, False)
+        mysql = MySQL(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         self.assertTrue(mysql.wait_until_ready())
         connection = pymysql.connect(host='localhost', user='root',
                                      password='root', db='db')
@@ -248,7 +253,7 @@ class UnitTests(unittest.TestCase):
         mysql.stop()
 
     def test_yarrrml_rml(self):
-        yarrrml = YARRRML(DATA_DIR, CONFIG_DIR, False)
+        yarrrml = YARRRML(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         yarrrml_file = 'mapping.yarrrml'
 
         # YARRRML to RML
@@ -258,7 +263,7 @@ class UnitTests(unittest.TestCase):
         yarrrml.stop()
 
     def test_yarrrml_r2rml(self):
-        yarrrml = YARRRML(DATA_DIR, CONFIG_DIR, False)
+        yarrrml = YARRRML(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         yarrrml_file = 'mapping.yarrrml'
 
         # YARRRML to R2RML
@@ -279,8 +284,8 @@ class UnitTests(unittest.TestCase):
         except FileNotFoundError:
             pass
 
-        collector = Collector(results_run_path, directory, SAMPLE_INTERVAL,
-                              NUMBER_OF_STEPS, RUN)
+        collector = Collector(results_run_path, SAMPLE_INTERVAL,
+                              NUMBER_OF_STEPS, RUN, LOG_DIR, False)
         sleep(15)
         collector.next_step()
         sleep(20)
@@ -342,7 +347,8 @@ class UnitTests(unittest.TestCase):
         except FileNotFoundError:
             pass
 
-        stats = Stats(os.path.join(DATA_DIR, 'stats', 'results'), 4)
+        stats = Stats(os.path.join(DATA_DIR, 'stats', 'results'), 4, LOG_DIR,
+                      False)
         stats.aggregate()
         self.assertTrue(os.path.exists(metrics_aggregated_file))
 
@@ -365,7 +371,7 @@ class FileTests(unittest.TestCase):
         manager.stop_all()
 
     def test_rmlmapper_file(self):
-        rmlmapper = RMLMapper(DATA_DIR, CONFIG_DIR, False)
+        rmlmapper = RMLMapper(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared', 'rmlmapper_file.nt'))
         except FileNotFoundError:
@@ -384,7 +390,7 @@ class FileTests(unittest.TestCase):
         rmlmapper.stop()
 
     def test_morphkgc_file(self):
-        morphkgc = MorphKGC(DATA_DIR, CONFIG_DIR, False)
+        morphkgc = MorphKGC(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         try:
             os.remove(os.path.join(DATA_DIR, 'morphkgc', 'shared',
                                    'morphkgc_file.nt'))
@@ -402,7 +408,7 @@ class FileTests(unittest.TestCase):
         morphkgc.stop()
 
     def test_sdmrdfizer_file(self):
-        sdmrdfizer = SDMRDFizer(DATA_DIR, CONFIG_DIR, False)
+        sdmrdfizer = SDMRDFizer(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared', 'sdmrdfizer_file.nt'))
         except FileNotFoundError:
@@ -426,11 +432,11 @@ class RDBTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls._mysql = MySQL(DATA_DIR, CONFIG_DIR, False)
+        cls._mysql = MySQL(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         cls._mysql.wait_until_ready()
         cls._mysql.load('student.csv', 'student')
 
-        cls._postgresql = PostgreSQL(DATA_DIR, CONFIG_DIR, False)
+        cls._postgresql = PostgreSQL(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         cls._postgresql.wait_until_ready()
         cls._postgresql.load('student.csv', 'student')
 
@@ -441,7 +447,7 @@ class RDBTests(unittest.TestCase):
         manager.stop_all()
 
     def test_rmlmapper_mysql(self):
-        rmlmapper = RMLMapper(DATA_DIR, CONFIG_DIR, False)
+        rmlmapper = RMLMapper(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared', 'rmlmapper_mysql.nt'))
         except FileNotFoundError:
@@ -462,7 +468,7 @@ class RDBTests(unittest.TestCase):
         rmlmapper.stop()
 
     def test_rmlmapper_postgresql(self):
-        rmlmapper = RMLMapper(DATA_DIR, CONFIG_DIR, False)
+        rmlmapper = RMLMapper(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared',
                                    'rmlmapper_postgresql.nt'))
@@ -484,7 +490,7 @@ class RDBTests(unittest.TestCase):
         rmlmapper.stop()
 
     def test_morphkgc_mysql(self):
-        morphkgc = MorphKGC(DATA_DIR, CONFIG_DIR, False)
+        morphkgc = MorphKGC(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared', 'morphkgc_mysql.nt'))
         except FileNotFoundError:
@@ -505,7 +511,7 @@ class RDBTests(unittest.TestCase):
         morphkgc.stop()
 
     def test_morphkgc_postgresql(self):
-        morphkgc = MorphKGC(DATA_DIR, CONFIG_DIR, False)
+        morphkgc = MorphKGC(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared',
                                    'morphkgc_postgresql.nt'))
@@ -527,7 +533,7 @@ class RDBTests(unittest.TestCase):
         morphkgc.stop()
 
     def test_sdmrdfizer_mysql(self):
-        sdmrdfizer = SDMRDFizer(DATA_DIR, CONFIG_DIR, False)
+        sdmrdfizer = SDMRDFizer(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared', 'sdmrdfizer_mysql.nt'))
         except FileNotFoundError:
@@ -548,7 +554,7 @@ class RDBTests(unittest.TestCase):
         sdmrdfizer.stop()
 
     def test_sdmrdfizer_postgresql(self):
-        sdmrdfizer = SDMRDFizer(DATA_DIR, CONFIG_DIR, False)
+        sdmrdfizer = SDMRDFizer(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared',
                                    'sdmrdfizer_postgresql.nt'))
@@ -571,7 +577,7 @@ class RDBTests(unittest.TestCase):
         sdmrdfizer.stop()
 
     def test_ontopmaterialize_mysql(self):
-        ontop = OntopMaterialize(DATA_DIR, CONFIG_DIR, False)
+        ontop = OntopMaterialize(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared',
                                    'ontopmaterialize_mysql.nt'))
@@ -593,7 +599,7 @@ class RDBTests(unittest.TestCase):
         ontop.stop()
 
     def test_ontopmaterialize_postgresql(self):
-        ontop = OntopMaterialize(DATA_DIR, CONFIG_DIR, False)
+        ontop = OntopMaterialize(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared',
                                    'ontopmaterialize_postgresql.nt'))
@@ -619,7 +625,7 @@ class RDBTests(unittest.TestCase):
     def test_ontopendpoint_mysql(self):
         QUERY='PREFIX foaf: <http://xmlns.com/foaf/0.1/> ' + \
               'CONSTRUCT WHERE { ?s foaf:name ?o1 . }'
-        ontop = OntopVirtualize(DATA_DIR, CONFIG_DIR, False)
+        ontop = OntopVirtualize(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared',
                                    'ontopendpoint_mysql.nt'))
@@ -630,17 +636,17 @@ class RDBTests(unittest.TestCase):
                                               'ntriples', 'root', 'root',
                                               'MySQL', '3306', 'db', 'MySQL'))
         # Verify loaded data
-        q = Query(DATA_DIR, CONFIG_DIR, False)
+        q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         results = q._execute(QUERY, ontop.endpoint, ontop.headers)
         results = list(filter(None, results.split('\n')))
-        self.assertEqual(len(results), 3)
+        self.assertEqual(len(results), 10, str(results))
 
         ontop.stop()
 
     def test_ontopendpoint_postgresql(self):
         QUERY='PREFIX foaf: <http://xmlns.com/foaf/0.1/> ' + \
               'CONSTRUCT WHERE { ?s foaf:name ?o1 . }'
-        ontop = OntopVirtualize(DATA_DIR, CONFIG_DIR, False)
+        ontop = OntopVirtualize(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared',
                                    'ontopendpoint_postgresql.nt'))
@@ -652,15 +658,15 @@ class RDBTests(unittest.TestCase):
                                               'PostgreSQL', '5432', 'db',
                                               'PostgreSQL'))
         # Verify loaded data
-        q = Query(DATA_DIR, CONFIG_DIR, False)
-        results = q._execute(QUERY, ontop.endpoint, ontop.headers)
+        q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
+        results = q._execute(QUERY, ontop.endpoint, False, ontop.headers)
         results = list(filter(None, results.split('\n')))
-        self.assertEqual(len(results), 3)
+        self.assertEqual(len(results), 3, str(results))
 
         ontop.stop()
 
     def test_morphrdb_mysql(self):
-        morphrdb = MorphRDB(DATA_DIR, CONFIG_DIR, False)
+        morphrdb = MorphRDB(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared', 'morphrdb_mysql.nt'))
         except FileNotFoundError:
@@ -676,12 +682,12 @@ class RDBTests(unittest.TestCase):
         g = Graph()
         g.parse(os.path.join(DATA_DIR, 'shared', 'morphrdb_mysql.nt'),
                 format='ntriples')
-        self.assertEqual(len(g), 3)
+        self.assertEqual(len(g), 3, str(g))
 
         morphrdb.stop()
 
     def test_morphrdb_postgresql(self):
-        morphrdb = MorphRDB(DATA_DIR, CONFIG_DIR, False)
+        morphrdb = MorphRDB(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared',
                                    'morphrdb_postgresql.nt'))
@@ -714,13 +720,13 @@ class TriplestoreTests(unittest.TestCase):
     def test_virtuoso(self):
         QUERY='PREFIX foaf: <http://xmlns.com/foaf/0.1/> ' + \
               'CONSTRUCT WHERE { ?s foaf:name ?o1 . }'
-        virtuoso = Virtuoso(DATA_DIR, CONFIG_DIR, False)
+        virtuoso = Virtuoso(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         self.assertTrue(virtuoso.initialization())
         self.assertTrue(virtuoso.wait_until_ready())
 
         # Check if web interface is up
         r = requests.get('http://localhost:8890')
-        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.status_code, 200, f'HTTP status {r.status_code}')
         r.raise_for_status()
 
         # Check if SPARQL endpoint works
@@ -742,38 +748,38 @@ class TriplestoreTests(unittest.TestCase):
         self.assertTrue(virtuoso.load('student.nt'))
 
         # Verify loaded data
-        q = Query(DATA_DIR, CONFIG_DIR, False)
-        results = q._execute(QUERY, virtuoso.endpoint, virtuoso.headers)
+        q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
+        results = q._execute(QUERY, virtuoso.endpoint, False, virtuoso.headers)
         results = list(filter(None, results.split('\n')))
-        self.assertEqual(len(results), 3)
+        self.assertEqual(len(results), 3, str(results))
 
         # RDF is dropped when container is stopped
         virtuoso.stop()
 
         # Virtuoso is already initialized only wait for it to be ready
-        virtuoso = Virtuoso(DATA_DIR, CONFIG_DIR, False)
+        virtuoso = Virtuoso(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         self.assertTrue(virtuoso.wait_until_ready())
 
         # Verify removed data
-        q = Query(DATA_DIR, CONFIG_DIR, False)
-        results = q._execute(QUERY, virtuoso.endpoint, virtuoso.headers)
-        self.assertTrue('# Empty NT' in results)
+        q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
+        results = q._execute(QUERY, virtuoso.endpoint, True, virtuoso.headers)
+        self.assertIsNone(results, str(results))
 
         # Test if we can now reload our RDF
         self.assertTrue(virtuoso.load_parallel('stude*.nt', 4))
 
         # Verify loaded data
-        q = Query(DATA_DIR, CONFIG_DIR, False)
+        q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         results = q._execute(QUERY, virtuoso.endpoint, virtuoso.headers)
         results = list(filter(None, results.split('\n')))
-        self.assertEqual(len(results), 3)
+        self.assertEqual(len(results), 3, str(results))
 
         virtuoso.stop()
 
     def test_fuseki(self):
         QUERY='PREFIX foaf: <http://xmlns.com/foaf/0.1/> ' + \
               'CONSTRUCT WHERE { ?s foaf:name ?o1 . }'
-        fuseki = Fuseki(DATA_DIR, CONFIG_DIR, False)
+        fuseki = Fuseki(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         self.assertTrue(fuseki.initialization())
         self.assertTrue(fuseki.wait_until_ready())
 
@@ -781,30 +787,29 @@ class TriplestoreTests(unittest.TestCase):
         self.assertTrue(fuseki.load('student.nt'))
 
         # Verify loaded data
-        q = Query(DATA_DIR, CONFIG_DIR, False)
+        q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         results = q._execute(QUERY, fuseki.endpoint, fuseki.headers)
         results = list(filter(None, results.split('\n')))
-        self.assertEqual(len(results), 3)
+        self.assertEqual(len(results), 3, str(results))
 
         fuseki.stop()
 
         # Verify removed data
-        fuseki = Fuseki(DATA_DIR, CONFIG_DIR, False)
+        fuseki = Fuseki(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         self.assertTrue(fuseki.wait_until_ready())
 
-        q = Query(DATA_DIR, CONFIG_DIR, False)
-        results = q._execute(QUERY, fuseki.endpoint, fuseki.headers)
-        results = list(filter(None, results.split('\n')))
-        self.assertEqual(len(results), 0)
+        q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
+        results = q._execute(QUERY, fuseki.endpoint, True, fuseki.headers)
+        self.assertIsNone(results, str(results))
 
         # Test if we can now reload our RDF
         self.assertTrue(fuseki.load('student.nt'))
 
         # Verify loaded data
-        q = Query(DATA_DIR, CONFIG_DIR, False)
-        results = q._execute(QUERY, fuseki.endpoint, fuseki.headers)
+        q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
+        results = q._execute(QUERY, fuseki.endpoint, False, fuseki.headers)
         results = list(filter(None, results.split('\n')))
-        self.assertEqual(len(results), 3)
+        self.assertEqual(len(results), 3, str(results))
 
         fuseki.stop()
 
@@ -812,8 +817,8 @@ class TriplestoreTests(unittest.TestCase):
         QUERY = 'CONSTRUCT WHERE { ?s ?p ?o. } LIMIT 100'
         DBPEDIA_SPARQL = 'https://dbpedia.org/sparql'
 
-        q = Query(DATA_DIR, CONFIG_DIR, False)
-        results = q._execute(QUERY, DBPEDIA_SPARQL)
+        q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
+        results = q._execute(QUERY, DBPEDIA_SPARQL, False)
         results = list(filter(None, results.split('\n')))
         self.assertEqual(len(results), 100)
 
@@ -821,7 +826,7 @@ class TriplestoreTests(unittest.TestCase):
         QUERY = 'CONSTRUCT WHERE { ?s ?p ?o. } LIMIT 100'
         DBPEDIA_SPARQL = 'https://dbpedia.org/sparql'
 
-        q = Query(DATA_DIR, CONFIG_DIR, False)
+        q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         self.assertTrue(q.execute_and_save(QUERY, DBPEDIA_SPARQL, 'results.nt',
                                            {}))
         with open(os.path.join(DATA_DIR, 'shared', 'results.nt'), 'r') as f:
@@ -832,16 +837,16 @@ class TriplestoreTests(unittest.TestCase):
         QUERY_FILE = 'spo100.q'
         DBPEDIA_SPARQL = 'https://dbpedia.org/sparql'
 
-        q = Query(DATA_DIR, CONFIG_DIR, False)
+        q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         results = q.execute_from_file(QUERY_FILE, DBPEDIA_SPARQL, {})
         results = list(filter(None, results.split('\n')))
-        self.assertEqual(len(results), 100)
+        self.assertEqual(len(results), 100, str(results))
 
     def test_query_execute_from_file_and_save(self):
         QUERY_FILE = 'spo100.q'
         DBPEDIA_SPARQL = 'https://dbpedia.org/sparql'
 
-        q = Query(DATA_DIR, CONFIG_DIR, False)
+        q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         self.assertTrue(q.execute_from_file_and_save(QUERY_FILE, DBPEDIA_SPARQL,
                                                      'results.nt', {}))
         with open(os.path.join(DATA_DIR, 'shared', 'results.nt'), 'r') as f:
@@ -900,7 +905,7 @@ class IntegrationTests(unittest.TestCase):
 
     def test_executor_run(self):
         path = os.path.join(DATA_DIR, 'test-cases')
-        executor = Executor(path, False)
+        executor = Executor(path, True)
 
         for case in executor.list():
             # Clean case
@@ -911,7 +916,7 @@ class IntegrationTests(unittest.TestCase):
                 directory = case['directory']
                 resource = step['resource'].lower().replace('_', '')
                 log_file = os.path.join(directory, 'results', 'run_1', resource,
-                                        LOGS_FILE_NAME)
+                                        LOG_FILE_NAME)
                 checkpoint_file = os.path.join(directory, CHECKPOINT_FILE_NAME)
                 metrics_file = os.path.join(directory, 'results', 'run_1',
                                             resource, METRICS_FILE_NAME)
@@ -921,14 +926,14 @@ class IntegrationTests(unittest.TestCase):
                 self.assertFalse(os.path.exists(checkpoint_file))
 
             # Run case
-            self.assertTrue(executor.run(case, 0.1, 1, False, True))
+            self.assertTrue(executor.run(case, 0.1, 1, True))
 
             # Check if all files are generated
             for step in case['data']['steps']:
                 directory = case['directory']
                 resource = step['resource'].lower().replace('_', '')
-                log_file = os.path.join(directory, 'results', 'run_1', resource,
-                                        LOGS_FILE_NAME)
+                log_file = os.path.join(directory, 'results', 'run_1',
+                                        LOG_FILE_NAME)
                 checkpoint_file = os.path.join(directory, CHECKPOINT_FILE_NAME)
                 metrics_file = os.path.join(directory, 'results', 'run_1',
                                             METRICS_FILE_NAME)
@@ -961,6 +966,10 @@ if __name__ == '__main__':
         pass
     except FileNotFoundError:
         pass
+
+    # Allow stderr logging to be silent during tests, logs are available
+    # in the log file
+    os.environ['UNITTEST'] = '1'
 
     if len(manager.list_all()) != 0:
         print('Stopping all containers before starting tests...')

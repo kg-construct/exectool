@@ -5,7 +5,11 @@ import sys
 from glob import glob
 from statistics import median
 from csv import DictWriter, DictReader
-from collector import FIELDNAMES, METRICS_FILE_NAME
+try:
+    from bench_executor import Logger, FIELDNAMES, METRICS_FILE_NAME
+except ModuleNotFoundError:
+    from collector import FIELDNAMES, METRICS_FILE_NAME
+    from logger import Logger
 
 METRICS_AGGREGATED_FILE_NAME = 'aggregated.csv'
 METRICS_SUMMARY_FILE_NAME = 'summary.csv'
@@ -63,13 +67,15 @@ ROUND = 4
 #
 
 class Stats():
-    def __init__(self, results_path: str, number_of_steps: int):
+    def __init__(self, results_path: str, number_of_steps: int,
+                 directory: str, verbose: bool):
         self._results_path = os.path.abspath(results_path)
         self._number_of_steps = number_of_steps
+        self._logger = Logger(__name__, directory, verbose)
 
         if not os.path.exists(results_path):
             msg = f'Results do not exist: {results_path}'
-            print(msg, file=sys.stderr)
+            self._logger.error(msg, file=sys.stderr)
             raise ValueError(msg)
 
     def _parse_field(self, field, value):
@@ -79,7 +85,7 @@ class Stats():
             return int(value)
         else:
             msg = f'Field "{field}" type is unknown'
-            print(msg, file=sys.stderr)
+            self._logger.error(msg, file=sys.stderr)
             raise ValueError(msg)
 
     def _parse(self, run_path, fields=FIELDNAMES, step=None):
@@ -87,8 +93,7 @@ class Stats():
 
         metrics_file = os.path.join(run_path, METRICS_FILE_NAME)
         if not os.path.exists(metrics_file):
-            print(f'Metrics file "{metrics_file}" does not exist',
-                  file=sys.stderr)
+            self._logger.error(f'Metrics file "{metrics_file}" does not exist')
             return []
 
         # Filter the fields we want from above, this way we don't load all
@@ -122,7 +127,7 @@ class Stats():
                 run_id = run_id.replace('run_', '')
                 run_id = int(run_id)
             except ValueError:
-                print(f'Run "{run_id}" is not a number', file=sys.stderr)
+                self._logger.error(f'Run "{run_id}" is not a number')
                 return False
 
             # Extract steps and timestamps of this run
@@ -147,9 +152,9 @@ class Stats():
                     # 5.0 is the median.
                     diff = step_end - step_begin
                     if diff == 0.0:
-                        print(f'Only 1 entry for step {step} found, falling '
-                              'back to median timestamp instead of diff',
-                              file=sys.stderr)
+                        self._logger.warning(f'Only 1 entry for step {step}'
+                                             f'found, falling back to median '
+                                             f'timestamp instead of diff')
                         diff = step_begin
 
                     timestamps.append(diff)

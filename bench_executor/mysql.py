@@ -8,6 +8,7 @@ from csv import reader
 from container import Container
 from typing import List
 from timeout_decorator import timeout, TimeoutError
+from logger import Logger
 
 VERSION = '8.0'
 HOST = 'localhost'
@@ -18,9 +19,11 @@ PORT = '3306'
 CLEAR_TABLES_TIMEOUT = 5 * 60 # 5 minutes
 
 class MySQL(Container):
-    def __init__(self, data_path: str, config_path: str, verbose: bool):
+    def __init__(self, data_path: str, config_path: str, directory: str,
+                 verbose: bool):
         self._data_path = os.path.abspath(data_path)
         self._config_path = os.path.abspath(config_path)
+        self._logger = Logger(__name__, directory, verbose)
         self._tables = []
         tmp_dir = os.path.join(tempfile.gettempdir(), 'mysql')
         os.umask(0)
@@ -28,7 +31,7 @@ class MySQL(Container):
         os.makedirs(os.path.join(self._data_path, 'mysql'), exist_ok=True)
 
         super().__init__(f'blindreviewing/mysql:v{VERSION}', 'MySQL',
-                         verbose,
+                         self._logger,
                          ports={PORT:PORT},
                          environment={'MYSQL_ROOT_PASSWORD': 'root',
                                       'MYSQL_DATABASE': 'db'},
@@ -83,10 +86,6 @@ class MySQL(Container):
                 if not success:
                     break
 
-        import time
-        print('WAITING 1h')
-        #time.sleep(3600)
-
         return success
 
     def _load_csv(self, csv_file: str, table: str, create: bool) -> bool:
@@ -100,7 +99,7 @@ class MySQL(Container):
 
         # Analyze CSV for loading
         if not os.path.exists(path):
-            print(f'CSV file "{path}" does not exist', file=sys.stderr)
+            self._logger.error(f'CSV file "{path}" does not exist')
             return False
 
         with open(path, 'r') as f:
@@ -135,22 +134,20 @@ class MySQL(Container):
                            f'IGNORE 1 ROWS ({c});')
             cursor.execute('COMMIT;')
 
-            if self._verbose:
-                header = '| ID | ' + ' | '.join(columns) + ' |'
-                print(header)
-                print('-' * len(header))
+            header = '| ID | ' + ' | '.join(columns) + ' |'
+            self._logger.debug(header)
+            self._logger.debug('-' * len(header))
 
             cursor.execute(f'SELECT * FROM {table};')
             number_of_records = 0
             for record in cursor:
                 number_of_records += 1
-                if self._verbose:
-                    print(record)
+                self._logger.debug(record)
 
             if number_of_records == 0:
                 success = False
         except Exception as e:
-            print(f'Failed to load CSV: "{e}"', file=sys.stderr)
+            self._logger.error(f'Failed to load CSV: "{e}"')
             success = False
         finally:
             connection.close()
@@ -172,8 +169,8 @@ class MySQL(Container):
         try:
             self._clear_tables()
         except TimeoutError:
-            print('Clearing MySQL tables timed out after '
-                  f'{CLEAR_TABLES_TIMEOUT}s!', file=sys.stderr)
+            self._logger.warning('Clearing MySQL tables timed out after '
+                                 f'{CLEAR_TABLES_TIMEOUT}s!')
 
         return super().stop()
 

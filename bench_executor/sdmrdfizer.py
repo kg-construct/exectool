@@ -5,6 +5,7 @@ import configparser
 from container import Container
 from rdflib import Graph, BNode, Namespace, Literal, RDF
 from timeout_decorator import timeout, TimeoutError
+from logger import Logger
 
 VERSION = '4.6.3.4'
 TIMEOUT = 6 * 3600 # 6 hours
@@ -12,14 +13,18 @@ R2RML = Namespace('http://www.w3.org/ns/r2rml#')
 RML = Namespace('http://semweb.mmlab.be/ns/rml#')
 D2RQ = Namespace('http://www.wiwiss.fu-berlin.de/suhl/bizer/D2RQ/0.1#')
 
+
 class SDMRDFizer(Container):
-    def __init__(self, data_path: str, config_path: str, verbose: bool):
+    def __init__(self, data_path: str, config_path: str, directory: str,
+                 verbose: bool):
         self._data_path = os.path.abspath(data_path)
         self._config_path = os.path.abspath(config_path)
+        self._logger = Logger(__name__, directory, verbose)
+
         os.umask(0)
         os.makedirs(os.path.join(self._data_path, 'sdmrdfizer'), exist_ok=True)
-        super().__init__(f'blindreviewing/sdm-rdfizer:v{VERSION}', 'SDM-RDFizer',
-                         verbose,
+        super().__init__(f'blindreviewing/sdm-rdfizer:v{VERSION}',
+                         'SDM-RDFizer', self._logger,
                          volumes=[f'{self._data_path}/sdmrdfizer:/data',
                                   f'{self._data_path}/shared:/data/shared'])
 
@@ -38,8 +43,7 @@ class SDMRDFizer(Container):
             return self._execute_with_timeout(arguments)
         except TimeoutError:
             msg = f'Timeout ({TIMEOUT}s) reached for SDM-RDFizer'
-            print(msg, file=sts.stderr)
-            self._log.append(msg)
+            self._logger.error(msg)
 
         return False
 

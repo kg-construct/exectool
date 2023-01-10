@@ -7,15 +7,18 @@ import configparser
 from container import Container
 from rdflib import Graph, Namespace, RDF, URIRef
 from timeout_decorator import timeout, TimeoutError
+from logger import Logger
 
 VERSION = '4.2.1'
 TIMEOUT = 6 * 3600 # 6 hours
 R2RML = Namespace('http://www.w3.org/ns/r2rml#')
 
+
 class _Ontop(Container):
-    def __init__(self, name: str, data_path: str, verbose: bool, mode: str):
+    def __init__(self, name: str, data_path: str, logger: Logger, mode: str):
         self._mode = mode
         self._headers = {}
+        self._logger = logger
 
         os.makedirs(os.path.join(self._data_path, f'ontop{self._mode}'),
                     exist_ok=True)
@@ -25,7 +28,7 @@ class _Ontop(Container):
 
         environment = {'ONTOP_JAVA_ARGS': f'-Xmx{max_heap} -Xms{max_heap}'}
         super().__init__(f'blindreviewing/ontop:v{VERSION}', name,
-                         verbose,
+                         self._logger,
                          ports={'8888':'8888'},
                          environment=environment,
                          volumes=[f'{self._data_path}/'
@@ -58,7 +61,7 @@ class _Ontop(Container):
         elif self._mode == 'materialize':
             success = self.run_and_wait_for_exit(cmd)
         else:
-            print(f'Unknown Ontop mode "{self._mode}"', file=sys.stderr)
+            self._logger.error(f'Unknown Ontop mode "{self._mode}"')
             success = False
 
         return success
@@ -101,7 +104,9 @@ class _Ontop(Container):
             with open(os.path.join(path, 'config.properties'), 'w') as f:
                 f.write(data.replace('[root]\n', ''))
         else:
-            raise ValueError('Ontop only supports RDBs')
+            msg = 'Ontop only supports RDBs'
+            self._logger.error(msg)
+            raise ValueError(msg)
 
         # Compatibility with Ontop requiring rr:class
         # Replace any rdf:type construction with rr:class
@@ -138,8 +143,9 @@ class _Ontop(Container):
                     iri = URIRef(rdf_type_value.toPython())
                     g.add((subject_map_iri, R2RML['class'], iri))
                 else:
-                    print('Cannot extract rr:class value, rdf:type value is not'
-                          ' a constant value!', file=sys.stderr)
+                    msg = 'Cannot extract rr:class value, rdf:type value ' + \
+                          'is not a constant value!'
+                    self._logger.error(msg)
                     return False
 
                 # Remove all triples associated with the rdf:type PredicateMap
@@ -175,10 +181,13 @@ class _Ontop(Container):
         return self.execute(arguments)
 
 class OntopVirtualize(_Ontop):
-    def __init__(self, data_path: str, config_path: str, verbose: bool):
+    def __init__(self, data_path: str, config_path: str, directory: str,
+                 verbose: bool):
         self._data_path = os.path.abspath(data_path)
         self._config_path = os.path.abspath(config_path)
-        super().__init__('Ontop-Virtualize', data_path, verbose, 'endpoint')
+        self._logger = Logger(__name__, directory, verbose)
+        super().__init__('Ontop-Virtualize', data_path, self._logger,
+                         'endpoint')
 
     def execute_mapping(self, mapping_file: str, output_file: str = None,
                         serialization: str = "ntriples",
@@ -203,20 +212,25 @@ class OntopVirtualize(_Ontop):
         elif serialization == 'csv':
             self._headers = { 'Accept': 'text/csv' }
         else:
-            raise ValueError(f'Unsupported serialization format '
-                             f'"{serialization}" for Ontop')
+            msg = f'Unsupported serialization format ' + \
+                  f'"{serialization}" for Ontop'
+            self._logger.error(msg)
+            raise ValueError(msg)
         return super().execute_mapping(config_file, arguments,
                                        mapping_file, output_file, rdb_username,
                                        rdb_password, rdb_host, rdb_port,
                                        rdb_name, rdb_type)
 
 class OntopMaterialize(_Ontop):
-    def __init__(self, data_path: str, config_path: str, verbose: bool):
+    def __init__(self, data_path: str, config_path: str, directory: str,
+                 verbose: bool):
         self._data_path = os.path.abspath(data_path)
         self._config_path = os.path.abspath(config_path)
+        self._logger = Logger(__name__, directory, verbose)
         os.makedirs(os.path.join(self._data_path, 'ontopmaterialize'),
                     exist_ok=True)
-        super().__init__('Ontop-Materialize', data_path, verbose, 'materialize')
+        super().__init__('Ontop-Materialize', data_path, self._logger,
+                         'materialize')
 
     @timeout(TIMEOUT)
     def _execute_mapping_with_timeout(self, mapping_file: str,
@@ -254,13 +268,12 @@ class OntopMaterialize(_Ontop):
                                                       rdb_type)
         except TimeoutError:
             msg = f'Timeout ({TIMEOUT}s) reached for Ontop Materialize'
-            print(msg, file=sts.stderr)
-            self._log.append(msg)
+            self._logger.warning(msg)
 
         return False
 
 if __name__ == '__main__':
-    print('ℹ️  Starting up...')
+    print('ℹ️  Starting up Ontop Virtualize Endpoint...')
     o = OntopVirtualize('data', 'config', True)
     o.wait_until_ready()
     input('ℹ️  Press any key to stop')

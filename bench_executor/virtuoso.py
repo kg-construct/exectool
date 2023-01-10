@@ -5,6 +5,7 @@ import tempfile
 import psutil
 from threading import Thread
 from container import Container
+from logger import Logger
 
 VERSION = '7.2.7'
 MAX_ROWS = '10000000'
@@ -18,10 +19,14 @@ def _spawn_loader(container):
     success, logs = container.exec('isql -U dba -P root '
                                    'exec="rdf_loader_run();"')
 
+
 class Virtuoso(Container):
-    def __init__(self, data_path: str, config_path: str, verbose: bool):
+    def __init__(self, data_path: str, config_path: str, directory: str,
+                 verbose: bool):
         self._data_path = os.path.abspath(data_path)
         self._config_path = os.path.abspath(config_path)
+        self._logger = Logger(__name__, directory, verbose)
+
         tmp_dir = os.path.join(tempfile.gettempdir(), 'virtuoso')
         os.umask(0)
         os.makedirs(tmp_dir, exist_ok=True)
@@ -39,7 +44,7 @@ class Virtuoso(Container):
                      'VIRT_Parameters_NumberOfBuffers': number_of_buffers,
                      'VIRT_Parameters_MaxDirtyBuffers': max_dirty_buffers}
         super().__init__(f'blindreviewing/virtuoso:v{VERSION}',
-                         'Virtuoso', verbose,
+                         'Virtuoso', self._logger,
                          ports={'8890':'8890', '1111':'1111'},
                          environment=environment,
                          volumes=[f'{self._data_path}/shared:/usr/share/proj',
@@ -71,8 +76,10 @@ class Virtuoso(Container):
         success = True
 
         success, logs = self.exec(f'sh -c "ls /usr/share/proj/{rdf_file}"')
-        self._logs += logs
+        for line in logs:
+            self._logger.debug(line)
         if not success:
+            self._logger.error('RDF files do not exist for loading')
             return False
 
         # Load directory with data
@@ -80,12 +87,14 @@ class Virtuoso(Container):
                                   'exec="ld_dir(\'/usr/share/proj/\','
                                   f'\'{rdf_file}\', '
                                   '\'http://example.com/graph\');"')
-        self._logs += logs
+        for line in logs:
+            self._logger.debug(line)
         if not success:
+            self._logger.error('ISQL loader query failure')
             return False
 
         loader_threads = []
-        self._logs += [f'Spawning {cores} loader threads\n']
+        self._logger.debug(f'Spawning {cores} loader threads')
         for i in range(cores):
             t = Thread(target=_spawn_loader, args=(self,), daemon=True)
             t.start()
@@ -93,23 +102,31 @@ class Virtuoso(Container):
 
         for t in loader_threads:
             t.join()
-        self._logs += [f'Loading complete\n']
+        self._logger.debug(f'Loading finished with {cores} threads')
 
         # Re-enable checkpoints and scheduler which are disabled automatically
         # after loading RDF with rdf_loader_run()
         success, logs = self.exec('isql -U dba -P root exec="checkpoint;"')
-        self._logs += logs
+        for line in logs:
+            self._logger.debug(line)
         if not success:
+            self._logger.error('ISQL re-enable checkpoints query failure')
             return False
+
         success, logs = self.exec('isql -U dba -P root '
                                   'exec="checkpoint_interval(60);"')
-        self._logs += logs
+        for line in logs:
+            self._logger.debug(line)
         if not success:
+            self._logger.error('ISQL checkpoint interval query failure')
             return False
+
         success, logs = self.exec('isql -U dba -P root '
                                   'exec="scheduler_interval(10);"')
-        self._logs += logs
+        for line in logs:
+            self._logger.debug(line)
         if not success:
+            self._logger.error('ISQL scheduler interval query failure')
             return False
 
         return success
@@ -118,13 +135,18 @@ class Virtuoso(Container):
         # Drop loaded triples
         success, logs = self.exec('isql -U dba -P root '
                                   'exec="delete from DB.DBA.load_list;"')
-        self._logs += logs
+        for line in logs:
+            self._logger.debug(line)
         if not success:
+            self._logger.error('ISQL delete load list query failure')
             return False
+
         success, logs = self.exec('isql -U dba -P root '
                                   'exec="rdf_global_reset();"')
-        self._logs += logs
+        for line in logs:
+            self._logger.debug(line)
         if not success:
+            self._logger.error('ISQL RDF global reset query failure')
             return False
         return super().stop()
 

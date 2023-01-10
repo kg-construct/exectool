@@ -12,37 +12,37 @@ from datetime import datetime
 from time import sleep
 from typing import Tuple, Optional
 try:
-    from bench_executor import Collector, METRICS_FILE_NAME, Stats
+    from bench_executor import Collector, METRICS_FILE_NAME, Stats, Logger, LOG_FILE_NAME
 except ModuleNotFoundError:
     from collector import Collector, METRICS_FILE_NAME
     from stats import Stats
-
+    from logger import Logger, LOG_FILE_NAME
 
 METADATA_FILE = 'metadata.json'
 SCHEMA_FILE = 'metadata.schema'
-DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 CONFIG_DIR = os.path.join(os.path.dirname(__file__), 'config')
 WAIT_TIME = 15 # seconds
-LOGS_FILE_NAME = 'logs.txt'
-PLOT_MARGIN = 1.1
 
 # Dummy callback in case no callback was provided
 def _progress_cb(resource: str, name: str, success: bool):
     pass
 
+
 class Executor:
     def __init__(self, main_directory: str, verbose: bool = False,
                  progress_cb = _progress_cb):
-        self._main_directory = main_directory
+        self._main_directory = os.path.abspath(main_directory)
         self._schema = {}
         self._resources = None
         self._class_module_mapping = {}
         self._verbose = verbose
         self._progress_cb = progress_cb
+        self._logger = Logger(__name__, self._main_directory, self._verbose)
 
         self._init_resources()
 
-        with open(os.path.join(DATA_DIR, SCHEMA_FILE)) as f:
+        with open(os.path.join(os.path.dirname(__file__), 'data',
+                               SCHEMA_FILE)) as f:
             self._schema = json.load(f)
 
     def _init_resources(self) -> list:
@@ -140,18 +140,17 @@ class Executor:
                 # Check if resource is known
                 names = self._resources_all_names()
                 if names is None or step['resource'] not in names:
-                    if self._verbose:
-                        print(f'{path}: Unknown resource "{step["resource"]}"',
-                              file=sys.stderr)
+                    msg = f'{path}: Unknown resource "{step["resource"]}"'
+                    self._logger.error(msg)
                     return False
 
                 # Check if command is known
                 r = step['resource']
                 commands = self._resources_all_commands_by_name(r)
                 if commands is None or step['command'] not in commands:
-                    if self._verbose:
-                        print(f'{path}: Unknown command "{step["command"]}" for'
-                              f'resource "{step["resource"]}"', file=sys.stderr)
+                    msg = f'{path}: Unknown command "{step["command"]}" ' + \
+                          f'for resource "{step["resource"]}"'
+                    self._logger.error(msg)
                     return False
 
                 # Check if parameters are known
@@ -163,10 +162,10 @@ class Executor:
 
                 for p in step['parameters'].keys():
                     if p not in parameters:
-                        if self._verbose:
-                            print(f'{path}: Unkown parameter "{p}" for command '
-                                  f'"{step["command"]}" of resource '
-                                  f'"{step["resource"]}"', file=sys.stderr)
+                        msg = f'{path}: Unkown parameter "{p}" for command ' + \
+                              f'"{step["command"]}" of resource ' + \
+                              f'"{step["resource"]}"'
+                        self._logger.error(msg)
                         return False
 
                 # Check if all required parameters are provided
@@ -176,16 +175,15 @@ class Executor:
                     self._resources_all_required_parameters_by_command(r, c)
                 for p in parameters:
                     if p not in step['parameters'].keys():
-                        if self._verbose:
-                            print(f'{path}: Missing required parameter "{p}" '
-                                  f'for command "{step["command"]}" '
-                                  f'of resource "{step["resource"]}"',
-                                  file=sys.stderr)
+                        msg = f'{path}: Missing required parameter "{p}" ' + \
+                              f'for command "{step["command"]}" ' + \
+                              f'of resource "{step["resource"]}"'
+                        self._logger.error(msg)
                         return False
 
         except jsonschema.ValidationError:
-            if self._verbose:
-                print(f'{path}: JSON schema violation', file=sys.stderr)
+            msg = f'{path}: JSON schema violation'
+            self._logger.error(msg)
             return False
 
         return True
@@ -196,11 +194,12 @@ class Executor:
         results_path = os.path.join(directory, 'results')
 
         if not os.path.exists(results_path):
-            print(f'Results do not exist for case "{data["name"]}"',
-                  file=sys.stderr)
+            msg = f'Results do not exist for case "{data["name"]}"'
+            self._logger.error(msg)
             return False
 
-        stats = Stats(results_path, len(data['steps']))
+        stats = Stats(results_path, len(data['steps']), directory,
+                      self._verbose)
         stats.aggregate()
 
         return True
@@ -246,20 +245,22 @@ class Executor:
         for step in data['steps']:
             module = self._class_module_mapping[step['resource']]
             resource = getattr(module, step['resource'])(data_path, CONFIG_DIR,
+                                                         directory,
                                                          self._verbose)
             if hasattr(resource, 'initialization'):
                 success = resource.initialization()
                 self._progress_cb('Initializing', step['resource'], success)
 
         # Launch metrics collection
-        collector = Collector(results_run_path, directory, interval,
-                              len(data['steps']), run)
+        collector = Collector(results_run_path, interval, len(data['steps']),
+                              run, directory, self._verbose)
 
         # Execute steps
         for index, step in enumerate(data['steps']):
             success = True
             module = self._class_module_mapping[step['resource']]
             resource = getattr(module, step['resource'])(data_path, CONFIG_DIR,
+                                                         directory,
                                                          self._verbose)
             active_resources.append(resource)
 
@@ -287,11 +288,8 @@ class Executor:
             # Store logs
             # Needs separate process for logs and metrics collecting
             if hasattr(resource, 'logs'):
-                path = os.path.join(data_path,
-                                    resource.root_mount_directory,
-                                    LOGS_FILE_NAME)
-                with open(path, 'w') as f:
-                    f.writelines(resource.logs())
+                for line in resource.logs():
+                    self._logger.info(line)
 
             # Step complete
             self._progress_cb(step['resource'], step['name'], success)
@@ -316,14 +314,10 @@ class Executor:
                 d = datetime.now().replace(microsecond=0).isoformat()
                 f.write(f'{d}\n')
 
-        # Move results for a clean slate when doing multiple runs
-        # Log files
-        for log_file in glob(f'{data_path}/*/{LOGS_FILE_NAME}'):
-            subdir = log_file.replace(f'{data_path}/', '') \
-                    .replace(f'/{LOGS_FILE_NAME}', '')
-            os.makedirs(os.path.join(results_run_path, subdir), exist_ok=True)
-            shutil.move(log_file, os.path.join(results_run_path, subdir,
-                                               LOGS_FILE_NAME))
+        # Log file
+        os.makedirs(os.path.join(results_run_path), exist_ok=True)
+        shutil.move(os.path.join(directory, LOG_FILE_NAME),
+                    os.path.join(results_run_path, LOG_FILE_NAME))
 
         # Metrics measurements
         for metrics_file in glob(f'{data_path}/*/{METRICS_FILE_NAME}'):
@@ -337,15 +331,17 @@ class Executor:
         if success:
             for step in data['steps']:
                 subdir = step['resource'].lower().replace('_', '')
+                os.makedirs(os.path.join(results_run_path, subdir),
+                            exist_ok=True)
                 if step['parameters'].get('results_file', False):
                     results_file = step['parameters']['results_file']
                     p1 = os.path.join(directory, 'data/shared', results_file)
                     p2 = os.path.join(results_run_path, subdir, results_file)
                     try:
                         shutil.move(p1, p2)
-                    except FileNotFoundError:
-                        print(f'Cannot find results file: {p1}',
-                              file=sys.stderr)
+                    except FileNotFoundError as e:
+                        msg = f'Cannot find results file "{p1}": {e}'
+                        self._logger.warning(msg)
 
                 if step['parameters'].get('output_file', False) \
                         and not step['parameters'].get('multiple_files', False):
@@ -354,8 +350,9 @@ class Executor:
                     p2 = os.path.join(results_run_path, subdir, output_file)
                     try:
                         shutil.move(p1, p2)
-                    except FileNotFoundError:
-                        print(f'Cannot find output file: {p1}', file=sys.stderr)
+                    except FileNotFoundError as e:
+                        msg = f'Cannot find output file "{p1}": {e}'
+                        self._logger.warning(msg)
 
             # Run complete, mark it
             run_checkpoint_file = os.path.join(results_run_path, '.done')

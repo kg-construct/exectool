@@ -10,6 +10,7 @@ from time import sleep
 from container import Container
 from typing import List
 from timeout_decorator import timeout, TimeoutError
+from logger import Logger
 
 VERSION = '14.5'
 HOST = 'localhost'
@@ -20,10 +21,14 @@ PORT = '5432'
 WAIT_TIME = 3
 CLEAR_TABLES_TIMEOUT = 5 * 60 # 5 minutes
 
+
 class PostgreSQL(Container):
-    def __init__(self, data_path: str, config_path: str, verbose: bool):
+    def __init__(self, data_path: str, config_path: str, directory: str,
+                 verbose: bool):
         self._data_path = os.path.abspath(data_path)
         self._config_path = os.path.abspath(config_path)
+        self._logger = Logger(__name__, directory, verbose)
+
         tmp_dir = os.path.join(tempfile.gettempdir(), 'postgresql')
         os.umask(0)
         os.makedirs(tmp_dir, exist_ok=True)
@@ -31,7 +36,7 @@ class PostgreSQL(Container):
         self._tables = []
 
         super().__init__(f'blindreviewing/postgresql:v{VERSION}', 'PostgreSQL',
-                         verbose,
+                         self._logger,
                          ports={PORT: PORT},
                          environment={'POSTGRES_PASSWORD': PASSWORD,
                                       'POSTGRES_USER': USER,
@@ -47,6 +52,7 @@ class PostgreSQL(Container):
         # execution
         success = self.wait_until_ready()
         if not success:
+            self._logger.error(f'Failed to initialize {__name__}')
             return False
         success = self.stop()
 
@@ -58,7 +64,10 @@ class PostgreSQL(Container):
 
     def wait_until_ready(self, command: str = '') -> bool:
         success = self.run_and_wait_for_log(f'port {PORT}', command=command)
-        sleep(WAIT_TIME)
+        if success:
+            sleep(WAIT_TIME)
+        else:
+            self._logger.error(f'Failed to wait for {__name__} to become ready')
 
         return success
 
@@ -71,12 +80,17 @@ class PostgreSQL(Container):
         # Load SQL schema
         success, output = self.exec(f'psql -h {HOST} -p {PORT} -U {USER} '
                                     f'-d {DB} -f /data/shared/{schema_file}')
+        if not success:
+            self._logger.error(f'Failed to load SQL schema "{schema_file}"')
+            return success
+
         # Load CSVs
-        if success:
-            for csv_file, table in csv_files:
-                success = self._load_csv(csv_file, table, False)
-                if not success:
-                    break
+        for csv_file, table in csv_files:
+            success = self._load_csv(csv_file, table, False)
+            if not success:
+                self._logger.error(f'Failed to load CSV "{csv_file}" in '
+                                   f'table "{table}"')
+                break
 
         return success
 
@@ -96,7 +110,7 @@ class PostgreSQL(Container):
 
         # Analyze and move CSV for loading
         if not os.path.exists(path):
-            print(f'CSV file "{path}" does not exist', file=sys.stderr)
+            self._logger.error(f'CSV file "{path}" does not exist')
             return False
 
         with open(path, 'r') as f:
@@ -122,21 +136,20 @@ class PostgreSQL(Container):
                            'DELIMITER \',\' NULL \'NULL\' CSV HEADER;')
             cursor.execute('COMMIT;')
 
-            if self._verbose:
-                header = '| ID | ' + ' | '.join(columns) + ' |'
-                print(header)
-                print('-' * len(header))
+            header = '| ID | ' + ' | '.join(columns) + ' |'
+            self._logger.debug(header)
+            self._logger.debug('-' * len(header))
 
             cursor.execute(f'SELECT * FROM {table};')
             number_of_records = 0
             for record in cursor:
                 number_of_records += 1
-                if self._verbose:
-                    print(record)
+                self._logger.debug(record)
             if number_of_records == 0:
+                self._logger.error('No records loaded after loading CSV')
                 success = False
         except Exception as e:
-            print(f'Failed to load CSV: "{e}"', file=sys.stderr)
+            self._logger.error(f'Failed to load CSV: "{e}"')
             success = False
         finally:
             connection.close()
@@ -158,8 +171,10 @@ class PostgreSQL(Container):
         try:
             self._clear_tables()
         except TimeoutError:
-            print('Clearing PostgreSQL tables timed out after '
-                  f'{CLEAR_TABLES_TIMEOUT}s!', file=sys.stderr)
+            self._logger.warning(f'Clearing {__name__} tables timed out after '
+                                 f'{CLEAR_TABLES_TIMEOUT}s!')
+        except Exception as e:
+            self._logger.error(f'Clearing{__name__} tables failed: "{e}"')
 
         return super().stop()
 

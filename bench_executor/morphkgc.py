@@ -4,18 +4,22 @@ import os
 import configparser
 from container import Container
 from timeout_decorator import timeout, TimeoutError
+from logger import Logger
 
 VERSION = '2.2.0'
 TIMEOUT = 6 * 3600 # 6 hours
 
+
 class MorphKGC(Container):
-    def __init__(self, data_path: str, config_path: str, verbose: bool):
+    def __init__(self, data_path: str, config_path: str, directory: str,
+                 verbose: bool):
         self._data_path = os.path.abspath(data_path)
         self._config_path = os.path.abspath(config_path)
+        self._logger = Logger(__name__, directory, verbose)
         os.umask(0)
         os.makedirs(os.path.join(self._data_path, 'morphkgc'), exist_ok=True)
         super().__init__(f'blindreviewing/morph-kgc:v{VERSION}', 'Morph-KGC',
-                         verbose,
+                         self._logger,
                          volumes=[f'{self._data_path}/morphkgc:/data',
                                   f'{self._data_path}/shared:/data/shared'])
 

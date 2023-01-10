@@ -4,17 +4,23 @@ import os
 import psutil
 from container import Container
 from timeout_decorator import timeout, TimeoutError
+from logger import Logger
 
 VERSION = '6.0.0'
 TIMEOUT = 6 * 3600 # 6 hours
 
+
 class RMLMapper(Container):
-    def __init__(self, data_path: str, config_path: str, verbose: bool):
+    def __init__(self, data_path: str, config_path: str, directory: str,
+                 verbose: bool):
         self._data_path = os.path.abspath(data_path)
         self._config_path = os.path.abspath(config_path)
+        self._logger = Logger(__name__, directory, verbose)
+        self._verbose = verbose
+
         os.makedirs(os.path.join(self._data_path, 'rmlmapper'), exist_ok=True)
         super().__init__(f'blindreviewing/rmlmapper:v{VERSION}', 'RMLMapper',
-                         verbose,
+                         self._logger,
                          volumes=[f'{self._data_path}/rmlmapper:/data',
                                   f'{self._data_path}/shared:/data/shared'])
 
@@ -27,8 +33,8 @@ class RMLMapper(Container):
         if self._verbose:
             arguments.append('-vvvvvvvvvvv')
 
-        self._logs.append(f'Executing RMLMapper with arguments '
-                          f'{" ".join(arguments)}\n')
+        self._logger.info(f'Executing RMLMapper with arguments '
+                          f'{" ".join(arguments)}')
 
         # Set Java heap to 1/2 of available memory instead of the default 1/4
         max_heap = int(psutil.virtual_memory().total * (1/2))
@@ -46,8 +52,7 @@ class RMLMapper(Container):
             return self._execute_with_timeout(arguments)
         except TimeoutError:
             msg = f'Timeout ({TIMEOUT}s) reached for RMLMapper'
-            print(msg, file=sts.stderr)
-            self._log.append(msg)
+            self._logger.warning(msg)
 
         return False
 

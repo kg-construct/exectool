@@ -1,0 +1,16 @@
+[2023-01-10 11:18:15,909] INFO     Logger (DEBUG) initialized for mysql
+[2023-01-10 11:18:17,111] DEBUG    2023-01-10 10:18:17+00:00 [Note] [Entrypoint]: Entrypoint script for MySQL Server 8.0.31-1debian11 started.
+[2023-01-10 11:18:17,481] DEBUG    2023-01-10 10:18:17+00:00 [Note] [Entrypoint]: Switching to dedicated user 'mysql'
+[2023-01-10 11:18:17,481] DEBUG    2023-01-10 10:18:17+00:00 [Note] [Entrypoint]: Entrypoint script for MySQL Server 8.0.31-1debian11 started.
+[2023-01-10 11:18:17,981] DEBUG    2023-01-10T10:18:17.517801Z 0 [Warning] [MY-010139] [Server] Changed limits: max_open_files: 1024 (requested 8161)
+[2023-01-10 11:18:17,981] DEBUG    2023-01-10T10:18:17.517806Z 0 [Warning] [MY-010142] [Server] Changed limits: table_open_cache: 431 (requested 4000)
+[2023-01-10 11:18:17,981] DEBUG    2023-01-10T10:18:17.719365Z 0 [Warning] [MY-011068] [Server] The syntax '--skip-host-cache' is deprecated and will be removed in a future release. Please use SET GLOBAL host_cache_size=0 instead.
+[2023-01-10 11:18:17,981] DEBUG    2023-01-10T10:18:17.719395Z 0 [Warning] [MY-010097] [Server] Insecure configuration for --secure-file-priv: Current value does not restrict location of generated files. Consider setting it to a valid, non-empty path.
+[2023-01-10 11:18:17,981] DEBUG    2023-01-10T10:18:17.719439Z 0 [System] [MY-010116] [Server] /usr/sbin/mysqld (mysqld 8.0.31) starting as process 1
+[2023-01-10 11:18:17,981] DEBUG    2023-01-10T10:18:17.730167Z 1 [System] [MY-013576] [InnoDB] InnoDB initialization has started.
+[2023-01-10 11:18:17,981] DEBUG    2023-01-10T10:18:17.822042Z 1 [System] [MY-013577] [InnoDB] InnoDB initialization has ended.
+[2023-01-10 11:18:18,327] DEBUG    2023-01-10T10:18:18.020217Z 0 [Warning] [MY-010068] [Server] CA certificate ca.pem is self signed.
+[2023-01-10 11:18:18,327] DEBUG    2023-01-10T10:18:18.020279Z 0 [System] [MY-013602] [Server] Channel mysql_main configured to support TLS. Encrypted connections are now supported for this channel.
+[2023-01-10 11:18:18,327] DEBUG    2023-01-10T10:18:18.024816Z 0 [Warning] [MY-011810] [Server] Insecure configuration for --pid-file: Location '/var/run/mysqld' in the path is accessible to all OS users. Consider choosing a different directory.
+[2023-01-10 11:18:18,327] DEBUG    2023-01-10T10:18:18.071796Z 0 [System] [MY-011323] [Server] X Plugin ready for connections. Bind-address: '::' port: 33060, socket: /var/run/mysqld/mysqlx.sock
+[2023-01-10 11:18:18,327] DEBUG    2023-01-10T10:18:18.071858Z 0 [System] [MY-010931] [Server] /usr/sbin/mysqld: ready for connections. Version: '8.0.31'  socket: '/var/run/mysqld/mysqld.sock'  port: 3306  MySQL Community Server - GPL.

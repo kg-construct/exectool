@@ -3,27 +3,29 @@
 import os
 import sys
 import requests
-import tempfile
 import psutil
 from container import Container
+from logger import Logger
 
 VERSION = '4.6.1'
 CMD_ARGS = '--tdb2 --update --loc /fuseki/databases/DB /ds'
 
+
 class Fuseki(Container):
-    def __init__(self, data_path: str, config_path: str, verbose: bool):
+    def __init__(self, data_path: str, config_path: str, directory: str,
+                 verbose: bool):
         self._data_path = os.path.abspath(data_path)
         self._config_path = os.path.abspath(config_path)
-        tmp_dir = os.path.join(tempfile.gettempdir(), 'fuseki')
+        self._logger = Logger(__name__, directory, verbose)
+
         os.umask(0)
-        os.makedirs(tmp_dir, exist_ok=True)
         os.makedirs(os.path.join(self._data_path, 'fuseki'), exist_ok=True)
 
         # Set Java heap to 1/2 of available memory instead of the default 1/4
         max_heap = int(psutil.virtual_memory().total * (1/2))
 
         super().__init__(f'blindreviewing/fuseki:v{VERSION}', 'Fuseki',
-                         verbose,
+                         self._logger,
                          ports={'3030':'3030'},
                          environment={
                              'JAVA_OPTIONS':f'-Xmx{max_heap} -Xms{max_heap}'
@@ -32,7 +34,7 @@ class Fuseki(Container):
                                   f'log4j2.properties:/fuseki/'
                                   f'log4j2.properties',
                                   f'{self._data_path}/shared:/data',
-                                  f'{tmp_dir}:/fuseki/databases/DB'])
+                                  f'{self._data_path}/fuseki:/fuseki/databases/DB'])
         self._endpoint = 'http://localhost:3030/ds/sparql'
 
     def initialization(self) -> bool:
@@ -69,7 +71,7 @@ class Fuseki(Container):
         try:
             r = requests.post('http://localhost:3030/ds', data=open(path, 'rb'),
                               headers={'Content-Type': 'application/n-triples'})
-            self._logs.append(f'Loading triples: {r.text}\n')
+            self._logger.debug(f'Loaded triples: {r.text}')
             r.raise_for_status()
         except Exception as e:
             print(f'Failed to load RDF: "{e}" into Fuseki', file=sys.stderr)
@@ -84,10 +86,10 @@ class Fuseki(Container):
             data = 'DELETE { ?s ?p ?o . } WHERE { ?s ?p ?o . }'
             r = requests.post('http://localhost:3030/ds/update',
                               headers=headers, data=data)
-            self._logs.append(f'Dropping triples: {r.text}\n')
+            self._logger.debug(f'Dropped triples: {r.text}')
             r.raise_for_status()
         except Exception as e:
-            print(f'Failed to drop RDF: "{e}" from Fuseki', file=sys.stderr)
+            self._logger.error(f'Failed to drop RDF: "{e}" from Fuseki')
             return False
 
         return super().stop()
