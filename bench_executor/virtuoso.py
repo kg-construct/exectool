@@ -6,7 +6,7 @@ integration, virtualization, and multi-model data management (tables & graphs)
 based on innovative support of existing open standards
 (e.g., SQL, SPARQL, and GraphQL).
 
-**Website**: https://virtuoso.openlinksw.com/
+**Website**: https://virtuoso.openlinksw.com/<br>
 **Repository**: https://github.com/openlink/virtuoso-opensource
 """
 

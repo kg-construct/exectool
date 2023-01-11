@@ -4,7 +4,7 @@
 MySQL is an open-source relational database management system developed by
 Oracle Corporation.
 
-**Website**: https://www.mysql.com/
+**Website**: https://www.mysql.com/<br>
 **Repository**: https://github.com/mysql/mysql-server
 """
 

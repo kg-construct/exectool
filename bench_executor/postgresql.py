@@ -4,7 +4,7 @@
 PostgreSQL is an open-source relational database developed by The PostgreSQL
 Global Development Group.
 
-**Website**: https://www.postgresql.org/
+**Website**: https://www.postgresql.org/<br>
 **Repository**: https://git.postgresql.org/gitweb/?p=postgresql.git
 """
 

@@ -4,7 +4,7 @@
 YARRRML is a human readable text-based representation for declarative
 Linked Data generation rules.
 
-**Website**: https://rml.io/yarrrml/
+**Website**: https://rml.io/yarrrml/<br>
 **Repository**: https://github.com/RMLio/yarrrml-parser
 """
 

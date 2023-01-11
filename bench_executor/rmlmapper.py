@@ -4,7 +4,7 @@
 The RMLMapper executes RML rules to generate high quality Linked Data
 from multiple originally (semi-)structured data sources.
 
-**Website**: https://rml.io
+**Website**: https://rml.io<br>
 **Repository**: https://github.com/RMLio/rmlmapper-java
 """
 

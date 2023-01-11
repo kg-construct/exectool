@@ -4,8 +4,7 @@
 Morph-RDB (formerly called ODEMapster) is an RDB2RDF engine developed by
 the Ontology Engineering Group, which follows the R2RML specification.
 
-**Website**:
-https://oeg.fi.upm.es/index.php/en/technologies/315-morph-rdb/index.html<br>
+**Website**: https://oeg.fi.upm.es/index.php/en/technologies/315-morph-rdb/index.html<br>
 **Repository**: https://github.com/oeg-upm/morph-rdb
 """
 
