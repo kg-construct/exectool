@@ -1,38 +1,84 @@
 #!/usr/bin/env python3
 
+"""
+Query executes SPARQL queries on endpoints by posting the SPARQL query over
+HTTP onto the endpoint. It applies timeouts to these queries automatically and
+checks if the results are empty or not.
+"""
+
 import os
 import sys
 import requests
 from typing import Optional, List
 from timeout_decorator import timeout, TimeoutError
-from logger import Logger
+try:
+    from bench_executor import Logger
+except ModuleNotFoundError:
+    from logger import Logger
 
 TIMEOUT = 1 * 3600 # 1 hour
 
 
 class Query():
+    """Execute a query on a SPARQL endpoint."""
     def __init__(self, data_path: str, config_path: str, directory: str,
                  verbose: bool):
+        """Creates an instance of the Query class.
+
+        Parameters
+        ----------
+        data_path : str
+            Path to the data directory of the case.
+        config_path : str
+            Path to the config directory of the case.
+        directory : str
+            Path to the directory to store logs.
+        verbose : bool
+            Enable verbose logs.
+        """
         self._data_path = os.path.abspath(data_path)
         self._config_path = os.path.abspath(config_path)
         self._logger = Logger(__name__, directory, verbose)
-        self._logs = []
 
         os.umask(0)
         os.makedirs(os.path.join(self._data_path, 'query'), exist_ok=True)
 
     @property
     def name(self):
+        """Name of the class: Query"""
         return __name__
 
     @property
     def root_mount_directory(self) -> str:
+        """Subdirectory in the root directory of the case for Query.
+
+        Returns
+        -------
+        subdirectory : str
+            Subdirectory of the root directory for Query.
+
+        """
         return __name__.lower()
 
     @timeout(TIMEOUT)
     def _execute_with_timeout(self, query: str, sparql_endpoint: str,
                               headers: dict = None) -> str:
+        """Execute a query with a provided timeout.
 
+        Parameters
+        ----------
+        query : str
+            The query to execute.
+        sparql_endpoint : str
+            The URL of the SPARQL endpoint.
+        headers : dict
+            HTTP headers to supply when posting the query.
+
+        Returns
+        -------
+        success : bool
+            Whether the execution was successfull or not.
+        """
         self._logger.info(f'Executing query "{query}" on endpoint '
                           f'"{sparql_endpoint}"')
         data = {
@@ -51,8 +97,26 @@ class Query():
 
     def _execute(self, query: str, sparql_endpoint: str, expect_empty: bool,
                  headers: dict = None) -> Optional[str]:
-        results = None
+        """Execute a query on a SPARQL endpoint
 
+        Parameters
+        ----------
+        query : str
+            The query to execute.
+        sparql_endpoint : str
+            The URL of the SPARQL endpoint.
+        expect_empty : bool
+            Whether the expected results are empty or not.
+        headers : dict
+            HTTP headers to supply when posting the query.
+
+        Returns
+        -------
+        results : str
+            The HTTP response as string of the SPARQL endpoint, unless it has
+            no results.
+        """
+        results = None
         try:
             results = self._execute_with_timeout(query, sparql_endpoint, headers)
         except TimeoutError:
@@ -71,11 +135,34 @@ class Query():
         return results
 
     def logs(self) -> Optional[List[str]]:
-        return self._logs
+        """Obsolete method, deprecated"""
+        return []
 
     def execute_and_save(self, query: str, sparql_endpoint: str,
                          results_file: str, expect_empty: bool = False,
                          headers: dict = None) -> bool:
+        """Executes a SPARQL query and save the results.
+
+        The results are saved to the `results_file` path.
+
+        Parameters
+        ----------
+        query : str
+            The query to execute.
+        sparql_endpoint : str
+            The URL of the SPARQL endpoint.
+        results_file : str
+            Path to the file where the results may be stored.
+        expect_empty : bool
+            Whether the expected results are empty or not.
+        headers : dict
+            HTTP headers to supply when posting the query.
+
+        Returns
+        -------
+        success : bool
+            Whether the execution succeeded or not.
+        """
         try:
             results = self._execute(query, sparql_endpoint, expect_empty,
                                     headers)
@@ -102,6 +189,13 @@ class Query():
         return False
 
     def _read_query_file(self, query_file: str) -> str:
+        """Read the query file
+
+        Returns
+        -------
+        content : str
+            The content of the query file.
+        """
         path = os.path.join(self._data_path, 'shared', query_file)
         if not os.path.exists(path):
             self._logger.error(f'Query file "{path}" does not exist')
@@ -114,7 +208,28 @@ class Query():
 
     def execute_from_file(self, query_file: str, sparql_endpoint: str,
                           expect_empty: bool = False,
-                          headers: dict = None) -> list:
+                          headers: dict = None) -> str:
+        """Executes a SPARQL query from file.
+
+        The results are saved to the `results_file` path.
+
+        Parameters
+        ----------
+        query_file : str
+            Path to the file containing the query.
+        sparql_endpoint : str
+            The URL of the SPARQL endpoint.
+        expect_empty : bool
+            Whether the expected results are empty or not.
+        headers : dict
+            HTTP headers to supply when posting the query.
+
+        Returns
+        -------
+        results : str
+            The HTTP response as string of the SPARQL endpoint, unless it has
+            no results.
+        """
         query = self._read_query_file(query_file)
         try:
             results = self._execute(query, sparql_endpoint, expect_empty,
@@ -135,6 +250,28 @@ class Query():
                                    results_file: str,
                                    expect_empty: bool = False,
                                    headers: dict = None) -> bool:
+        """Executes a SPARQL query from file and save the results.
+
+        The results are saved to the `results_file` path.
+
+        Parameters
+        ----------
+        query_file : str
+            Path to the file containing the query.
+        sparql_endpoint : str
+            The URL of the SPARQL endpoint.
+        results_file : str
+            Path to the file where the results may be stored.
+        expect_empty : bool
+            Whether the expected results are empty or not.
+        headers : dict
+            HTTP headers to supply when posting the query.
+
+        Returns
+        -------
+        success : bool
+            Whether the execution succeeded or not.
+        """
         query = self._read_query_file(query_file)
         results = self.execute_and_save(query, sparql_endpoint, results_file,
                                         expect_empty, headers)

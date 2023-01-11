@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
 
+"""
+PostgreSQL is an open-source relational database developed by The PostgreSQL
+Global Development Group.
+
+**Website**: https://www.postgresql.org/
+**Repository**: https://git.postgresql.org/gitweb/?p=postgresql.git
+"""
+
 import os
 import sys
 import psycopg2
@@ -7,10 +15,13 @@ import tempfile
 from psycopg2 import sql
 from csv import reader
 from time import sleep
-from container import Container
 from typing import List
 from timeout_decorator import timeout, TimeoutError
-from logger import Logger
+try:
+    from bench_executor import Container, Logger
+except ModuleNotFoundError:
+    from container import Container
+    from logger import Logger
 
 VERSION = '14.5'
 HOST = 'localhost'
@@ -23,8 +34,22 @@ CLEAR_TABLES_TIMEOUT = 5 * 60 # 5 minutes
 
 
 class PostgreSQL(Container):
+    """PostgreSQL container for executing SQL queries"""
     def __init__(self, data_path: str, config_path: str, directory: str,
                  verbose: bool):
+        """Creates an instance of the PostgreSQL class.
+
+        Parameters
+        ----------
+        data_path : str
+            Path to the data directory of the case.
+        config_path : str
+            Path to the config directory of the case.
+        directory : str
+            Path to the directory to store logs.
+        verbose : bool
+            Enable verbose logs.
+        """
         self._data_path = os.path.abspath(data_path)
         self._config_path = os.path.abspath(config_path)
         self._logger = Logger(__name__, directory, verbose)
@@ -47,6 +72,13 @@ class PostgreSQL(Container):
                                   f'{tmp_dir}:/var/lib/postgresql/data'])
 
     def initialization(self) -> bool:
+        """Initialize PostgreSQL's database.
+
+        Returns
+        -------
+        success : bool
+            Whether the initialization was successfull or not.
+        """
         # PostgreSQL should start with a initialized database, start PostgreSQL
         # if not initialized to avoid the pre-run start during benchmark
         # execution
@@ -60,9 +92,29 @@ class PostgreSQL(Container):
 
     @property
     def root_mount_directory(self) -> str:
+        """Subdirectory in the root directory of the case for PostgreSQL.
+
+        Returns
+        -------
+        subdirectory : str
+            Subdirectory of the root directory for PostgreSQL.
+        """
         return __name__.lower()
 
     def wait_until_ready(self, command: str = '') -> bool:
+        """Wait until PostgreSQL is ready to execute SQL queries.
+
+        Parameters
+        ----------
+        command : str
+            Command to execute in the PostgreSQL container, optionally, defaults to
+            no command.
+
+        Returns
+        -------
+        success : bool
+            Whether the PostgreSQL was initialized successfull or not.
+        """
         success = self.run_and_wait_for_log(f'port {PORT}', command=command)
         if success:
             sleep(WAIT_TIME)
@@ -72,9 +124,66 @@ class PostgreSQL(Container):
         return success
 
     def load(self, csv_file: str, table: str) -> bool:
+        """Load a single CSV file into PostgreSQL.
+
+        Parameters
+        ----------
+        csv_file : str
+            Name of the CSV file.
+        table : str
+            Name of the table.
+
+        Returns
+        -------
+        success : bool
+            Whether the execution was successfull or not.
+        """
         return self._load_csv(csv_file, table, True)
 
+    def load_multiple(self, csv_files: List[dict]) -> bool:
+        """Load multiple CSV files into PostgreSQL.
+
+        Parameters
+        ----------
+        csv_files : list
+            List of CSV files to load. Each entry consist of a `file` and
+            `table` key.
+
+        Returns
+        -------
+        success : bool
+            Whether the execution was successfull or not.
+        """
+        for entry in csv_files:
+            if not self._load_csv(entry['file'], entry['table'], True):
+                return False
+        return True
+        for entry in csv_files:
+            if not self._load_csv(entry['file'], entry['table'], True):
+                return False
+        return True
+
     def load_sql_schema(self, schema_file: str, csv_files: List[str]) -> bool:
+        """Execute SQL schema with PostgreSQL.
+
+        Executes a .sql file with PostgreSQL.
+        If the data is not loaded by the .sql file but only the schema is
+        provided through the .sql file, a list of CSV files can be provided to
+        load them as well.
+
+        Parameters
+        ----------
+        schema_file : str
+            Name of the .sql file.
+        csv_files : list
+            List of CSV file names to load in the tables created with the .sql
+            file, may also be an empty list.
+
+        Returns
+        -------
+        success : bool
+            Whether the execution was successfull or not.
+        """
         success = True
 
         # Load SQL schema
@@ -94,13 +203,23 @@ class PostgreSQL(Container):
 
         return success
 
-    def load_multiple(self, csv_files: List[dict]) -> bool:
-        for entry in csv_files:
-            if not self._load_csv(entry['file'], entry['table'], True):
-                return False
-        return True
-
     def _load_csv(self, csv_file: str, table: str, create: bool):
+        """Load a single CSV file into MySQL.
+
+        Parameters
+        ----------
+        csv_file : str
+            Name of the CSV file.
+        table : str
+            Name of the table to store the data in.
+        create : bool
+            Whether to drop and create the table or re-use it
+
+        Returns
+        -------
+        success : bool
+            Whether the execution was successfull or not.
+        """
         success = True
         columns = None
         table = table.lower()
@@ -158,6 +277,7 @@ class PostgreSQL(Container):
 
     @timeout(CLEAR_TABLES_TIMEOUT)
     def _clear_tables(self):
+        """Clears all tables with a provided timeout."""
         connection = psycopg2.connect(host=HOST, database=DB,
                                       user=PASSWORD, password=PASSWORD)
         cursor = connection.cursor()
@@ -168,6 +288,14 @@ class PostgreSQL(Container):
         connection.close()
 
     def stop(self) -> bool:
+        """Stop PostgreSQL
+        Clears all tables and stops the PostgreSQL container.
+
+        Returns
+        -------
+        success : bool
+            Whether the execution was successfull or not.
+        """
         try:
             self._clear_tables()
         except TimeoutError:
@@ -179,7 +307,7 @@ class PostgreSQL(Container):
         return super().stop()
 
 if __name__ == '__main__':
-    print('ℹ️  Starting up...')
+    print(f'ℹ️  Starting up PostgreSQL v{VERSION}...')
     p = PostgreSQL('data', 'config', True)
     p.wait_until_ready()
     input('ℹ️  Press any key to stop')

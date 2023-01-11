@@ -1,14 +1,25 @@
 #!/usr/bin/env python3
 
+"""
+MySQL is an open-source relational database management system developed by
+Oracle Corporation.
+
+**Website**: https://www.mysql.com/
+**Repository**: https://github.com/mysql/mysql-server
+"""
+
 import os
 import sys
 import pymysql
 import tempfile
 from csv import reader
-from container import Container
 from typing import List
 from timeout_decorator import timeout, TimeoutError
-from logger import Logger
+try:
+    from bench_executor import Container, Logger
+except ModuleNotFoundError:
+    from container import Container
+    from logger import Logger
 
 VERSION = '8.0'
 HOST = 'localhost'
@@ -18,9 +29,24 @@ DB = 'db'
 PORT = '3306'
 CLEAR_TABLES_TIMEOUT = 5 * 60 # 5 minutes
 
+
 class MySQL(Container):
+    """MySQL container for executing SQL queries."""
     def __init__(self, data_path: str, config_path: str, directory: str,
                  verbose: bool):
+        """Creates an instance of the MySQL class.
+
+        Parameters
+        ----------
+        data_path : str
+            Path to the data directory of the case.
+        config_path : str
+            Path to the config directory of the case.
+        directory : str
+            Path to the directory to store logs.
+        verbose : bool
+            Enable verbose logs.
+        """
         self._data_path = os.path.abspath(data_path)
         self._config_path = os.path.abspath(config_path)
         self._logger = Logger(__name__, directory, verbose)
@@ -43,6 +69,13 @@ class MySQL(Container):
                                   f'{tmp_dir}:/var/lib/mysql'])
 
     def initialization(self) -> bool:
+        """Initialize MySQL's database.
+
+        Returns
+        -------
+        success : bool
+            Whether the initialization was successfull or not.
+        """
         # MySQL should start with a initialized database, start MySQL
         # if not initialized to avoid the pre-run start during benchmark
         # execution
@@ -55,22 +88,89 @@ class MySQL(Container):
 
     @property
     def root_mount_directory(self) -> str:
+        """Subdirectory in the root directory of the case for MySQL.
+
+        Returns
+        -------
+        subdirectory : str
+            Subdirectory of the root directory for MySQL.
+        """
         return __name__.lower()
 
     def wait_until_ready(self, command: str = '') -> bool:
+        """Wait until MySQL is ready to execute SQL queries.
+
+        Parameters
+        ----------
+        command : str
+            Command to execute in the MySQL container, optionally, defaults to
+            no command.
+
+        Returns
+        -------
+        success : bool
+            Whether the MySQL was initialized successfull or not.
+        """
         log_line = f'port: {PORT}  MySQL Community Server - GPL.'
         return self.run_and_wait_for_log(log_line, command=command)
 
     def load(self, csv_file: str, table: str) -> bool:
+        """Load a single CSV file into MySQL.
+
+        Parameters
+        ----------
+        csv_file : str
+            Name of the CSV file.
+        table : str
+            Name of the table.
+
+        Returns
+        -------
+        success : bool
+            Whether the execution was successfull or not.
+        """
         return self._load_csv(csv_file, table, True)
 
     def load_multiple(self, csv_files: List[dict]) -> bool:
+        """Load multiple CSV files into MySQL.
+
+        Parameters
+        ----------
+        csv_files : list
+            List of CSV files to load. Each entry consist of a `file` and
+            `table` key.
+
+        Returns
+        -------
+        success : bool
+            Whether the execution was successfull or not.
+        """
         for entry in csv_files:
             if not self._load_csv(entry['file'], entry['table'], True):
                 return False
         return True
 
     def load_sql_schema(self, schema_file: str, csv_files: List[str]) -> bool:
+        """Execute SQL schema with MySQL.
+
+        Executes a .sql file with MySQL.
+        If the data is not loaded by the .sql file but only the schema is
+        provided through the .sql file, a list of CSV files can be provided to
+        load them as well.
+
+        Parameters
+        ----------
+        schema_file : str
+            Name of the .sql file.
+        csv_files : list
+            List of CSV file names to load in the tables created with the .sql
+            file, may also be an empty list.
+
+        Returns
+        -------
+        success : bool
+            Whether the execution was successfull or not.
+        """
         success = True
 
         # Load SQL schema
@@ -89,6 +189,22 @@ class MySQL(Container):
         return success
 
     def _load_csv(self, csv_file: str, table: str, create: bool) -> bool:
+        """Load a single CSV file into MySQL.
+
+        Parameters
+        ----------
+        csv_file : str
+            Name of the CSV file.
+        table : str
+            Name of the table to store the data in.
+        create : bool
+            Whether to drop and create the table or re-use it
+
+        Returns
+        -------
+        success : bool
+            Whether the execution was successfull or not.
+        """
         success = True
         columns = None
         table = table.lower()
@@ -156,6 +272,7 @@ class MySQL(Container):
 
     @timeout(CLEAR_TABLES_TIMEOUT)
     def _clear_tables(self):
+        """Clears all tables with a provided timeout."""
         connection = pymysql.connect(host=HOST, database=DB,
                                      user=PASSWORD, password=PASSWORD)
         cursor = connection.cursor()
@@ -166,6 +283,14 @@ class MySQL(Container):
         connection.close()
 
     def stop(self) -> bool:
+        """Stop MySQL
+        Clears all tables and stops the MySQL container.
+
+        Returns
+        -------
+        success : bool
+            Whether the execution was successfull or not.
+        """
         try:
             self._clear_tables()
         except TimeoutError:
@@ -175,7 +300,7 @@ class MySQL(Container):
         return super().stop()
 
 if __name__ == '__main__':
-    print('ℹ️  Starting up...')
+    print(f'ℹ️  Starting up MySQL v{VERSION}...')
     m = MySQL('data', 'config', True)
     m.wait_until_ready()
     input('ℹ️  Press any key to stop')

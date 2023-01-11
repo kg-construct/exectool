@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
 
+"""
+This module holds the Executor class which is responsible for executing a case,
+collecting metrics, and exposing this functionality to the CLI.
+All features of this tool can be accessed through the Executor class, other
+classes should not be used directly.
+"""
+
 import os
 import sys
 import json
@@ -29,8 +36,24 @@ def _progress_cb(resource: str, name: str, success: bool):
 
 
 class Executor:
+    """
+    Executor class executes a case.
+    """
+
     def __init__(self, main_directory: str, verbose: bool = False,
                  progress_cb = _progress_cb):
+        """Create an instance of the Executor class.
+
+        Parameters
+        ----------
+        main_directory : str
+            The root directory of all the cases to execute.
+        verbose : bool
+            Enables verbose logs.
+        process_cb : function
+            Callback to call when a step is completed of the case. By default,
+            a dummy callback is provided if the argument is missing.
+        """
         self._main_directory = os.path.abspath(main_directory)
         self._schema = {}
         self._resources = None
@@ -46,6 +69,10 @@ class Executor:
             self._schema = json.load(f)
 
     def _init_resources(self) -> list:
+        """Initialize resources of a case
+
+        Resources are discovered automatically by analyzing Python modules.
+        """
         if self._resources is not None:
             return self._resources
         else:
@@ -89,6 +116,13 @@ class Executor:
                     self._resources.append({'name': name, 'commands': methods})
 
     def _resources_all_names(self) -> list:
+        """Retrieve all resources' name in a case.
+
+        Returns
+        -------
+        names : list
+            List of all resources' name in a case.
+        """
         names = []
         for r in self._resources:
             names.append(r['name'])
@@ -99,6 +133,18 @@ class Executor:
             return None
 
     def _resources_all_commands_by_name(self, name: str) -> list:
+        """Retrieve all resources' commands.
+
+        Parameters
+        ----------
+        name : str
+            The resource's name.
+
+        Returns
+        -------
+        commands : list
+            List of commands for the resource.
+        """
         commands = []
         for r in filter(lambda x: x['name'] == name, self._resources):
             commands += list(r['commands'].keys())
@@ -108,29 +154,58 @@ class Executor:
             return None
 
     def _resources_all_parameters_by_command(self, name: str,
-                                             command: str) -> list:
-        parameters = []
-        for r in filter(lambda x: x['name'] == name, self._resources):
-            try:
-                for p in r['commands'][command]:
-                    parameters.append(p['name'])
-                return parameters
-            except KeyError:
-                return None
+                                             command: str,
+                                             required_only=False) -> list:
+        """Retrieve all parameters of a command of a resource.
 
-    def _resources_all_required_parameters_by_command(self, name: str,
-                                                      command: str) -> list:
+        Parameters
+        ----------
+        name : str
+            The resource's name.
+        command : str
+            The command's name.
+        required_only : bool
+            Only return the required parameters of a command. Default all
+            parameters are returned.
+
+        Returns
+        ------
+        parameters : list
+            List of parameters of the resource's command. None if failed.
+        """
         parameters = []
         for r in filter(lambda x: x['name'] == name, self._resources):
             try:
                 for p in r['commands'][command]:
-                    if p['required']:
+                    if required_only:
+                        if p['required']:
+                            parameters.append(p['name'])
+                    else:
                         parameters.append(p['name'])
+
                 return parameters
             except KeyError:
                 return None
 
     def _validate_case(self, case: dict, path: str) -> bool:
+        """Validate a case's syntax.
+
+        Verify if a case has a valid syntax or not. Report any errors
+        discovered through logging and return if the validation succeeded or
+        not.
+
+        Parameters
+        ----------
+        case : dict
+            The case to validate.
+        path : str
+            The file path to the case.
+
+        Returns
+        -------
+        success : bool
+            Whether the validation of the case succeeded or not.
+        """
         try:
             # Verify schema
             jsonschema.validate(case, self._schema)
@@ -172,7 +247,7 @@ class Executor:
                 r = step['resource']
                 c = step['command']
                 parameters = \
-                    self._resources_all_required_parameters_by_command(r, c)
+                    self._resources_all_parameters_by_command(r, c, True)
                 for p in parameters:
                     if p not in step['parameters'].keys():
                         msg = f'{path}: Missing required parameter "{p}" ' + \
@@ -189,6 +264,22 @@ class Executor:
         return True
 
     def stats(self, case: dict) -> bool:
+        """Generate statistics for a case.
+
+        Generate statistics for an executed case. The case must be executed
+        before to succeed.
+
+        Parameters
+        ----------
+        case : dict
+            The case to generate statistics for.
+
+        Returns
+        -------
+        success : bool
+            Whether the statistics are generated with success or not.
+
+        """
         data = case['data']
         directory = case['directory']
         results_path = os.path.join(directory, 'results')
@@ -204,7 +295,21 @@ class Executor:
 
         return True
 
-    def clean(self, case: dict):
+    def clean(self, case: dict) -> bool:
+        """Clean a case.
+
+        Clean up all results and metrics for a case to start it fresh.
+
+        Parameters
+        ----------
+        case : dict
+            The case to clean.
+
+        Returns
+        -------
+        success : bool
+            Whether the cleaning of the case succeeded or not.
+        """
         # Checkpoints
         checkpoint_file = os.path.join(case['directory'], '.done')
         if os.path.exists(checkpoint_file):
@@ -219,8 +324,34 @@ class Executor:
             if not data_dir.endswith('shared'):
                 shutil.rmtree(data_dir)
 
+        return True
+
     def run(self, case: dict, interval: float,
-            run: int, checkpoint: bool) -> Tuple[bool, float]:
+            run: int, checkpoint: bool) -> bool:
+        """Execute a case.
+
+        Execute all steps of a case while collecting metrics and logs.
+        The metrics are collected at a given interval and for a specific run of
+        the case to allow multiple executions of the same case. Checkpoints of
+        runs can be enabled to allow the executor to restart where it stopped
+        in case of a failure, electricity blackout, etc.
+
+        Parameters
+        ----------
+        case : dict
+            The case to execute.
+        interval : float
+            The sample interval for the metrics collection.
+        run : int
+            The run number of the case.
+        checkpoint : bool
+            Enable checkpoints after each run to allow restarts.
+
+        Returns
+        -------
+        success : bool
+            Whether the case was executed successfully or not.
+        """
         success = True
         data = case['data']
         directory = case['directory']
@@ -366,7 +497,18 @@ class Executor:
 
         return success
 
-    def list(self):
+    def list(self) -> list:
+        """List all cases in a root directory.
+
+            Retrieve a list of all discovered valid cases in a given directory.
+            Cases which do not pass the validation, are excluded and their
+            validation errors are reported through logging.
+
+            Returns
+            -------
+            cases : list
+                List of discovered cases.
+        """
         cases = []
 
         for directory in glob(self._main_directory):
@@ -381,7 +523,3 @@ class Executor:
                                               'data': data})
 
         return cases
-
-    @property
-    def main_directory(self):
-        return self._main_directory

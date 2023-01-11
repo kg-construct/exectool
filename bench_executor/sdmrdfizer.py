@@ -1,11 +1,21 @@
 #!/usr/bin/env python3
 
+"""
+SDM-RDFizer is an efficient RML-Compliant engine for knowledge graph
+construction.
+
+**Repository**: https://github.com/SDM-TIB/SDM-RDFizer
+"""
+
 import os
 import configparser
-from container import Container
 from rdflib import Graph, BNode, Namespace, Literal, RDF
 from timeout_decorator import timeout, TimeoutError
-from logger import Logger
+try:
+    from bench_executor import Container, Logger
+except ModuleNotFoundError:
+    from container import Container
+    from logger import Logger
 
 VERSION = '4.6.3.4'
 TIMEOUT = 6 * 3600 # 6 hours
@@ -15,8 +25,23 @@ D2RQ = Namespace('http://www.wiwiss.fu-berlin.de/suhl/bizer/D2RQ/0.1#')
 
 
 class SDMRDFizer(Container):
+    """SDMRDFizer container for executing RML mappings."""
+
     def __init__(self, data_path: str, config_path: str, directory: str,
                  verbose: bool):
+        """Creates an instance of the SDMRDFizer class.
+
+        Parameters
+        ----------
+        data_path : str
+            Path to the data directory of the case.
+        config_path : str
+            Path to the config directory of the case.
+        directory : str
+            Path to the directory to store logs.
+        verbose : bool
+            Enable verbose logs.
+        """
         self._data_path = os.path.abspath(data_path)
         self._config_path = os.path.abspath(config_path)
         self._logger = Logger(__name__, directory, verbose)
@@ -30,15 +55,42 @@ class SDMRDFizer(Container):
 
     @property
     def root_mount_directory(self) -> str:
+        """Subdirectory in the root directory of the case for SDM-RDFizer.
+
+        Returns
+        -------
+        subdirectory : str
+            Subdirectory of the root directory for SDM-RDFizer.
+
+        """
         return __name__.lower()
 
     @timeout(TIMEOUT)
     def _execute_with_timeout(self, arguments) -> bool:
+        """Execute a mapping with a provided timeout.
+
+        Returns
+        -------
+        success : bool
+            Whether the execution was successfull or not.
+        """
         cmd = f'python3 sdm-rdfizer/rdfizer/run_rdfizer.py ' + \
               f'/data/config_sdmrdfizer.ini'
         return self.run_and_wait_for_exit(cmd)
 
     def execute(self, arguments: list) -> bool:
+        """Execute SDM-RDFizer with given arguments.
+
+        Parameters
+        ----------
+        arguments : list
+            Arguments to supply to SDM-RDFizer.
+
+        Returns
+        -------
+        success : bool
+            Whether the execution succeeded or not.
+        """
         try:
             return self._execute_with_timeout(arguments)
         except TimeoutError:
@@ -50,8 +102,43 @@ class SDMRDFizer(Container):
     def execute_mapping(self, mapping_file: str, output_file: str,
                         serialization: str, rdb_username: str = None,
                         rdb_password: str = None, rdb_host: str = None,
-                        rdb_port: str = None, rdb_name: str = None,
+                        rdb_port: int = None, rdb_name: str = None,
                         rdb_type: str = None) -> bool:
+        """Execute a mapping file with SDM-RDFizer.
+
+        N-Quads and N-Triples are currently supported as serialization
+        format for RMLMapper.
+
+        Parameters
+        ----------
+        mapping_file : str
+            Path to the mapping file to execute.
+        output_file : str
+            Name of the output file to store the triples in.
+        serialization : str
+            Serialization format to use.
+        rdb_username : str
+            Username for the database, required when a database is used as
+            source.
+        rdb_password : str
+            Password for the database, required when a database is used as
+            source.
+        rdb_host : str
+            Hostname for the database, required when a database is used as
+            source.
+        rdb_port : int
+            Port for the database, required when a database is used as source.
+        rdb_name : str
+            Database name for the database, required when a database is used as
+            source.
+        rdb_type : str
+            Database type, required when a database is used as source.
+
+        Returns
+        -------
+        success : bool
+            Whether the execution was successfull or not.
+        """
 
         # Configuration file
         name = os.path.splitext(os.path.basename(output_file))[0]

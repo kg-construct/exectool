@@ -1,4 +1,50 @@
 #!/usr/bin/env python3
+"""
+This module holds the Collector class which is responsible for collecting
+metrics during the execution of a case. It also collects hardware information
+for provenance reasons when comparing results from cases.
+
+The following metrics are collected:
+
+**General**
+- `index`: incremental index for each collected sample.
+- `step`: Number of the step of a collected sample.
+- `timestamp`: The time when the sample was collected.
+- `version`: format version of the collected version, currently v2.
+
+**CPU**
+- `cpu_user`: CPU time spent in userspace.
+- `cpu_system`: CPU time spent in kernelspace.
+- `cpu_user_system`: sum of CPU time userspace and kernelspace.
+- `cpu_idle`: CPU time spent in idle mode.
+- `cpu_iowait`: Time that the CPU has to wait for IO operations to complete.
+
+**Memory**
+- `memory_ram`: Amount of RAM memory in use.
+- `memory_swap`: Amount of SWAP memory in use.
+- `memory_ram_swap`: Sum of the RAM and SWAP memory in use.
+
+**Disk**
+- `disk_read_count`: Number of disk reads.
+- `disk_write_count`: Number of disk writes.
+- `disk_read_bytes`: Number of bytes read from disk.
+- `disk_write_bytes`: Number of bytes written to disk.
+- `disk_read_time`: Time spent to read from disk.
+- `disk_write_time`: Time spent to write to disk.
+- `disk_busy_time`: Time that the disk is busy and all actions are pending.
+
+**Network**
+- `network_received_count`: Number of network packets received.
+- `network_sent_count`: Number of network packets sent.
+- `network_received_bytes`: Number of bytes received over network.
+- `network_sent_bytes`: Number of bytes sent over network.
+- `network_received_error`: Number of errors occured during receiving over
+network.
+- `network_sent_error`: Number of errors occured during sending over network.
+- `network_received_drop`: Number of packets dropped during receiving over
+network.
+- `network_sent_drop`: Number of packets dropped during sending over network.
+"""
 
 import os
 import sys
@@ -62,6 +108,7 @@ def _collect_metrics(stop_event: Event, metrics_path: str,
                      sample_interval: float, initial_timestamp: float,
                      initial_cpu: dict, initial_ram: int, initial_swap: int,
                      initial_disk_io: dict, initial_network_io: dict):
+    """Thread function to collect a sample at specific intervals"""
     global step_id
     index = 1
 
@@ -150,9 +197,52 @@ def _collect_metrics(stop_event: Event, metrics_path: str,
             sleep(sample_interval - (timestamp - time()))
 
 class Collector():
+    """Collect metrics samples at a given interval for a run of a case."""
+
     def __init__(self, results_run_path: str, sample_interval: float,
                  number_of_steps: int, run_id: int, directory: str,
                  verbose: bool):
+        """
+        Create an instance of the Collector class.
+
+        Instantiating this class will automatically generate a `case-info.txt`
+        file which describes the hardware used during collection of the
+        metrics. The file describes:
+
+        - **Case**:
+            - Timestamp when started.
+            - Directory of the case.
+            - Number of the run.
+            - Number of steps in a case.
+        - **Hardware**:
+            - CPU name.
+            - Number of CPU cores.
+            - Minimum and maximum CPU core frequency.
+            - Amount of RAM and SWAP memory
+            - Available disk storage.
+            - Available network interfaces and their link speed.
+        - **Docker**:
+            - Version of the Docker daemon
+            - Docker root directory
+            - Docker storage driver
+            - Docker CgroupFS driver and version
+
+        Parameters
+        ----------
+        results_run_path : str
+            Path to the results directory of the run currently being executed.
+        sample_interval : float
+            Sample interval in seconds for collecting metrics.
+        number_of_steps : int
+            The number of steps of the case that is being executed.
+        run_id : int
+            The number of the run that is being executed.
+        directory : str
+            Path to the directory to store logs.
+        verbose : bool
+            Enable verbose logs.
+        """
+
         self._started: bool = False
         self._data_path: str = os.path.abspath(results_run_path)
         self._number_of_steps: int = number_of_steps
@@ -282,14 +372,16 @@ class Collector():
         self._thread.start()
 
     @property
-    def started(self):
-        return self._started
-
-    @property
     def name(self):
+        """Name of the class: Collector"""
         return self.__name__
 
     def next_step(self):
+        """Increment the step number by one.
+
+        The step number must always be equal or lower than the number of steps
+        in the case.
+        """
         global step_id
         step_id += 1
 
@@ -298,5 +390,9 @@ class Collector():
         assert (step_id <= self._number_of_steps), msg
 
     def stop(self):
+        """End metrics collection.
+
+        Signal the metrics collection thread to stop collecting any metrics.
+        """
         self._stop_event.set()
 

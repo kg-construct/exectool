@@ -1,4 +1,17 @@
 #!/usr/bin/env python3
+"""
+This module holds the Stats class which is responsible for generating
+staticstics from executed cases. It will automatically aggregate all runs of an
+executed case to generate an `aggregated.csv` and `summary.csv` files which can
+be used to compare various cases with each other.
+
+- `aggregated.csv`: For each run of a case, the median execution time of each
+  step is calculated. For each step, the results of the run with the median
+  execution time is used to assemble the aggregated results.
+- `summary.csv`: The summary is similar to the previous file, but provides a
+  single result for each step to immediately see how long the step took, how
+  many samples are provided for the step, etc.
+"""
 
 import os
 import sys
@@ -67,8 +80,23 @@ ROUND = 4
 #
 
 class Stats():
+    """Generate statistics for an executed case."""
+
     def __init__(self, results_path: str, number_of_steps: int,
                  directory: str, verbose: bool):
+        """Create an instance of the Stats class.
+
+        Parameters
+        ----------
+        results_path : str
+            The path to the results directory of the case
+        number_of_steps : int
+            The number of steps of the case
+        directory : str
+            The path to the directory where the logs must be stored.
+        verbose : bool
+            Enable verbose logs.
+        """
         self._results_path = os.path.abspath(results_path)
         self._number_of_steps = number_of_steps
         self._logger = Logger(__name__, directory, verbose)
@@ -79,6 +107,7 @@ class Stats():
             raise ValueError(msg)
 
     def _parse_field(self, field, value):
+        """Parse the field of the metrics field in a Python data type."""
         if field in FIELDNAMES_FLOAT:
             return float(value)
         elif field in FIELDNAMES_INT:
@@ -88,7 +117,8 @@ class Stats():
             self._logger.error(msg, file=sys.stderr)
             raise ValueError(msg)
 
-    def _parse(self, run_path, fields=FIELDNAMES, step=None):
+    def _parse_v2(self, run_path, fields=FIELDNAMES, step=None):
+        """Parse the CSV metrics file in v2 format."""
         data = []
 
         metrics_file = os.path.join(run_path, METRICS_FILE_NAME)
@@ -117,6 +147,17 @@ class Stats():
         return data
 
     def aggregate(self) -> bool:
+        """Aggregate the metrics of the different runs of a case.
+
+        Find the median execution time of each step across all runs and extract
+        the step from the run which has this median execution time to assemble
+        an aggregated version and summary version of the case's metrics.
+
+        Returns
+        -------
+        success : bool
+            Whether the aggregation was successfully or not.
+        """
         # Find each median step of all runs before extracting more data for
         # memory consumption reasons
         runs = []
@@ -131,7 +172,7 @@ class Stats():
                 return False
 
             # Extract steps and timestamps of this run
-            data = self._parse(run_path, fields=['step', 'timestamp'])
+            data = self._parse_v2(run_path, fields=['step', 'timestamp'])
 
             # Calculate timestamp diff for each step
             step = 1
@@ -209,7 +250,8 @@ class Stats():
                             .index(median(step_timestamps)) + 1
             median_run_path = os.path.join(self._results_path,
                                            f'run_{median_run_id}')
-            median_step_data = self._parse(median_run_path, step=step_index + 1)
+            median_step_data = self._parse_v2(median_run_path,
+                                              step=step_index + 1)
             aggregated_entries += median_step_data
 
             # Summary data of a step: diff per step

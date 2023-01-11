@@ -1,27 +1,59 @@
 #!/usr/bin/env python3
 
+"""
+Ontop is a Virtual Knowledge Graph system. It exposes the content of
+arbitrary relational databases as knowledge graphs. These graphs are virtual,
+which means that data remains in the data sources instead of being moved
+to another database.
+
+**Website**: https://ontop-vkg.org<br>
+**Repository**: https://github.com/ontop/ontop
+"""
+
 import os
 import sys
 import psutil
 import configparser
-from container import Container
 from rdflib import Graph, Namespace, RDF, URIRef
 from timeout_decorator import timeout, TimeoutError
-from logger import Logger
+try:
+    from bench_executor import Container, Logger
+except ModuleNotFoundError:
+    from container import Container
+    from logger import Logger
 
 VERSION = '4.2.1'
 TIMEOUT = 6 * 3600 # 6 hours
 R2RML = Namespace('http://www.w3.org/ns/r2rml#')
 
 
-class _Ontop(Container):
+class Ontop(Container):
+    """Ontop container super class for OntopMaterialize and OntopVirtualize."""
     def __init__(self, name: str, data_path: str, logger: Logger, mode: str):
+        """Creates an instance of the Ontop class.
+
+        Parameters
+        ----------
+        name : str
+            Pretty name of the container.
+        data_path: str
+            Path to the data directory of the case.
+        logger : Logger
+            Logger to use for log messages.
+        mode : str
+            Ontop mode: `materialize` or `endpoint`
+        """
         self._mode = mode
         self._headers = {}
         self._logger = logger
 
-        os.makedirs(os.path.join(self._data_path, f'ontop{self._mode}'),
-                    exist_ok=True)
+        if self._mode == 'endpoint':
+            subdir = 'ontopvirtualize'
+        elif self._mode == 'materialize':
+            subdir = 'ontopmaterialize'
+        else:
+            raise ValueError(f'Unknown Ontop mode: "{self._mode}"')
+        os.makedirs(os.path.join(self._data_path, subdir), exist_ok=True)
 
         # Set Java heap to 1/2 of available memory instead of the default 1/4
         max_heap = int(psutil.virtual_memory().total * (1/2))
@@ -37,6 +69,14 @@ class _Ontop(Container):
 
     @property
     def root_mount_directory(self) -> str:
+        """Subdirectory in the root directory of the case for Ontop.
+
+        Returns
+        -------
+        subdirectory : str
+            Subdirectory of the root directory for Ontop.
+
+        """
         if self._mode == 'endpoint':
             return 'ontopvirtualize'
         elif self._mode == 'materialize':
@@ -46,13 +86,49 @@ class _Ontop(Container):
 
     @property
     def endpoint(self) -> str:
+        """SPARQL endpoint URL for Ontop.
+
+        Returns
+        -------
+        url : str
+            SPARQL endpoint URL.
+        """
         return 'http://localhost:8888/sparql'
 
     @property
     def headers(self) -> dict:
+        """HTTP headers of SPARQL queries for serialization formats.
+
+        Only supported serialization formats are included in the dictionary.
+        Currently, the following formats are supported:
+        - N-Triples
+        - N-Quads
+        - Turtle
+        - CSV
+        - RDF/JSON
+        - RDF/XML
+        - JSON-LD
+
+        Returns
+        -------
+        headers : dict
+            Dictionary of headers to use for each serialization format.
+        """
         return self._headers
 
     def execute(self, arguments: list) -> bool:
+        """Execute Ontop with given arguments.
+
+        Parameters
+        ----------
+        arguments : list
+            Arguments to supply to Ontop.
+
+        Returns
+        -------
+        success : bool
+            Whether the execution succeeded or not.
+        """
         cmd = f'/ontop/ontop {self._mode} {" ".join(arguments)}'
         if self._mode == 'endpoint':
             log_line = 'OntopEndpointApplication - Started ' + \
@@ -71,6 +147,37 @@ class _Ontop(Container):
                         rdb_username: str = None, rdb_password: str = None,
                         rdb_host: str = None, rdb_port: str = None,
                         rdb_name: str = None, rdb_type: str = None) -> bool:
+        """Execute a mapping file with Ontop.
+
+        Only relational databases are supported by
+        Ontop, thus the relational database parameters are mandantory.
+
+        Parameters
+        ----------
+        mapping_file : str
+            Path to the mapping file to execute.
+        output_file : str
+            Name of the output file to store the triples in.
+        serialization : str
+            Serialization format to use.
+        rdb_username : str
+            Username for the database.
+        rdb_password : str
+            Password for the database.
+        rdb_host : str
+            Hostname for the database.
+        rdb_port : int
+            Port for the database.
+        rdb_name : str
+            Database name for the database.
+        rdb_type : str
+            Database type.
+
+        Returns
+        -------
+        success : bool
+            Whether the execution was successfull or not.
+        """
         # Generate INI configuration file since no CLI is available
         if rdb_username is not None and rdb_password is not None \
             and rdb_host is not None and rdb_port is not None \
@@ -180,9 +287,23 @@ class _Ontop(Container):
 
         return self.execute(arguments)
 
-class OntopVirtualize(_Ontop):
+class OntopVirtualize(Ontop):
+    """OntopVirtualize container for setting up an Ontop SPARQL endpoint."""
     def __init__(self, data_path: str, config_path: str, directory: str,
                  verbose: bool):
+        """Creates an instance of the OntopVirtualize class.
+
+        Parameters
+        ----------
+        data_path : str
+            Path to the data directory of the case.
+        config_path : str
+            Path to the config directory of the case.
+        directory : str
+            Path to the directory to store logs.
+        verbose : bool
+            Enable verbose logs.
+        """
         self._data_path = os.path.abspath(data_path)
         self._config_path = os.path.abspath(config_path)
         self._logger = Logger(__name__, directory, verbose)
@@ -194,6 +315,45 @@ class OntopVirtualize(_Ontop):
                         rdb_username: str = None, rdb_password: str = None,
                         rdb_host: str = None, rdb_port: str = None,
                         rdb_name: str = None, rdb_type: str = None) -> bool:
+        """Start an Ontop SPARQL endpoint with a mapping.
+
+        Only relational databases are supported by
+        Ontop, thus the relational database parameters are mandantory.
+        Ontop SPARQL endpoint supports the following serialization formats:
+        - N-Triples (Ontop v5+)
+        - N-Quads (Ontop v5+)
+        - Turtle
+        - RDF/JSON
+        - JSON-LD
+        - CSV
+
+        Parameters
+        ----------
+        mapping_file : str
+            Path to the mapping file to execute.
+        output_file : str
+            Name of the output file to store the triples in. This is not used
+            for OntopVirtualize.
+        serialization : str
+            Serialization format to use.
+        rdb_username : str
+            Username for the database.
+        rdb_password : str
+            Password for the database.
+        rdb_host : str
+            Hostname for the database.
+        rdb_port : int
+            Port for the database.
+        rdb_name : str
+            Database name for the database.
+        rdb_type : str
+            Database type.
+
+        Returns
+        -------
+        success : bool
+            Whether the execution was successfull or not.
+        """
         config_file = f'{self._data_path}/{self.root_mount_directory}' + \
                       '/config.properties'
         arguments = ['--cors-allowed-origins=*', '--port=8888']
@@ -214,9 +374,23 @@ class OntopVirtualize(_Ontop):
                                        rdb_password, rdb_host, rdb_port,
                                        rdb_name, rdb_type)
 
-class OntopMaterialize(_Ontop):
+class OntopMaterialize(Ontop):
+    """OntopMaterialize container to execute a R2RML mapping."""
     def __init__(self, data_path: str, config_path: str, directory: str,
                  verbose: bool):
+        """Creates an instance of the OntopMaterialize class.
+
+        Parameters
+        ----------
+        data_path : str
+            Path to the data directory of the case.
+        config_path : str
+            Path to the config directory of the case.
+        directory : str
+            Path to the directory to store logs.
+        verbose : bool
+            Enable verbose logs.
+        """
         self._data_path = os.path.abspath(data_path)
         self._config_path = os.path.abspath(config_path)
         self._logger = Logger(__name__, directory, verbose)
@@ -235,6 +409,13 @@ class OntopMaterialize(_Ontop):
                                       rdb_port: str = None,
                                       rdb_name: str = None,
                                       rdb_type: str = None) -> bool:
+        """Execute a mapping with a provided timeout.
+
+        Returns
+        -------
+        success : bool
+            Whether the execution was successfull or not.
+        """
         config_file = f'{self._data_path}/{self.root_mount_directory}' + \
                       '/config.properties'
         arguments = [ '-f', serialization ]
@@ -249,6 +430,39 @@ class OntopMaterialize(_Ontop):
                         rdb_password: str = None, rdb_host: str = None,
                         rdb_port: str = None, rdb_name: str = None,
                         rdb_type: str = None) -> bool:
+        """Execute a R2RML mapping with Ontop
+
+        N-Quads and N-Triples are currently supported as serialization
+        for Ontop materialize. Only relational databases are supported by
+        Ontop, thus the relational database parameters are mandantory.
+
+        Parameters
+        ----------
+        mapping_file : str
+            Path to the mapping file to execute.
+        output_file : str
+            Name of the output file to store the triples in. This is not used
+            for OntopVirtualize.
+        serialization : str
+            Serialization format to use.
+        rdb_username : str
+            Username for the database.
+        rdb_password : str
+            Password for the database.
+        rdb_host : str
+            Hostname for the database.
+        rdb_port : int
+            Port for the database.
+        rdb_name : str
+            Database name for the database.
+        rdb_type : str
+            Database type.
+
+        Returns
+        -------
+        success : bool
+            Whether the execution was successfull or not.
+        """
         try:
             return self._execute_mapping_with_timeout(mapping_file,
                                                       output_file,
@@ -266,7 +480,7 @@ class OntopMaterialize(_Ontop):
         return False
 
 if __name__ == '__main__':
-    print('ℹ️  Starting up Ontop Virtualize Endpoint...')
+    print(f'ℹ️  Starting up Ontop Virtualize Endpoint v{VERSION}...')
     o = OntopVirtualize('data', 'config', True)
     o.wait_until_ready()
     input('ℹ️  Press any key to stop')

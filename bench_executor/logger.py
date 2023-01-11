@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 
+"""
+This module contains the Logger class which is responsible for logging.
+This class is a small wrapper around the Python logging module to automatically
+configure the loggers and handle unittest logging.
+"""
+
 import os
 import sys
 import logging
@@ -10,7 +16,23 @@ LOGGER_FORMAT_CONSOLE = '%(levelname)s: %(message)s'
 
 
 class Logger:
+    """Log messages to a log file and console."""
+
     def __init__(self, name: str, directory: str, verbose: bool):
+        """Creates an instance of the Logger class.
+
+        During unittests, the `UNITTEST` environment variable is set which
+        disables the console logger.
+
+        Parameters
+        ----------
+        name : str
+            Name of the logger
+        directory : str
+            The path to the directory where the logs must be stored.
+        verbose : bool
+            Enable verbose logs
+        """
         self._logger = logging.getLogger(name)
 
         level = logging.INFO
@@ -27,6 +49,8 @@ class Logger:
         log_file.setFormatter(format_file)
         self._logger.addHandler(log_file)
 
+        # Silence console logging during unittests, logs are available in the
+        # log file anyway
         if os.environ.get('UNITTEST') is None:
             log_console = logging.StreamHandler(sys.stderr)
             log_console.setLevel(logging.WARNING)
@@ -38,13 +62,17 @@ class Logger:
         self._logger.info(f'Logger ({level_name}) initialized for {name}')
 
     def debug(self, msg):
+        """Log a message with level DEBUG."""
         self._logger.debug(msg)
 
     def info(self, msg):
+        """Log a message with level INFO."""
         self._logger.info(msg)
 
     def warning(self, msg):
+        """Log a message with level WARNING."""
         self._logger.warning(msg)
 
     def error(self, msg):
+        """Log a message with level ERROR."""
         self._logger.error(msg)

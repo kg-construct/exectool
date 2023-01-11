@@ -1,11 +1,24 @@
 #!/usr/bin/env python3
 
+"""
+Virtuoso is a secure and high-performance platform for modern data access,
+integration, virtualization, and multi-model data management (tables & graphs)
+based on innovative support of existing open standards
+(e.g., SQL, SPARQL, and GraphQL).
+
+**Website**: https://virtuoso.openlinksw.com/
+**Repository**: https://github.com/openlink/virtuoso-opensource
+"""
+
 import os
 import tempfile
 import psutil
 from threading import Thread
-from container import Container
-from logger import Logger
+try:
+    from bench_executor import Container, Logger
+except ModuleNotFoundError:
+    from container import Container
+    from logger import Logger
 
 VERSION = '7.2.7'
 MAX_ROWS = '10000000'
@@ -16,13 +29,35 @@ NUMBER_OF_BUFFERS_PER_GB = 85000
 MAX_DIRTY_BUFFERS_PER_GB = 65000
 
 def _spawn_loader(container):
+    """Thread function to parallel load RDF.
+
+    Parameters
+    ----------
+    container : Container
+        The Virtuoso container on which the RDF loader should run.
+    """
     success, logs = container.exec('isql -U dba -P root '
                                    'exec="rdf_loader_run();"')
 
 
 class Virtuoso(Container):
+    """Virtuoso container to execute SPARQL queries"""
+
     def __init__(self, data_path: str, config_path: str, directory: str,
                  verbose: bool):
+        """Creates an instance of the Virtuoso class.
+
+        Parameters
+        ----------
+        data_path : str
+            Path to the data directory of the case.
+        config_path : str
+            Path to the config directory of the case.
+        directory : str
+            Path to the directory to store logs.
+        verbose : bool
+            Enable verbose logs.
+        """
         self._data_path = os.path.abspath(data_path)
         self._config_path = os.path.abspath(config_path)
         self._logger = Logger(__name__, directory, verbose)
@@ -52,6 +87,13 @@ class Virtuoso(Container):
         self._endpoint = 'http://localhost:8890/sparql'
 
     def initialization(self) -> bool:
+        """Initialize Virtuoso's database.
+
+        Returns
+        -------
+        success : bool
+            Whether the initialization was successfull or not.
+        """
         # Virtuoso should start with a initialized database, start Virtuoso
         # if not initialized to avoid the pre-run start during benchmark
         # execution
@@ -64,15 +106,65 @@ class Virtuoso(Container):
 
     @property
     def root_mount_directory(self) -> str:
+        """Subdirectory in the root directory of the case for Virtuoso.
+
+        Returns
+        -------
+        subdirectory : str
+            Subdirectory of the root directory for Virtuoso.
+        """
         return __name__.lower()
 
     def wait_until_ready(self, command: str = '') -> bool:
+        """Wait until Virtuoso is ready to execute SPARQL queries.
+
+        Parameters
+        ----------
+        command : str
+            Command to execute in the Virtuoso container, optionally, defaults to
+            no command.
+
+        Returns
+        -------
+        success : bool
+            Whether the Virtuoso was initialized successfull or not.
+        """
         return self.run_and_wait_for_log('Server online at', command=command)
 
     def load(self, rdf_file: str) -> bool:
+        """Load an RDF file into Virtuoso.
+
+        Currently, only N-Triples files are supported.
+
+        Parameters
+        ----------
+        rdf_file : str
+            Name of the RDF file to load.
+
+        Returns
+        -------
+        success : bool
+            Whether the loading was successfull or not.
+        """
         return self.load_parallel(rdf_file, 1)
 
     def load_parallel(self, rdf_file: str, cores: int) -> bool:
+        """Load an RDF file into Virtuoso in parallel.
+
+        Currently, only N-Triples files are supported.
+
+        Parameters
+        ----------
+        rdf_file : str
+            Name of the RDF file to load.
+        cores : int
+            Number of CPU cores for loading.
+
+        Returns
+        -------
+        success : bool
+            Whether the loading was successfull or not.
+        """
         success = True
 
         success, logs = self.exec(f'sh -c "ls /usr/share/proj/{rdf_file}"')
@@ -132,6 +224,15 @@ class Virtuoso(Container):
         return success
 
     def stop(self) -> bool:
+        """Stop Virtuoso.
+
+        Drops all triples in Virtuoso before stopping its container.
+
+        Returns
+        -------
+        success : bool
+            Whether stopping Virtuoso was successfull or not.
+        """
         # Drop loaded triples
         success, logs = self.exec('isql -U dba -P root '
                                   'exec="delete from DB.DBA.load_list;"')
@@ -152,10 +253,27 @@ class Virtuoso(Container):
 
     @property
     def endpoint(self):
+        """SPARQL endpoint URL"""
         return self._endpoint
 
     @property
     def headers(self):
+        """HTTP headers of SPARQL queries for serialization formats.
+
+        Only supported serialization formats are included in the dictionary.
+        Currently, the following formats are supported:
+        - N-Triples
+        - Turtle
+        - CSV
+        - RDF/JSON
+        - RDF/XML
+        - JSON-LD
+
+        Returns
+        -------
+        headers : dict
+            Dictionary of headers to use for each serialization format.
+        """
         headers = {}
         headers['ntriples'] = { 'Accept': 'text/ntriples' }
         headers['turtle'] = { 'Accept': 'text/turtle' }
@@ -166,7 +284,7 @@ class Virtuoso(Container):
         return headers
 
 if __name__ == '__main__':
-    print('ℹ️  Starting up...')
+    print(f'ℹ️  Starting up Virtuoso v{VERSION}...')
     v = Virtuoso('data', 'config', True)
     v.wait_until_ready()
     input('ℹ️  Press any key to stop')

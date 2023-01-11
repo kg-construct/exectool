@@ -1,15 +1,43 @@
 #!/usr/bin/env python3
 
+"""
+YARRRML is a human readable text-based representation for declarative
+Linked Data generation rules.
+
+**Website**: https://rml.io/yarrrml/
+**Repository**: https://github.com/RMLio/yarrrml-parser
+"""
+
 import os
 import psutil
-from container import Container
-from logger import Logger
+
+try:
+    from bench_executor import Container, Logger
+except ModuleNotFoundError:
+    from container import Container
+    from logger import Logger
 
 VERSION = '1.3.6'
 
+
 class YARRRML(Container):
+    """YARRRML container to transform YARRRML mappings into RML mappings."""
+
     def __init__(self, data_path: str, config_path: str, directory: str,
                  verbose: bool):
+        """Creates an instance of the YARRRML class.
+
+        Parameters
+        ----------
+        data_path : str
+            Path to the data directory of the case.
+        config_path : str
+            Path to the config directory of the case.
+        directory : str
+            Path to the directory to store logs.
+        verbose : bool
+            Enable verbose logs.
+        """
         self._data_path = os.path.abspath(data_path)
         self._config_path = os.path.abspath(config_path)
         self._logger = Logger(__name__, directory, verbose)
@@ -22,10 +50,35 @@ class YARRRML(Container):
 
     @property
     def root_mount_directory(self) -> str:
+        """Subdirectory in the root directory of the case for YARRRML.
+
+        Returns
+        -------
+        subdirectory : str
+            Subdirectory of the root directory for YARRRML.
+        """
         return __name__.lower()
 
     def transform_mapping(self, yarrrml_file: str, mapping_file: str,
-                          r2rml: bool = False, pretty: bool = True):
+                          r2rml: bool = False, pretty: bool = True) -> bool:
+        """Transform a YARRRML mapping into a RML mapping.
+
+        Parameters
+        ----------
+        yarrrml_file : str
+            Name of the YARRRML mapping file.
+        mapping_file : str
+            Name of the RML mapping file.
+        r2rml : bool
+            Whether the RML mapping file must be R2RML compatible.
+        pretty : bool
+            Whether the generated mapping file must be pretty or not.
+
+        Returns
+        -------
+        success : bool
+            Whether the YARRRML was initialized successfull or not.
+        """
         arguments = ['-i', os.path.join('/data/shared/', yarrrml_file),
                      '-o', os.path.join('/data/shared/', mapping_file)]
 

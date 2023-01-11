@@ -1,19 +1,43 @@
 #!/usr/bin/env python3
 
+"""
+Apache Jena Fuseki is a SPARQL server. It can run as an operating system
+service, as a Java web application (WAR file), and as a standalone server.
+
+**Website**: https://jena.apache.org/documentation/fuseki2/
+"""
+
 import os
 import sys
 import requests
 import psutil
-from container import Container
-from logger import Logger
+try:
+    from bench_executor import Container, Logger
+except ModuleNotFoundError:
+    from container import Container
+    from logger import Logger
 
 VERSION = '4.6.1'
 CMD_ARGS = '--tdb2 --update --loc /fuseki/databases/DB /ds'
 
 
 class Fuseki(Container):
+    """Fuseki container for executing SPARQL queries."""
     def __init__(self, data_path: str, config_path: str, directory: str,
                  verbose: bool):
+        """Creates an instance of the Fuseki class.
+
+        Parameters
+        ----------
+        data_path : str
+            Path to the data directory of the case.
+        config_path : str
+            Path to the config directory of the case.
+        directory : str
+            Path to the directory to store logs.
+        verbose : bool
+            Enable verbose logs.
+        """
         self._data_path = os.path.abspath(data_path)
         self._config_path = os.path.abspath(config_path)
         self._logger = Logger(__name__, directory, verbose)
@@ -38,6 +62,13 @@ class Fuseki(Container):
         self._endpoint = 'http://localhost:3030/ds/sparql'
 
     def initialization(self) -> bool:
+        """Initialize Fuseki's database.
+
+        Returns
+        -------
+        success : bool
+            Whether the initialization was successfull or not.
+        """
         # Fuseki should start with a initialized database, start Fuseki
         # if not initialized to avoid the pre-run start during benchmark
         # execution
@@ -50,10 +81,33 @@ class Fuseki(Container):
 
     @property
     def root_mount_directory(self) -> str:
+        """Subdirectory in the root directory of the case for Fuseki.
+
+        Returns
+        -------
+        subdirectory : str
+            Subdirectory of the root directory for Fuseki.
+        """
         return __name__.lower()
 
     @property
     def headers(self) -> str:
+        """HTTP headers of SPARQL queries for serialization formats.
+
+        Only supported serialization formats are included in the dictionary.
+        Currently, the following formats are supported:
+        - N-Triples
+        - Turtle
+        - CSV
+        - RDF/JSON
+        - RDF/XML
+        - JSON-LD
+
+        Returns
+        -------
+        headers : dict
+            Dictionary of headers to use for each serialization format.
+        """
         headers = {}
         headers['ntriples'] = { 'Accept': 'text/plain' }
         headers['turtle'] = { 'Accept': 'text/turtle' }
@@ -64,10 +118,37 @@ class Fuseki(Container):
         return headers
 
     def wait_until_ready(self, command: str = '') -> bool:
+        """Wait until Fuseki is ready to execute SPARQL queries.
+
+        Parameters
+        ----------
+        command : str
+            Command to execute in the Fuseki container, optionally, defaults to
+            no command.
+
+        Returns
+        -------
+        success : bool
+            Whether the Fuseki was initialized successfull or not.
+        """
         command = f'{command} {CMD_ARGS}'
         return self.run_and_wait_for_log(':: Start Fuseki ', command=command)
 
     def load(self, rdf_file: str) -> bool:
+        """Load an RDF file into Fuseki.
+
+        Currently, only N-Triples files are supported.
+
+        Parameters
+        ----------
+        rdf_file : str
+            Name of the RDF file to load.
+
+        Returns
+        -------
+        success : bool
+            Whether the loading was successfull or not.
+        """
         path = os.path.join(self._data_path, 'shared', rdf_file)
 
         if not os.path.exists(path):
@@ -87,6 +168,15 @@ class Fuseki(Container):
         return True
 
     def stop(self) -> bool:
+        """Stop Fuseki.
+
+        Drops all triples in Fuseki before stopping its container.
+
+        Returns
+        -------
+        success : bool
+            Whether stopping Fuseki was successfull or not.
+        """
         # Drop triples on exit
         try:
             headers = {'Content-Type': 'application/sparql-update'}
@@ -103,10 +193,11 @@ class Fuseki(Container):
 
     @property
     def endpoint(self):
+        """SPARQL endpoint URL"""
         return self._endpoint
 
 if __name__ == '__main__':
-    print('ℹ️  Starting up...')
+    print(f'ℹ️  Starting up Fuseki v{VERSION}...')
     f = Fuseki('data', 'config', True)
     f.wait_until_ready()
     input('ℹ️  Press any key to stop')
