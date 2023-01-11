@@ -1018,7 +1018,8 @@ class TriplestoreTests(unittest.TestCase):
         DBPEDIA_SPARQL = 'https://dbpedia.org/sparql'
 
         q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
-        results = q._execute(QUERY, DBPEDIA_SPARQL, False)
+        results = q._execute(QUERY, DBPEDIA_SPARQL, False,
+                             { 'Accept': 'text/plain' })
         results = list(filter(None, results.split('\n')))
         self.assertEqual(len(results), 100)
 
@@ -1028,7 +1029,7 @@ class TriplestoreTests(unittest.TestCase):
 
         q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         self.assertTrue(q.execute_and_save(QUERY, DBPEDIA_SPARQL, 'results.nt',
-                                           {}))
+                                           False, { 'Accept': 'text/plain' }))
         with open(os.path.join(DATA_DIR, 'shared', 'results.nt'), 'r') as f:
             results = list(filter(None, f.read().split('\n')))
             self.assertEqual(len(results), 100)
@@ -1038,7 +1039,8 @@ class TriplestoreTests(unittest.TestCase):
         DBPEDIA_SPARQL = 'https://dbpedia.org/sparql'
 
         q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
-        results = q.execute_from_file(QUERY_FILE, DBPEDIA_SPARQL, {})
+        results = q.execute_from_file(QUERY_FILE, DBPEDIA_SPARQL, False,
+                                      { 'Accept': 'text/plain' })
         results = list(filter(None, results.split('\n')))
         self.assertEqual(len(results), 100, str(results))
 
@@ -1046,9 +1048,17 @@ class TriplestoreTests(unittest.TestCase):
         QUERY_FILE = 'spo100.q'
         DBPEDIA_SPARQL = 'https://dbpedia.org/sparql'
 
+        try:
+            os.remove(os.path.join(DATA_DIR, 'shared',
+                                   'results.nt'))
+        except FileNotFoundError:
+            pass
+
         q = Query(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
-        self.assertTrue(q.execute_from_file_and_save(QUERY_FILE, DBPEDIA_SPARQL,
-                                                     'results.nt', {}))
+        s = q.execute_from_file_and_save(QUERY_FILE, DBPEDIA_SPARQL,
+                                         'results.nt', False,
+                                         { 'Accept': 'text/plain' })
+        self.assertTrue(s)
         with open(os.path.join(DATA_DIR, 'shared', 'results.nt'), 'r') as f:
             results = list(filter(None, f.read().split('\n')))
             self.assertEqual(len(results), 100)

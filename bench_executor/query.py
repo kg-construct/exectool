@@ -74,8 +74,8 @@ class Query():
         return self._logs
 
     def execute_and_save(self, query: str, sparql_endpoint: str,
-                         results_file: str, headers: dict = None,
-                         expect_empty: bool = False) -> bool:
+                         results_file: str, expect_empty: bool = False,
+                         headers: dict = None) -> bool:
         try:
             results = self._execute(query, sparql_endpoint, expect_empty,
                                     headers)
