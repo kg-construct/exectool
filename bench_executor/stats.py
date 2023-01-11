@@ -31,11 +31,11 @@ FIELDNAMES_FLOAT = ['timestamp', 'cpu_user', 'cpu_system', 'cpu_idle',
 FIELDNAMES_INT = ['index', 'step', 'version', 'memory_ram', 'memory_swap',
                   'memory_ram_swap', 'disk_read_count', 'disk_write_count',
                   'disk_read_bytes', 'disk_write_bytes', 'disk_read_time',
-                  'disk_write_time', 'disk_busy_time', 'network_received_count',
-                  'network_sent_count', 'network_received_bytes',
-                  'network_sent_bytes', 'network_received_error',
-                  'network_sent_error', 'network_received_drop',
-                  'network_sent_drop']
+                  'disk_write_time', 'disk_busy_time',
+                  'network_received_count', 'network_sent_count',
+                  'network_received_bytes', 'network_sent_bytes',
+                  'network_received_error', 'network_sent_error',
+                  'network_received_drop', 'network_sent_drop']
 FIELDNAMES_SUMMARY = [
     'number_of_samples',
     'step',
@@ -78,6 +78,7 @@ ROUND = 4
 # The median run is available in 'aggregated.csv' while a summarized version
 # which only reports the diff or max value of each step in 'summary.csv'
 #
+
 
 class Stats():
     """Generate statistics for an executed case."""
@@ -229,8 +230,8 @@ class Stats():
 
             # Do not process incomplete runs
             msg = f'Number of steps ({self._number_of_steps}) does not ' + \
-                  f'match with extracted steps of run ({len(timestamps)}). ' + \
-                  f'Skipping run {run_id}'
+                  'match with extracted steps of ' + \
+                  f'run ({len(timestamps)}). Skipping run {run_id}'
             assert (len(timestamps) == self._number_of_steps), msg
 
             # Create list of timestamps for each step from all runs
@@ -241,7 +242,6 @@ class Stats():
         # for that step
         aggregated_entries = []
         summary_entries = []
-        step_end_timestamp = 0.0
         for step_index, step_timestamps in enumerate(timestamps_by_step):
             # We ensure that the number of runs is always uneven so the median
             # is always a measured data point instead of the average of 2 data

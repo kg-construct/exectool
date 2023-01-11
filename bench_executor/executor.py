@@ -17,9 +17,9 @@ import shutil
 from glob import glob
 from datetime import datetime
 from time import sleep
-from typing import Tuple, Optional
 try:
-    from bench_executor import Collector, METRICS_FILE_NAME, Stats, Logger, LOG_FILE_NAME
+    from bench_executor import Collector, METRICS_FILE_NAME, Stats, Logger, \
+            LOG_FILE_NAME
 except ModuleNotFoundError:
     from collector import Collector, METRICS_FILE_NAME
     from stats import Stats
@@ -28,7 +28,8 @@ except ModuleNotFoundError:
 METADATA_FILE = 'metadata.json'
 SCHEMA_FILE = 'metadata.schema'
 CONFIG_DIR = os.path.join(os.path.dirname(__file__), 'config')
-WAIT_TIME = 15 # seconds
+WAIT_TIME = 15  # seconds
+
 
 # Dummy callback in case no callback was provided
 def _progress_cb(resource: str, name: str, success: bool):
@@ -41,7 +42,7 @@ class Executor:
     """
 
     def __init__(self, main_directory: str, verbose: bool = False,
-                 progress_cb = _progress_cb):
+                 progress_cb=_progress_cb):
         """Create an instance of the Executor class.
 
         Parameters
@@ -80,8 +81,8 @@ class Executor:
 
         # Discover all modules to import
         sys.path.append(os.path.dirname(__file__))
-        self._modules = list(filter(lambda x: x.endswith('.py') \
-                                    and '__init__' not in x \
+        self._modules = list(filter(lambda x: x.endswith('.py')
+                                    and '__init__' not in x
                                     and '__pycache__' not in x,
                                     os.listdir(os.path.dirname(__file__))))
 
@@ -99,8 +100,9 @@ class Executor:
 
                 # Discover all methods and their parameters in each class
                 methods = {}
-                for method_name, method in filter(lambda x: '__init__' not in x,
-                                                  inspect.getmembers(cls, inspect.isfunction)):
+                filt = filter(lambda x: '__init__' not in x,
+                              inspect.getmembers(cls, inspect.isfunction))
+                for method_name, method in filt:
                     parameters = inspect.signature(method).parameters
                     methods[method_name] = []
                     for key in parameters.keys():
@@ -237,8 +239,8 @@ class Executor:
 
                 for p in step['parameters'].keys():
                     if p not in parameters:
-                        msg = f'{path}: Unkown parameter "{p}" for command ' + \
-                              f'"{step["command"]}" of resource ' + \
+                        msg = f'{path}: Unkown parameter "{p}" for ' + \
+                              f'command "{step["command"]}" of resource ' + \
                               f'"{step["resource"]}"'
                         self._logger.error(msg)
                         return False
@@ -453,7 +455,7 @@ class Executor:
         # Metrics measurements
         for metrics_file in glob(f'{data_path}/*/{METRICS_FILE_NAME}'):
             subdir = metrics_file.replace(f'{data_path}/', '') \
-                    .replace(f'/METRICS_FILE_NAME', '')
+                    .replace('/METRICS_FILE_NAME', '')
             os.makedirs(os.path.join(results_run_path, subdir), exist_ok=True)
             shutil.move(metrics_file, os.path.join(results_run_path, subdir,
                                                    METRICS_FILE_NAME))
@@ -462,10 +464,11 @@ class Executor:
         if success:
             for step in data['steps']:
                 subdir = step['resource'].lower().replace('_', '')
+                parameters = step['parameters']
                 os.makedirs(os.path.join(results_run_path, subdir),
                             exist_ok=True)
-                if step['parameters'].get('results_file', False):
-                    results_file = step['parameters']['results_file']
+                if parameters.get('results_file', False):
+                    results_file = parameters['results_file']
                     p1 = os.path.join(directory, 'data/shared', results_file)
                     p2 = os.path.join(results_run_path, subdir, results_file)
                     try:
@@ -474,8 +477,8 @@ class Executor:
                         msg = f'Cannot find results file "{p1}": {e}'
                         self._logger.warning(msg)
 
-                if step['parameters'].get('output_file', False) \
-                        and not step['parameters'].get('multiple_files', False):
+                if parameters.get('output_file', False) \
+                        and not parameters.get('multiple_files', False):
                     output_file = step['parameters']['output_file']
                     p1 = os.path.join(directory, 'data/shared', output_file)
                     p2 = os.path.join(results_run_path, subdir, output_file)
@@ -519,7 +522,9 @@ class Executor:
                         with open(path, 'r') as f:
                             data = json.load(f)
                             if self._validate_case(data, path):
-                                cases.append({'directory': os.path.dirname(path),
-                                              'data': data})
+                                cases.append({
+                                    'directory': os.path.dirname(path),
+                                    'data': data
+                                })
 
         return cases

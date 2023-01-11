@@ -18,7 +18,7 @@ except ModuleNotFoundError:
     from logger import Logger
 
 VERSION = '6.0.0'
-TIMEOUT = 6 * 3600 # 6 hours
+TIMEOUT = 6 * 3600  # 6 hours
 
 
 class RMLMapper(Container):
@@ -82,7 +82,7 @@ class RMLMapper(Container):
 
         # Execute command
         cmd = f'java -Xmx{max_heap} -Xms{max_heap} ' + \
-              f'-jar rmlmapper/rmlmapper.jar ' + \
+              '-jar rmlmapper/rmlmapper.jar ' + \
               f'{" ".join(arguments)}'
         return self.run_and_wait_for_exit(cmd)
 
@@ -150,11 +150,11 @@ class RMLMapper(Container):
         arguments = ['-m', os.path.join('/data/shared/', mapping_file),
                      '-s', serialization,
                      '-o', os.path.join('/data/shared/', output_file),
-                     '-d'] # Enable duplicate removal
+                     '-d']  # Enable duplicate removal
 
         if rdb_username is not None and rdb_password is not None \
-            and rdb_host is not None and rdb_port is not None \
-            and rdb_name is not None and rdb_type is not None:
+                and rdb_host is not None and rdb_port is not None \
+                and rdb_name is not None and rdb_type is not None:
 
             arguments.append('-u')
             arguments.append(rdb_username)
@@ -168,7 +168,7 @@ class RMLMapper(Container):
             elif rdb_type == 'PostgreSQL':
                 protocol = 'jdbc:postgresql'
             else:
-                raise ValueError(f'Unknown RDB type: "{rdf_type}"')
+                raise ValueError(f'Unknown RDB type: "{rdb_type}"')
             rdb_dsn = f'{protocol}://{rdb_host}:{rdb_port}/' + \
                       f'{rdb_name}{parameters}'
             arguments.append('-dsn')

@@ -9,7 +9,6 @@ Oracle Corporation.
 """
 
 import os
-import sys
 import pymysql
 import tempfile
 from csv import reader
@@ -27,7 +26,7 @@ USER = 'root'
 PASSWORD = 'root'
 DB = 'db'
 PORT = '3306'
-CLEAR_TABLES_TIMEOUT = 5 * 60 # 5 minutes
+CLEAR_TABLES_TIMEOUT = 5 * 60  # 5 minutes
 
 
 class MySQL(Container):
@@ -58,7 +57,7 @@ class MySQL(Container):
 
         super().__init__(f'blindreviewing/mysql:v{VERSION}', 'MySQL',
                          self._logger,
-                         ports={PORT:PORT},
+                         ports={PORT: PORT},
                          environment={'MYSQL_ROOT_PASSWORD': 'root',
                                       'MYSQL_DATABASE': 'db'},
                          volumes=[f'{self._data_path}/shared/:/data/shared',
@@ -174,8 +173,8 @@ class MySQL(Container):
         success = True
 
         # Load SQL schema
-        cmd = f'/bin/sh -c \'mysql --host={HOST} --port={PORT} --user={USER} ' + \
-              f'--password={PASSWORD} --database={DB} ' + \
+        cmd = f'/bin/sh -c \'mysql --host={HOST} --port={PORT} ' + \
+              f'--user={USER} --password={PASSWORD} --database={DB} ' + \
               f'< /data/shared/{schema_file}\''
         success, output = self.exec(cmd)
 
@@ -241,8 +240,9 @@ class MySQL(Container):
             if create:
                 cursor.execute(f'DROP TABLE IF EXISTS {table};')
                 c = ' TEXT , '.join(columns) + ' TEXT'
-                cursor.execute(f'CREATE TABLE {table} (k INT ZEROFILL NOT NULL '
-                               f'AUTO_INCREMENT, {c}, PRIMARY KEY(k));')
+                cursor.execute(f'CREATE TABLE {table} (k INT ZEROFILL '
+                               f'NOT NULL AUTO_INCREMENT, {c}, '
+                               f'PRIMARY KEY(k));')
             c = ','.join(columns)
             cursor.execute(f'LOAD DATA INFILE \'/data/shared/tmp_{csv_file}\' '
                            f'INTO TABLE {table} FIELDS TERMINATED BY \',\' '
@@ -278,7 +278,7 @@ class MySQL(Container):
         cursor = connection.cursor()
         for table in self._tables:
             cursor.execute(f'DROP TABLE IF EXISTS {table};')
-            cursor.execute(f'COMMIT;')
+            cursor.execute('COMMIT;')
         self._tables = []
         connection.close()
 
@@ -298,6 +298,7 @@ class MySQL(Container):
                                  f'{CLEAR_TABLES_TIMEOUT}s!')
 
         return super().stop()
+
 
 if __name__ == '__main__':
     print(f'ℹ️  Starting up MySQL v{VERSION}...')

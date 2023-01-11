@@ -14,7 +14,7 @@ except ModuleNotFoundError:
 
 
 class Notifier():
-    """Notify user via e-mail when execution finished, interrupted or failed."""
+    """Notify user via e-mail when execution finished, or failed."""
 
     def __init__(self, server: str, port: int, username: str, password: str,
                  sender: str, receiver: str, directory: str, verbose: bool):
@@ -73,7 +73,8 @@ class Notifier():
             with smtplib.SMTP(self._server, self._port) as server:
                 server.starttls()
                 server.login(self._username, self._password)
-                server.sendmail(self._sender, [self._receiver], msg.as_string())
+                server.sendmail(self._sender, [self._receiver],
+                                msg.as_string())
                 self._logger.info(f'Notification send to {self._receiver}')
         else:
             self._logger.debug('Parameters are missing to send an e-mail '

@@ -4,14 +4,13 @@
 Morph-RDB (formerly called ODEMapster) is an RDB2RDF engine developed by
 the Ontology Engineering Group, which follows the R2RML specification.
 
-**Website**: https://oeg.fi.upm.es/index.php/en/technologies/315-morph-rdb/index.html<br>
+**Website**: https://oeg.fi.upm.es/index.php/en/technologies/315-morph-rdb/index.html <br>
 **Repository**: https://github.com/oeg-upm/morph-rdb
-"""
+"""  # noqa: E501
 
 import os
 import psutil
 import configparser
-from io import StringIO
 try:
     from bench_executor import Container, Logger
 except ModuleNotFoundError:
@@ -19,7 +18,7 @@ except ModuleNotFoundError:
     from logger import Logger
 
 VERSION = '3.12.5'
-TIMEOUT = 6 * 3600 # 6 hours
+TIMEOUT = 6 * 3600  # 6 hours
 
 
 class MorphRDB(Container):
@@ -75,10 +74,10 @@ class MorphRDB(Container):
 
         # Execute command
         cmd = f'java -Xmx{max_heap} -Xms{max_heap} ' + \
-              f'-cp .:morph-rdb-dist-3.12.6.jar:dependency/* ' + \
-              f'es.upm.fi.dia.oeg.morph.r2rml.rdb.engine.MorphRDBRunner ' + \
-              f'/data config.properties'
-        success =  self.run_and_wait_for_exit(cmd)
+              '-cp .:morph-rdb-dist-3.12.6.jar:dependency/* ' + \
+              'es.upm.fi.dia.oeg.morph.r2rml.rdb.engine.MorphRDBRunner ' + \
+              '/data config.properties'
+        success = self.run_and_wait_for_exit(cmd)
 
         return success
 
@@ -153,21 +152,21 @@ class MorphRDB(Container):
         config = configparser.ConfigParser()
         mapping_file = os.path.join('shared', os.path.basename(mapping_file))
         output_file = os.path.join('shared', os.path.basename(output_file))
-        config['root']= {
+        config['root'] = {
             'mappingdocument.file.path': mapping_file,
             'output.file.path': output_file,
             'output.rdflanguage': serialization,
         }
 
         if rdb_username is not None and rdb_password is not None \
-            and rdb_host is not None and rdb_port is not None \
-            and rdb_name is not None and rdb_type is not None:
+                and rdb_host is not None and rdb_port is not None \
+                and rdb_name is not None and rdb_type is not None:
             config['root']['database.name[0]'] = rdb_name
             if rdb_type == 'MySQL':
                 config['root']['database.driver[0]'] = 'com.mysql.jdbc.Driver'
                 config['root']['database.type[0]'] = 'mysql'
                 dsn = f'jdbc:mysql://{rdb_host}:{rdb_port}/{rdb_name}' + \
-                      f'?allowPublicKeyRetrieval=true&useSSL=false'
+                      '?allowPublicKeyRetrieval=true&useSSL=false'
                 config['root']['database.url[0]'] = dsn
             elif rdb_type == 'PostgreSQL':
                 config['root']['database.driver[0]'] = 'org.postgresql.Driver'

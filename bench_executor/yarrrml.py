@@ -9,8 +9,6 @@ Linked Data generation rules.
 """
 
 import os
-import psutil
-
 try:
     from bench_executor import Container, Logger
 except ModuleNotFoundError:

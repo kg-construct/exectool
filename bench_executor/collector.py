@@ -49,7 +49,6 @@ network.
 import os
 import sys
 import platform
-import shutil
 import psutil
 from docker import DockerClient
 from csv import DictWriter
@@ -103,6 +102,7 @@ FIELDNAMES = [
     'network_sent_drop'
 ]
 ROUND = 4
+
 
 def _collect_metrics(stop_event: Event, metrics_path: str,
                      sample_interval: float, initial_timestamp: float,
@@ -168,33 +168,34 @@ def _collect_metrics(stop_event: Event, metrics_path: str,
                 'version': METRICS_VERSION,
                 'cpu_user': round(cpu.user - initial_cpu.user, ROUND),
                 'cpu_system': round(cpu.system - initial_cpu.system, ROUND),
-                'cpu_user_system': round((cpu.user - initial_cpu.user) + (cpu.system - initial_cpu.system), ROUND),
+                'cpu_user_system': round((cpu.user - initial_cpu.user) + (cpu.system - initial_cpu.system), ROUND),  # noqa: E501
                 'cpu_idle': round(cpu.idle - initial_cpu.idle, ROUND),
                 'cpu_iowait': round(cpu.iowait - initial_cpu.iowait, ROUND),
                 'memory_ram': ram.used,
                 'memory_swap': swap.used,
                 'memory_ram_swap': ram.used + swap.used,
-                'disk_read_count': disk_io.read_count - initial_disk_io.read_count,
-                'disk_write_count': disk_io.write_count - initial_disk_io.write_count,
-                'disk_read_bytes': disk_io.read_bytes - initial_disk_io.read_bytes,
-                'disk_write_bytes': disk_io.write_bytes - initial_disk_io.write_bytes,
-                'disk_read_time': disk_io.read_time - initial_disk_io.read_time,
-                'disk_write_time': disk_io.write_time - initial_disk_io.write_time,
-                'disk_busy_time': disk_io.busy_time - initial_disk_io.busy_time,
-                'network_received_count': network_io.packets_recv - initial_network_io.packets_recv,
-                'network_sent_count': network_io.packets_sent - initial_network_io.packets_sent,
-                'network_received_bytes': network_io.bytes_recv - initial_network_io.bytes_recv,
-                'network_sent_bytes': network_io.bytes_sent - initial_network_io.bytes_sent,
-                'network_received_error': network_io.errin - initial_network_io.errin,
-                'network_sent_error': network_io.errout - initial_network_io.errout,
-                'network_received_drop': network_io.dropin - initial_network_io.dropin,
-                'network_sent_drop': network_io.dropout - initial_network_io.dropout
+                'disk_read_count': disk_io.read_count - initial_disk_io.read_count,  # noqa: E501
+                'disk_write_count': disk_io.write_count - initial_disk_io.write_count,  # noqa: E501
+                'disk_read_bytes': disk_io.read_bytes - initial_disk_io.read_bytes,  # noqa: E501
+                'disk_write_bytes': disk_io.write_bytes - initial_disk_io.write_bytes,  # noqa: E501
+                'disk_read_time': disk_io.read_time - initial_disk_io.read_time,  # noqa: E501
+                'disk_write_time': disk_io.write_time - initial_disk_io.write_time,  # noqa: E501
+                'disk_busy_time': disk_io.busy_time - initial_disk_io.busy_time,  # noqa: E501
+                'network_received_count': network_io.packets_recv - initial_network_io.packets_recv,  # noqa: E501
+                'network_sent_count': network_io.packets_sent - initial_network_io.packets_sent,  # noqa: E501
+                'network_received_bytes': network_io.bytes_recv - initial_network_io.bytes_recv,  # noqa: E501
+                'network_sent_bytes': network_io.bytes_sent - initial_network_io.bytes_sent,  # noqa: E501
+                'network_received_error': network_io.errin - initial_network_io.errin,  # noqa: E501
+                'network_sent_error': network_io.errout - initial_network_io.errout,  # noqa: E501
+                'network_received_drop': network_io.dropin - initial_network_io.dropin,  # noqa: E501
+                'network_sent_drop': network_io.dropout - initial_network_io.dropout  # noqa: E501
             }
             writer.writerow(row)
             index += 1
 
             # Honor sample time, remove metrics logging overhead
             sleep(sample_interval - (timestamp - time()))
+
 
 class Collector():
     """Collect metrics samples at a given interval for a run of a case."""
@@ -266,8 +267,7 @@ class Collector():
             system_os_name = platform.freedesktop_os_release()['NAME']
             system_os_version = platform.freedesktop_os_release()['VERSION']
         except (OSError, KeyError):
-            print(f'Cannot extract Freedesktop OS release data',
-                  file=sys.stderr)
+            self._logger.warning('Cannot extract Freedesktop OS release data')
         system_hostname = platform.node()
         system_kernel = platform.platform()
         system_architecture = platform.uname().machine
@@ -308,7 +308,8 @@ class Collector():
         docker_info = client.info()
 
         # Write machine information to disk
-        with open(os.path.join(self._data_path, CASE_INFO_FILE_NAME), 'w') as f:
+        case_info_file = os.path.join(self._data_path, CASE_INFO_FILE_NAME)
+        with open(case_info_file, 'w') as f:
             f.write('===> CASE <===\n')
             f.write(f'Timestamp: {datetime.utcnow().isoformat()}\n')
             f.write(f'Directory: {directory}\n')
@@ -332,7 +333,7 @@ class Collector():
             f.write(f'\tSWAP memory: {int(swap_total / 10 ** 6)} MB\n')
             f.write('Storage\n')
             for disk, size in disk_partitions.items():
-                f.write(f'\tDisk "{disk}": ' \
+                f.write(f'\tDisk "{disk}": '
                         f'{round(size / 10 ** 9, 2)} GB\n')
             f.write('Network\n')
             for name, stats in network_interfaces.items():
@@ -347,7 +348,7 @@ class Collector():
             f.write(f'Root directory: {docker_info["DockerRootDir"]}\n')
             f.write('Drivers:\n')
             f.write(f'\tStorage: {docker_info["Driver"]}\n')
-            f.write(f'\tCgroupFS: {docker_info["CgroupDriver"]} ' + \
+            f.write(f'\tCgroupFS: {docker_info["CgroupDriver"]} '
                     f'v{docker_info["CgroupVersion"]}\n')
 
         # Set initial metric values and start collection thread
@@ -395,4 +396,3 @@ class Collector():
         Signal the metrics collection thread to stop collecting any metrics.
         """
         self._stop_event.set()
-

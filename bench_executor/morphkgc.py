@@ -19,7 +19,7 @@ except ModuleNotFoundError:
     from logger import Logger
 
 VERSION = '2.2.0'
-TIMEOUT = 6 * 3600 # 6 hours
+TIMEOUT = 6 * 3600  # 6 hours
 
 
 class MorphKGC(Container):
@@ -70,7 +70,7 @@ class MorphKGC(Container):
         success : bool
             Whether the execution was successfull or not.
         """
-        cmd = f'python3 -m morph_kgc /data/config_morphkgc.ini'
+        cmd = 'python3 -m morph_kgc /data/config_morphkgc.ini'
         return self.run_and_wait_for_exit(cmd)
 
     def execute(self, arguments: list) -> bool:
@@ -90,8 +90,7 @@ class MorphKGC(Container):
             return self._execute_with_timeout(arguments)
         except TimeoutError:
             msg = f'Timeout ({TIMEOUT}s) reached for Morph-KGC'
-            print(msg, file=sts.stderr)
-            self._log.append(msg)
+            self._logger.warning(msg)
 
         return False
 
@@ -146,8 +145,8 @@ class MorphKGC(Container):
         elif serialization == 'ntriples':
             serialization = 'N-TRIPLES'
         else:
-            raise NotImplemented(f'Unsupported serialization:'
-                                 f'"{serialization}"')
+            raise NotImplementedError('Unsupported serialization:'
+                                      f'"{serialization}"')
 
         # Generate INI configuration file since no CLI is available
         config = configparser.ConfigParser()
@@ -161,19 +160,20 @@ class MorphKGC(Container):
         # Morph-KGC can keep the mapping partition results separate, provide
         # this option, default OFF
         if multiple_files:
-            config['CONFIGURATION']['output_dir'] = f'/data/shared/'
+            config['CONFIGURATION']['output_dir'] = '/data/shared/'
         else:
-            config['CONFIGURATION']['output_file'] = f'/data/shared/{output_file}'
+            config['CONFIGURATION']['output_file'] = \
+                    f'/data/shared/{output_file}'
 
         if rdb_username is not None and rdb_password is not None \
-            and rdb_host is not None and rdb_port is not None \
-            and rdb_name is not None and rdb_type is not None:
+                and rdb_host is not None and rdb_port is not None \
+                and rdb_name is not None and rdb_type is not None:
             if rdb_type == 'MySQL':
                 protocol = 'mysql+pymysql'
             elif rdb_type == 'PostgreSQL':
                 protocol = 'postgresql+psycopg2'
             else:
-                raise ValueError(f'Unknown RDB type: "{rdf_type}"')
+                raise ValueError(f'Unknown RDB type: "{rdb_type}"')
             rdb_dsn = f'{protocol}://{rdb_username}:{rdb_password}' + \
                       f'@{rdb_host}:{rdb_port}/{rdb_name}'
             config['DataSource0']['db_url'] = rdb_dsn

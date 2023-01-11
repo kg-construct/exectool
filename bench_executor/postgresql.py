@@ -9,10 +9,8 @@ Global Development Group.
 """
 
 import os
-import sys
 import psycopg2
 import tempfile
-from psycopg2 import sql
 from csv import reader
 from time import sleep
 from typing import List
@@ -30,7 +28,7 @@ PASSWORD = 'root'
 DB = 'db'
 PORT = '5432'
 WAIT_TIME = 3
-CLEAR_TABLES_TIMEOUT = 5 * 60 # 5 minutes
+CLEAR_TABLES_TIMEOUT = 5 * 60  # 5 minutes
 
 
 class PostgreSQL(Container):
@@ -107,8 +105,8 @@ class PostgreSQL(Container):
         Parameters
         ----------
         command : str
-            Command to execute in the PostgreSQL container, optionally, defaults to
-            no command.
+            Command to execute in the PostgreSQL container, optionally,
+            defaults to no command.
 
         Returns
         -------
@@ -119,7 +117,8 @@ class PostgreSQL(Container):
         if success:
             sleep(WAIT_TIME)
         else:
-            self._logger.error(f'Failed to wait for {__name__} to become ready')
+            msg = f'Failed to wait for {__name__} to become ready'
+            self._logger.error(msg)
 
         return success
 
@@ -283,7 +282,7 @@ class PostgreSQL(Container):
         cursor = connection.cursor()
         for table in self._tables:
             cursor.execute(f'DROP TABLE IF EXISTS {table};')
-            cursor.execute(f'COMMIT;')
+            cursor.execute('COMMIT;')
         self._tables = []
         connection.close()
 
@@ -305,6 +304,7 @@ class PostgreSQL(Container):
             self._logger.error(f'Clearing{__name__} tables failed: "{e}"')
 
         return super().stop()
+
 
 if __name__ == '__main__':
     print(f'ℹ️  Starting up PostgreSQL v{VERSION}...')

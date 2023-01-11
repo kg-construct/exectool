@@ -18,7 +18,7 @@ except ModuleNotFoundError:
     from logger import Logger
 
 VERSION = '4.6.3.4'
-TIMEOUT = 6 * 3600 # 6 hours
+TIMEOUT = 6 * 3600  # 6 hours
 R2RML = Namespace('http://www.w3.org/ns/r2rml#')
 RML = Namespace('http://semweb.mmlab.be/ns/rml#')
 D2RQ = Namespace('http://www.wiwiss.fu-berlin.de/suhl/bizer/D2RQ/0.1#')
@@ -74,8 +74,8 @@ class SDMRDFizer(Container):
         success : bool
             Whether the execution was successfull or not.
         """
-        cmd = f'python3 sdm-rdfizer/rdfizer/run_rdfizer.py ' + \
-              f'/data/config_sdmrdfizer.ini'
+        cmd = 'python3 sdm-rdfizer/rdfizer/run_rdfizer.py ' + \
+              '/data/config_sdmrdfizer.ini'
         return self.run_and_wait_for_exit(cmd)
 
     def execute(self, arguments: list) -> bool:
@@ -167,11 +167,11 @@ class SDMRDFizer(Container):
             config['datasets']['output_format'] = 'turtle'
         else:
             raise NotImplementedError('SDM-RDFizer does not support'
-                                      f'"serialization" output format')
+                                      '"serialization" output format')
 
         if rdb_username is not None and rdb_password is not None \
-            and rdb_host is not None and rdb_port is not None \
-            and rdb_name is not None and rdb_type is not None:
+                and rdb_host is not None and rdb_port is not None \
+                and rdb_name is not None and rdb_type is not None:
             config['dataset1']['user'] = rdb_username
             config['dataset1']['password'] = rdb_password
             config['dataset1']['host'] = rdb_host
@@ -205,15 +205,18 @@ class SDMRDFizer(Container):
                                                     R2RML.TriplesMap)):
                 logical_source_iri = BNode()
                 d2rq_rdb_iri = BNode()
-                logical_table_iri = g.value(triples_map_iri, R2RML.logicalTable)
-                table_name_literal = g.value(logical_table_iri, R2RML.tableName)
+                logical_table_iri = g.value(triples_map_iri,
+                                            R2RML.logicalTable)
+                table_name_literal = g.value(logical_table_iri,
+                                             R2RML.tableName)
                 g.add((d2rq_rdb_iri, D2RQ.jdbcDSN, Literal(dsn)))
                 g.add((d2rq_rdb_iri, D2RQ.jdbcDriver, Literal(driver)))
                 g.add((d2rq_rdb_iri, D2RQ.username, Literal(rdb_username)))
                 g.add((d2rq_rdb_iri, D2RQ.password, Literal(rdb_password)))
                 g.add((d2rq_rdb_iri, RDF.type, D2RQ.Database))
                 g.add((logical_source_iri, R2RML.sqlVersion, R2RML.SQL2008))
-                g.add((logical_source_iri, R2RML.tableName, table_name_literal))
+                g.add((logical_source_iri, R2RML.tableName,
+                       table_name_literal))
                 g.add((logical_source_iri, RML.source, d2rq_rdb_iri))
                 g.add((logical_source_iri, RDF.type, RML.LogicalSource))
                 g.add((triples_map_iri, RML.logicalSource, logical_source_iri))
@@ -226,8 +229,8 @@ class SDMRDFizer(Container):
 
             # rr:column --> rml:reference
             for s, p, o in g.triples((None, R2RML.column, None)):
-                 g.add((s, RML.reference, o))
-                 g.remove((s, p, o))
+                g.add((s, RML.reference, o))
+                g.remove((s, p, o))
 
             # SDM-RDFizer cannot handle rml:referenceFormulation when using
             # RDBs, remove it for safety

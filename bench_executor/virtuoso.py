@@ -22,11 +22,12 @@ except ModuleNotFoundError:
 
 VERSION = '7.2.7'
 MAX_ROWS = '10000000'
-QUERY_TIMEOUT = '0' # no limit
-MAX_VECTOR_SIZE = '3000000' # max value is 'around' 3,500,000 from docs
+QUERY_TIMEOUT = '0'  # no limit
+MAX_VECTOR_SIZE = '3000000'  # max value is 'around' 3,500,000 from docs
 PASSWORD = 'root'
 NUMBER_OF_BUFFERS_PER_GB = 85000
 MAX_DIRTY_BUFFERS_PER_GB = 65000
+
 
 def _spawn_loader(container):
     """Thread function to parallel load RDF.
@@ -66,21 +67,21 @@ class Virtuoso(Container):
         os.umask(0)
         os.makedirs(tmp_dir, exist_ok=True)
         os.makedirs(os.path.join(self._data_path, 'virtuoso'), exist_ok=True)
-        number_of_buffers = int(psutil.virtual_memory().total / (10**9) \
+        number_of_buffers = int(psutil.virtual_memory().total / (10**9)
                                 * NUMBER_OF_BUFFERS_PER_GB)
-        max_dirty_buffers = int(psutil.virtual_memory().total / (10**9) \
+        max_dirty_buffers = int(psutil.virtual_memory().total / (10**9)
                                 * MAX_DIRTY_BUFFERS_PER_GB)
-        environment={'DBA_PASSWORD': PASSWORD,
-                     'VIRT_SPARQL_ResultSetMaxRows': MAX_ROWS,
-                     'VIRT_SPARQL_MaxQueryExecutionTime': QUERY_TIMEOUT,
-                     'VIRT_SPARQL_ExecutionTimeout': QUERY_TIMEOUT,
-                     'VIRT_SPARQL_MaxQueryCostEstimationTime': QUERY_TIMEOUT,
-                     'VIRT_Parameters_MaxVectorSize': MAX_VECTOR_SIZE,
-                     'VIRT_Parameters_NumberOfBuffers': number_of_buffers,
-                     'VIRT_Parameters_MaxDirtyBuffers': max_dirty_buffers}
+        environment = {'DBA_PASSWORD': PASSWORD,
+                       'VIRT_SPARQL_ResultSetMaxRows': MAX_ROWS,
+                       'VIRT_SPARQL_MaxQueryExecutionTime': QUERY_TIMEOUT,
+                       'VIRT_SPARQL_ExecutionTimeout': QUERY_TIMEOUT,
+                       'VIRT_SPARQL_MaxQueryCostEstimationTime': QUERY_TIMEOUT,
+                       'VIRT_Parameters_MaxVectorSize': MAX_VECTOR_SIZE,
+                       'VIRT_Parameters_NumberOfBuffers': number_of_buffers,
+                       'VIRT_Parameters_MaxDirtyBuffers': max_dirty_buffers}
         super().__init__(f'blindreviewing/virtuoso:v{VERSION}',
                          'Virtuoso', self._logger,
-                         ports={'8890':'8890', '1111':'1111'},
+                         ports={'8890': '8890', '1111': '1111'},
                          environment=environment,
                          volumes=[f'{self._data_path}/shared:/usr/share/proj',
                                   f'{tmp_dir}:/database'])
@@ -121,8 +122,8 @@ class Virtuoso(Container):
         Parameters
         ----------
         command : str
-            Command to execute in the Virtuoso container, optionally, defaults to
-            no command.
+            Command to execute in the Virtuoso container, optionally, defaults
+            to no command.
 
         Returns
         -------
@@ -275,13 +276,14 @@ class Virtuoso(Container):
             Dictionary of headers to use for each serialization format.
         """
         headers = {}
-        headers['ntriples'] = { 'Accept': 'text/ntriples' }
-        headers['turtle'] = { 'Accept': 'text/turtle' }
-        headers['rdfxml'] = { 'Accept': 'application/rdf+xml' }
-        headers['rdfjson'] = { 'Accept': 'application/rdf+json' }
-        headers['csv'] = { 'Accept': 'text/csv' }
-        headers['jsonld'] = { 'Accept': 'application/ld+json' }
+        headers['ntriples'] = {'Accept': 'text/ntriples'}
+        headers['turtle'] = {'Accept': 'text/turtle'}
+        headers['rdfxml'] = {'Accept': 'application/rdf+xml'}
+        headers['rdfjson'] = {'Accept': 'application/rdf+json'}
+        headers['csv'] = {'Accept': 'text/csv'}
+        headers['jsonld'] = {'Accept': 'application/ld+json'}
         return headers
+
 
 if __name__ == '__main__':
     print(f'ℹ️  Starting up Virtuoso v{VERSION}...')

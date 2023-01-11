@@ -8,8 +8,6 @@ The Containermanager class allows to create container networks, list all
 running containers and stop them.
 """
 
-import re
-import os
 import sys
 import docker
 from time import time, sleep
@@ -19,9 +17,10 @@ try:
 except ModuleNotFoundError:
     from logger import Logger
 
-WAIT_TIME = 1 # seconds
-TIMEOUT_TIME = 600 # seconds
+WAIT_TIME = 1  # seconds
+TIMEOUT_TIME = 600  # seconds
 NETWORK_NAME = 'bench_executor'
+
 
 class ContainerManager():
     """Manage containers and networks."""
@@ -142,6 +141,7 @@ class Container():
         """
         try:
             e = self._environment
+            v = self._volumes
             self._container = self._client.containers.run(self._container_name,
                                                           command,
                                                           name=self._name,
@@ -149,7 +149,7 @@ class Container():
                                                           ports=self._ports,
                                                           network=NETWORK_NAME,
                                                           environment=e,
-                                                          volumes=self._volumes)
+                                                          volumes=v)
             self._started = (self._container is not None)
             return True
         except docker.errors.APIError as e:
@@ -206,7 +206,7 @@ class Container():
                                  f'failed: {e}')
         return None
 
-    def run_and_wait_for_log(self, log_line: str, command: str ='') -> bool:
+    def run_and_wait_for_log(self, log_line: str, command: str = '') -> bool:
         """Run the container and wait for a log line to appear.
 
         This blocks until the container's log contains the `log_line`.
@@ -295,7 +295,7 @@ class Container():
             return True
         # Containers which are already stopped will raise an error which we can
         # ignore
-        except docker.errors.APIError as e:
+        except docker.errors.APIError:
             pass
 
         return True

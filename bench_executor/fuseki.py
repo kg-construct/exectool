@@ -50,15 +50,16 @@ class Fuseki(Container):
 
         super().__init__(f'blindreviewing/fuseki:v{VERSION}', 'Fuseki',
                          self._logger,
-                         ports={'3030':'3030'},
+                         ports={'3030': '3030'},
                          environment={
-                             'JAVA_OPTIONS':f'-Xmx{max_heap} -Xms{max_heap}'
+                             'JAVA_OPTIONS': f'-Xmx{max_heap} -Xms{max_heap}'
                          },
                          volumes=[f'{self._config_path}/fuseki/'
                                   f'log4j2.properties:/fuseki/'
                                   f'log4j2.properties',
                                   f'{self._data_path}/shared:/data',
-                                  f'{self._data_path}/fuseki:/fuseki/databases/DB'])
+                                  f'{self._data_path}/fuseki:'
+                                  '/fuseki/databases/DB'])
         self._endpoint = 'http://localhost:3030/ds/sparql'
 
     def initialization(self) -> bool:
@@ -109,12 +110,12 @@ class Fuseki(Container):
             Dictionary of headers to use for each serialization format.
         """
         headers = {}
-        headers['ntriples'] = { 'Accept': 'text/plain' }
-        headers['turtle'] = { 'Accept': 'text/turtle' }
-        headers['csv'] = { 'Accept': 'text/csv' }
-        headers['rdfjson'] = { 'Accept': 'application/rdf+json' }
-        headers['rdfxml'] = { 'Accept': 'application/rdf+xml' }
-        headers['jsonld'] = { 'Accept': 'application/ld+json' }
+        headers['ntriples'] = {'Accept': 'text/plain'}
+        headers['turtle'] = {'Accept': 'text/turtle'}
+        headers['csv'] = {'Accept': 'text/csv'}
+        headers['rdfjson'] = {'Accept': 'application/rdf+json'}
+        headers['rdfxml'] = {'Accept': 'application/rdf+xml'}
+        headers['jsonld'] = {'Accept': 'application/ld+json'}
         return headers
 
     def wait_until_ready(self, command: str = '') -> bool:
@@ -157,8 +158,10 @@ class Fuseki(Container):
 
         # Load directory with data with HTTP post
         try:
-            r = requests.post('http://localhost:3030/ds', data=open(path, 'rb'),
-                              headers={'Content-Type': 'application/n-triples'})
+            h = {'Content-Type': 'application/n-triples'}
+            r = requests.post('http://localhost:3030/ds',
+                              data=open(path, 'rb'),
+                              headers=h)
             self._logger.debug(f'Loaded triples: {r.text}')
             r.raise_for_status()
         except Exception as e:
@@ -195,6 +198,7 @@ class Fuseki(Container):
     def endpoint(self):
         """SPARQL endpoint URL"""
         return self._endpoint
+
 
 if __name__ == '__main__':
     print(f'ℹ️  Starting up Fuseki v{VERSION}...')

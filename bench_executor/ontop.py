@@ -11,7 +11,6 @@ to another database.
 """
 
 import os
-import sys
 import psutil
 import configparser
 from rdflib import Graph, Namespace, RDF, URIRef
@@ -23,7 +22,7 @@ except ModuleNotFoundError:
     from logger import Logger
 
 VERSION = '4.2.1'
-TIMEOUT = 6 * 3600 # 6 hours
+TIMEOUT = 6 * 3600  # 6 hours
 R2RML = Namespace('http://www.w3.org/ns/r2rml#')
 
 
@@ -61,7 +60,7 @@ class Ontop(Container):
         environment = {'ONTOP_JAVA_ARGS': f'-Xmx{max_heap} -Xms{max_heap}'}
         super().__init__(f'blindreviewing/ontop:v{VERSION}', name,
                          self._logger,
-                         ports={'8888':'8888'},
+                         ports={'8888': '8888'},
                          environment=environment,
                          volumes=[f'{self._data_path}/'
                                   f'{self.root_mount_directory}:/data',
@@ -180,8 +179,8 @@ class Ontop(Container):
         """
         # Generate INI configuration file since no CLI is available
         if rdb_username is not None and rdb_password is not None \
-            and rdb_host is not None and rdb_port is not None \
-            and rdb_name is not None and rdb_type is not None:
+                and rdb_host is not None and rdb_port is not None \
+                and rdb_name is not None and rdb_type is not None:
             config = configparser.ConfigParser()
             config['root'] = {
                 'jdbc.user': rdb_username,
@@ -229,7 +228,10 @@ class Ontop(Container):
                                                 R2RML.TriplesMap)):
             subject_map_iri = g.value(triples_map_iri, R2RML.subjectMap)
 
-            for s, p, predicate_object_map_iri in g.triples((triples_map_iri, R2RML.predicateObjectMap, None)):
+            iter_pom = g.triples((triples_map_iri,
+                                  R2RML.predicateObjectMap,
+                                  None))
+            for s, p, predicate_object_map_iri in iter_pom:
                 predicate_map_iri = g.value(predicate_object_map_iri,
                                             R2RML.predicateMap)
                 object_map_iri = g.value(predicate_object_map_iri,
@@ -286,6 +288,7 @@ class Ontop(Container):
         arguments.append('/data/config.properties')
 
         return self.execute(arguments)
+
 
 class OntopVirtualize(Ontop):
     """OntopVirtualize container for setting up an Ontop SPARQL endpoint."""
@@ -357,15 +360,15 @@ class OntopVirtualize(Ontop):
         config_file = f'{self._data_path}/{self.root_mount_directory}' + \
                       '/config.properties'
         arguments = ['--cors-allowed-origins=*', '--port=8888']
-        self._headers['ntriples'] = { 'Accept': 'application/n-triples' }
-        self._headers['nquads'] = { 'Accept': 'application/n-quads' }
-        self._headers['turtle'] = { 'Accept': 'text/turtle' }
-        self._headers['rdfjson'] = { 'Accept': 'application/rdf+json' }
-        self._headers['rdfxml'] = { 'Accept': 'application/rdf+xml' }
-        self._headers['jsonld'] = { 'Accept': 'application/ld+json' }
-        self._headers['csv'] = { 'Accept': 'text/csv' }
+        self._headers['ntriples'] = {'Accept': 'application/n-triples'}
+        self._headers['nquads'] = {'Accept': 'application/n-quads'}
+        self._headers['turtle'] = {'Accept': 'text/turtle'}
+        self._headers['rdfjson'] = {'Accept': 'application/rdf+json'}
+        self._headers['rdfxml'] = {'Accept': 'application/rdf+xml'}
+        self._headers['jsonld'] = {'Accept': 'application/ld+json'}
+        self._headers['csv'] = {'Accept': 'text/csv'}
         if serialization not in self._headers.keys():
-            msg = f'Unsupported serialization format ' + \
+            msg = 'Unsupported serialization format ' + \
                   f'"{serialization}" for Ontop'
             self._logger.error(msg)
             raise ValueError(msg)
@@ -373,6 +376,7 @@ class OntopVirtualize(Ontop):
                                        mapping_file, output_file, rdb_username,
                                        rdb_password, rdb_host, rdb_port,
                                        rdb_name, rdb_type)
+
 
 class OntopMaterialize(Ontop):
     """OntopMaterialize container to execute a R2RML mapping."""
@@ -418,7 +422,7 @@ class OntopMaterialize(Ontop):
         """
         config_file = f'{self._data_path}/{self.root_mount_directory}' + \
                       '/config.properties'
-        arguments = [ '-f', serialization ]
+        arguments = ['-f', serialization]
         self._headers = {}
         return super().execute_mapping(config_file, arguments,
                                        mapping_file, output_file, rdb_username,
@@ -478,6 +482,7 @@ class OntopMaterialize(Ontop):
             self._logger.warning(msg)
 
         return False
+
 
 if __name__ == '__main__':
     print(f'ℹ️  Starting up Ontop Virtualize Endpoint v{VERSION}...')

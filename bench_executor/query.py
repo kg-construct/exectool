@@ -7,7 +7,6 @@ checks if the results are empty or not.
 """
 
 import os
-import sys
 import requests
 from typing import Optional, List
 from timeout_decorator import timeout, TimeoutError
@@ -16,7 +15,7 @@ try:
 except ModuleNotFoundError:
     from logger import Logger
 
-TIMEOUT = 1 * 3600 # 1 hour
+TIMEOUT = 1 * 3600  # 1 hour
 
 
 class Query():
@@ -83,7 +82,7 @@ class Query():
                           f'"{sparql_endpoint}"')
         data = {
             'query': query,
-            'maxrows': '3000000' # Overwrite Virtuoso SPARQL limit
+            'maxrows': '3000000'  # Overwrite Virtuoso SPARQL limit
         }
         # Hardcoded to N-Triples
         if headers is not None:
@@ -118,7 +117,9 @@ class Query():
         """
         results = None
         try:
-            results = self._execute_with_timeout(query, sparql_endpoint, headers)
+            results = self._execute_with_timeout(query,
+                                                 sparql_endpoint,
+                                                 headers)
         except TimeoutError:
             msg = f'Timeout ({TIMEOUT}s) reached for Query: "{query}"'
             self._logger.warning(msg)

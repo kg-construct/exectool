@@ -7,7 +7,6 @@ import subprocess
 import atexit
 from datetime import datetime
 from signal import signal, SIGINT
-from time import sleep
 from zipfile import ZipFile
 from bench_executor import Executor, Manager, Notifier
 
@@ -24,13 +23,33 @@ stop = False
 wait_for_user = False
 manager = Manager()
 
+
 @atexit.register
 def _clean():
+    """Clean up all running containers before exiting."""
     if len(manager.list_all()) > 0:
         print('Cleaning up before exiting...')
         manager.stop_all()
 
-def _format_progress(index: int, number_of_cases: int, start_time: datetime):
+
+def _format_progress(index: int, number_of_cases: int,
+                     start_time: datetime) -> str:
+    """Pretty format the current progress.
+
+    Parameters
+    ----------
+    index : int
+        Current case index.
+    number_of_cases : int
+        Number of cases to execute.
+    state_time : datetime
+        Start time of execution.
+
+    Returns
+    -------
+    progress : str
+        Pretty formatted progress string
+    """
     # Percentage completed cases
     percentage = f'{int(100.0 * (index)/number_of_cases)}%'
 
@@ -50,7 +69,9 @@ def _format_progress(index: int, number_of_cases: int, start_time: datetime):
     # Format progress
     return f'[{percentage : >4} {timestamp : >6}]'
 
+
 def signal_handler_interrupt(signum, frame):
+    """Signal handler for gracefully stop all containers."""
     global stop
 
     if not stop:
@@ -63,7 +84,15 @@ def signal_handler_interrupt(signum, frame):
             manager.stop_all()
         sys.exit(EXIT_CODE_INTERRUPTED)
 
+
 def print_cases(executor: Executor):
+    """Print all cases.
+
+    Parameters
+    ----------
+    executor : Executor
+        An instance of the Executor class of which all cases should be printed.
+    """
     cases = e.list()
 
     if not cases:
@@ -76,8 +105,23 @@ def print_cases(executor: Executor):
         number_of_steps = f'[ {len(case["data"]["steps"])} steps ]'
         print(f'{index+1 : >4}. {name : <85} {number_of_steps: >11}')
 
+
 def execute_cases(executor: Executor, interval: float, runs: int,
                   notifier: Notifier):
+    """Execute all cases.
+
+    Parameters
+    ----------
+    executor : Executor
+        An instance of the Executor class of which all cases should be printed.
+    interval : float
+        Sample interval for collecting metrics.
+    runs : int
+        Number of runs for each case.
+    notifier : Notifier
+        An instance of the Notifier class to notify the user about the
+        execution.
+    """
     global stop
     failures = []
 
@@ -114,7 +158,7 @@ def execute_cases(executor: Executor, interval: float, runs: int,
                 break
 
         if os.path.exists(checkpoint_file) and all_runs_complete:
-            print(f'        ⏩ SKIPPED CASE')
+            print('        ⏩ SKIPPED CASE')
             continue
 
         # Execute case with all runs
@@ -124,7 +168,7 @@ def execute_cases(executor: Executor, interval: float, runs: int,
 
             print(f'      ==> Run #{i} <==')
             if os.path.exists(run_checkpoint_file):
-                print(f'        ⏩ SKIPPED RUN')
+                print('        ⏩ SKIPPED RUN')
                 continue
 
             try:
@@ -165,14 +209,32 @@ def execute_cases(executor: Executor, interval: float, runs: int,
         msg = f'{text : <89}\nRoot: "{e.main_directory}"'
         notifier.send('Execution FINISHED', msg)
 
+
 def clean_cases(executor: Executor):
+    """Clean all cases.
+
+    Parameters
+    ----------
+    executor : Executor
+        An instance of the Executor class of which all cases should be printed.
+    """
     cases = e.list()
 
     for case in cases:
         e.clean(case)
     print(f'Cleaned {len(cases)} cases')
 
+
 def generate_statistics(executor: Executor):
+    """Generate statistics for all cases.
+
+    The cases must be executed already to succeed.
+
+    Parameters
+    ----------
+    executor : Executor
+        An instance of the Executor class of which all cases should be printed.
+    """
     cases = e.list()
     failures = []
 
@@ -219,14 +281,29 @@ def generate_statistics(executor: Executor):
 
     print(f'Generated statistics archive: {archive_name}')
 
-def progress_cb (resource: str, name: str, success: bool):
+
+def progress_cb(resource: str, name: str, success: bool):
+    """Progress callback
+
+    Pretty print the current progress.
+
+    Parameters
+    ----------
+    resource : str
+        Name of the resource
+    name : str
+        Name of the step
+    success : bool
+        Whether the execution was succesfull or not.
+    """
     if success:
         print(f'        ✅ {resource : <20}: {name : <50}')
     else:
         print(f'        ❌ {resource : <20}: {name : <50}')
 
     if wait_for_user:
-        input(f'        ℹ️  Step completed, press any key to continue...')
+        input('        ℹ️  Step completed, press any key to continue...')
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Copyright by (c) '
@@ -274,10 +351,10 @@ if __name__ == '__main__':
                              'for sending e-mails',
                         type=str)
     parser.add_argument('--smtp-sender', dest='smtp_sender', default=None,
-                        help='Sender e-mailaddress to use for sending e-mails',
+                        help='Sender\'s e-mailaddress for sending e-mails',
                         type=str)
     parser.add_argument('--smtp-receiver', dest='smtp_receiver', default=None,
-                        help='Receiver e-mailaddress to use for sending emails',
+                        help='Receiver\'s e-mailaddress for sending emails',
                         type=str)
     args = parser.parse_args()
 
@@ -318,8 +395,9 @@ if __name__ == '__main__':
         try:
             response = subprocess.check_output('getenforce')
             if response.decode().strip() != 'Permissive':
-                print('SELinux must be set to "permissive" to allow containers '
-                      'accessing files in mounted directories', file=sys.stderr)
+                msg = 'SELinux must be set to "permissive" to allow ' + \
+                      'containers accessing files in mounted directories'
+                print(msg, file=sys.stderr)
                 sys.exit(EXIT_CODE_SELINUX)
         except subprocess.CalledProcessError:
             pass
