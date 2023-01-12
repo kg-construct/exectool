@@ -12,10 +12,6 @@ before_script:
 stages:
   - Linting
   - Unit
-  - File
-  - RDB
-  - Query
-  - Triplestore
   - Integration
 
 linting:
@@ -27,13 +23,13 @@ linting:
   - ./linting
 
 files:
-  stage: File
+  stage: Unit
   script:
   - cd tests
   - ./file_tests
 
 rdb:
-  stage: RDB
+  stage: Unit
   script:
   - cd tests
   - ./rdb_tests
@@ -44,20 +40,20 @@ unit:
   - cd tests
   - ./unit_tests
 
-integration:
-  stage: Integration
-  script:
-  - cd tests
-  - ./integration_tests
-
 query:
-  stage: Query
+  stage: Unit
   script:
   - cd tests
   - ./query_tests
 
 triplestore:
-  stage: Triplestore
+  stage: Unit
   script:
   - cd tests
   - ./triplestore_tests
+
+integration:
+  stage: Integration
+  script:
+  - cd tests
+  - ./integration_tests
