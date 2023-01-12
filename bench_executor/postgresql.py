@@ -13,13 +13,13 @@ import psycopg2
 import tempfile
 from csv import reader
 from time import sleep
-from typing import List
-from timeout_decorator import timeout, TimeoutError
-try:
-    from bench_executor import Container, Logger
-except ModuleNotFoundError:
-    from container import Container
-    from logger import Logger
+from typing import TYPE_CHECKING
+from timeout_decorator import timeout, TimeoutError  # type: ignore
+from bench_executor.container import Container
+from bench_executor.logger import Logger
+
+if TYPE_CHECKING:
+    from typing import List, Tuple
 
 VERSION = '14.5'
 HOST = 'localhost'
@@ -56,7 +56,7 @@ class PostgreSQL(Container):
         os.umask(0)
         os.makedirs(tmp_dir, exist_ok=True)
         os.makedirs(os.path.join(self._data_path, 'postgresql'), exist_ok=True)
-        self._tables = []
+        self._tables: List[str] = []
 
         super().__init__(f'blindreviewing/postgresql:v{VERSION}', 'PostgreSQL',
                          self._logger,
@@ -162,7 +162,8 @@ class PostgreSQL(Container):
                 return False
         return True
 
-    def load_sql_schema(self, schema_file: str, csv_files: List[str]) -> bool:
+    def load_sql_schema(self, schema_file: str,
+                        csv_files: List[Tuple[str, str]]) -> bool:
         """Execute SQL schema with PostgreSQL.
 
         Executes a .sql file with PostgreSQL.
@@ -174,9 +175,10 @@ class PostgreSQL(Container):
         ----------
         schema_file : str
             Name of the .sql file.
-        csv_files : list
+        csv_files : List[Tuple[str, str]]]
             List of CSV file names to load in the tables created with the .sql
-            file, may also be an empty list.
+            file, may also be an empty list. Each entry contains a Tuple of the
+            CSV file name and the table name.
 
         Returns
         -------
@@ -308,7 +310,7 @@ class PostgreSQL(Container):
 
 if __name__ == '__main__':
     print(f'ℹ️  Starting up PostgreSQL v{VERSION}...')
-    p = PostgreSQL('data', 'config', True)
+    p = PostgreSQL('data', 'config', 'log', True)
     p.wait_until_ready()
     input('ℹ️  Press any key to stop')
     p.stop()

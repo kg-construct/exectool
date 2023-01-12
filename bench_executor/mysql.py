@@ -12,13 +12,13 @@ import os
 import pymysql
 import tempfile
 from csv import reader
-from typing import List
-from timeout_decorator import timeout, TimeoutError
-try:
-    from bench_executor import Container, Logger
-except ModuleNotFoundError:
-    from container import Container
-    from logger import Logger
+from typing import TYPE_CHECKING
+from timeout_decorator import timeout, TimeoutError  # type: ignore
+from bench_executor.container import Container
+from bench_executor.logger import Logger
+
+if TYPE_CHECKING:
+    from typing import List, Tuple
 
 VERSION = '8.0'
 HOST = 'localhost'
@@ -49,7 +49,7 @@ class MySQL(Container):
         self._data_path = os.path.abspath(data_path)
         self._config_path = os.path.abspath(config_path)
         self._logger = Logger(__name__, directory, verbose)
-        self._tables = []
+        self._tables: List[str] = []
         tmp_dir = os.path.join(tempfile.gettempdir(), 'mysql')
         os.umask(0)
         os.makedirs(tmp_dir, exist_ok=True)
@@ -149,7 +149,8 @@ class MySQL(Container):
                 return False
         return True
 
-    def load_sql_schema(self, schema_file: str, csv_files: List[str]) -> bool:
+    def load_sql_schema(self, schema_file: str,
+                        csv_files: List[Tuple[str, str]]) -> bool:
         """Execute SQL schema with MySQL.
 
         Executes a .sql file with MySQL.
@@ -161,9 +162,10 @@ class MySQL(Container):
         ----------
         schema_file : str
             Name of the .sql file.
-        csv_files : list
+        csv_files : List[Tuple[str, str]]
             List of CSV file names to load in the tables created with the .sql
-            file, may also be an empty list.
+            file, may also be an empty list. Each entry contains a Tuple with
+            the name of the CSV file and the table name.
 
         Returns
         -------
@@ -302,7 +304,7 @@ class MySQL(Container):
 
 if __name__ == '__main__':
     print(f'ℹ️  Starting up MySQL v{VERSION}...')
-    m = MySQL('data', 'config', True)
+    m = MySQL('data', 'config', 'log', True)
     m.wait_until_ready()
     input('ℹ️  Press any key to stop')
     m.stop()

@@ -14,12 +14,13 @@ import os
 import psutil
 import configparser
 from rdflib import Graph, Namespace, RDF, URIRef
-from timeout_decorator import timeout, TimeoutError
-try:
-    from bench_executor import Container, Logger
-except ModuleNotFoundError:
-    from container import Container
-    from logger import Logger
+from timeout_decorator import timeout, TimeoutError  # type: ignore
+from typing import TYPE_CHECKING
+from bench_executor.container import Container
+from bench_executor.logger import Logger
+
+if TYPE_CHECKING:
+    from typing import Dict, Optional
 
 VERSION = '4.2.1'
 TIMEOUT = 6 * 3600  # 6 hours
@@ -43,8 +44,9 @@ class Ontop(Container):
             Ontop mode: `materialize` or `endpoint`
         """
         self._mode = mode
-        self._headers = {}
+        self._headers: Dict[str, Dict[str, str]] = {}
         self._logger = logger
+        self._data_path = data_path
 
         if self._mode == 'endpoint':
             subdir = 'ontopvirtualize'
@@ -115,7 +117,7 @@ class Ontop(Container):
         """
         return self._headers
 
-    def execute(self, arguments: list) -> bool:
+    def _execute(self, arguments: list) -> bool:
         """Execute Ontop with given arguments.
 
         Parameters
@@ -141,11 +143,17 @@ class Ontop(Container):
 
         return success
 
-    def execute_mapping(self, config_file: str, arguments: list,
-                        mapping_file: str, output_file: str,
-                        rdb_username: str = None, rdb_password: str = None,
-                        rdb_host: str = None, rdb_port: str = None,
-                        rdb_name: str = None, rdb_type: str = None) -> bool:
+    def _execute_mapping(self,
+                         config_file: str,
+                         arguments: list,
+                         mapping_file: str,
+                         output_file: Optional[str],
+                         rdb_username: str,
+                         rdb_password: str,
+                         rdb_host: str,
+                         rdb_port: int,
+                         rdb_name: str,
+                         rdb_type: str) -> bool:
         """Execute a mapping file with Ontop.
 
         Only relational databases are supported by
@@ -153,12 +161,15 @@ class Ontop(Container):
 
         Parameters
         ----------
+        config_file : str
+            Name of the generated config file for Ontop.
+        arguments : list
+            List of arguments to pass to Ontop.
         mapping_file : str
-            Path to the mapping file to execute.
-        output_file : str
-            Name of the output file to store the triples in.
-        serialization : str
-            Serialization format to use.
+            Name of the mapping file to use.
+        output_file : Optional[str]
+            Name of the output file to use. Only applicable for
+            materialization.
         rdb_username : str
             Username for the database.
         rdb_password : str
@@ -178,41 +189,37 @@ class Ontop(Container):
             Whether the execution was successfull or not.
         """
         # Generate INI configuration file since no CLI is available
-        if rdb_username is not None and rdb_password is not None \
-                and rdb_host is not None and rdb_port is not None \
-                and rdb_name is not None and rdb_type is not None:
-            config = configparser.ConfigParser()
-            config['root'] = {
-                'jdbc.user': rdb_username,
-                'jdbc.password': rdb_password
-            }
-            if rdb_type == 'MySQL':
-                dsn = f'jdbc:mysql://{rdb_host}:{rdb_port}/{rdb_name}'
-                config['root']['jdbc.url'] = dsn
-                config['root']['jdbc.driver'] = 'com.mysql.cj.jdbc.Driver'
-            elif rdb_type == 'PostgreSQL':
-                dsn = f'jdbc:postgresql://{rdb_host}:{rdb_port}/{rdb_name}'
-                config['root']['jdbc.url'] = dsn
-                config['root']['jdbc.driver'] = 'org.postgresql.Driver'
-            else:
-                raise ValueError(f'Unknown RDB type: "{rdb_type}"')
-
-            path = os.path.join(self._data_path, self.root_mount_directory)
-            os.makedirs(path, exist_ok=True)
-            with open(os.path.join(path, 'config.properties'), 'w') as f:
-                config.write(f, space_around_delimiters=False)
-
-            # .properties files are like .ini files but without a [HEADER]
-            # Use a [root] header and remove it after writing
-            with open(os.path.join(path, 'config.properties'), 'r') as f:
-                data = f.read()
-
-            with open(os.path.join(path, 'config.properties'), 'w') as f:
-                f.write(data.replace('[root]\n', ''))
+        config = configparser.ConfigParser()
+        if rdb_type == 'MySQL':
+            dsn = f'jdbc:mysql://{rdb_host}:{rdb_port}/{rdb_name}'
+            config['root']['jdbc.url'] = dsn
+            config['root']['jdbc.driver'] = 'com.mysql.cj.jdbc.Driver'
+        elif rdb_type == 'PostgreSQL':
+            dsn = f'jdbc:postgresql://{rdb_host}:{rdb_port}/{rdb_name}'
+            config['root']['jdbc.url'] = dsn
+            config['root']['jdbc.driver'] = 'org.postgresql.Driver'
         else:
-            msg = 'Ontop only supports RDBs'
+            msg = f'Unknown RDB type: "{rdb_type}"'
             self._logger.error(msg)
             raise ValueError(msg)
+
+        config['root'] = {
+            'jdbc.user': rdb_username,
+            'jdbc.password': rdb_password
+        }
+
+        path = os.path.join(self._data_path, self.root_mount_directory)
+        os.makedirs(path, exist_ok=True)
+        with open(os.path.join(path, 'config.properties'), 'w') as f:
+            config.write(f, space_around_delimiters=False)
+
+        # .properties files are like .ini files but without a [HEADER]
+        # Use a [root] header and remove it after writing
+        with open(os.path.join(path, 'config.properties'), 'r') as f:
+            data = f.read()
+
+        with open(os.path.join(path, 'config.properties'), 'w') as f:
+            f.write(data.replace('[root]\n', ''))
 
         # Compatibility with Ontop requiring rr:class
         # Replace any rdf:type construction with rr:class
@@ -287,7 +294,7 @@ class Ontop(Container):
         arguments.append('-p')
         arguments.append('/data/config.properties')
 
-        return self.execute(arguments)
+        return self._execute(arguments)
 
 
 class OntopVirtualize(Ontop):
@@ -313,11 +320,33 @@ class OntopVirtualize(Ontop):
         super().__init__('Ontop-Virtualize', data_path, self._logger,
                          'endpoint')
 
-    def execute_mapping(self, mapping_file: str, output_file: str = None,
-                        serialization: str = "ntriples",
-                        rdb_username: str = None, rdb_password: str = None,
-                        rdb_host: str = None, rdb_port: str = None,
-                        rdb_name: str = None, rdb_type: str = None) -> bool:
+    def wait_until_ready(self, command: str = '') -> bool:
+        """Wait until Ontop endpoint is ready to execute SPARQL queries.
+
+        Parameters
+        ----------
+        command : str
+            Command to execute in the Ontop container, optionally, defaults to
+            no command.
+
+        Returns
+        -------
+        success : bool
+            Whether the Ontop endpoint was initialized successfull or not.
+        """
+        return self.run_and_wait_for_log('Ontop has completed the setup',
+                                         command=command)
+
+    def execute_mapping(self,
+                        mapping_file: str,
+                        output_file: str,
+                        serialization: str,
+                        rdb_username: str,
+                        rdb_password: str,
+                        rdb_host: str,
+                        rdb_port: int,
+                        rdb_name: str,
+                        rdb_type: str) -> bool:
         """Start an Ontop SPARQL endpoint with a mapping.
 
         Only relational databases are supported by
@@ -334,9 +363,6 @@ class OntopVirtualize(Ontop):
         ----------
         mapping_file : str
             Path to the mapping file to execute.
-        output_file : str
-            Name of the output file to store the triples in. This is not used
-            for OntopVirtualize.
         serialization : str
             Serialization format to use.
         rdb_username : str
@@ -372,10 +398,10 @@ class OntopVirtualize(Ontop):
                   f'"{serialization}" for Ontop'
             self._logger.error(msg)
             raise ValueError(msg)
-        return super().execute_mapping(config_file, arguments,
-                                       mapping_file, output_file, rdb_username,
-                                       rdb_password, rdb_host, rdb_port,
-                                       rdb_name, rdb_type)
+        return super()._execute_mapping(config_file, arguments,
+                                        mapping_file, None, rdb_username,
+                                        rdb_password, rdb_host, rdb_port,
+                                        rdb_name, rdb_type)
 
 
 class OntopMaterialize(Ontop):
@@ -407,12 +433,12 @@ class OntopMaterialize(Ontop):
     def _execute_mapping_with_timeout(self, mapping_file: str,
                                       output_file: str,
                                       serialization: str,
-                                      rdb_username: str = None,
-                                      rdb_password: str = None,
-                                      rdb_host: str = None,
-                                      rdb_port: str = None,
-                                      rdb_name: str = None,
-                                      rdb_type: str = None) -> bool:
+                                      rdb_username: str,
+                                      rdb_password: str,
+                                      rdb_host: str,
+                                      rdb_port: int,
+                                      rdb_name: str,
+                                      rdb_type: str) -> bool:
         """Execute a mapping with a provided timeout.
 
         Returns
@@ -424,16 +450,21 @@ class OntopMaterialize(Ontop):
                       '/config.properties'
         arguments = ['-f', serialization]
         self._headers = {}
-        return super().execute_mapping(config_file, arguments,
-                                       mapping_file, output_file, rdb_username,
-                                       rdb_password, rdb_host, rdb_port,
-                                       rdb_name, rdb_type)
+        return super()._execute_mapping(config_file, arguments,
+                                        mapping_file, output_file,
+                                        rdb_username, rdb_password,
+                                        rdb_host, rdb_port, rdb_name, rdb_type)
 
-    def execute_mapping(self, mapping_file: str, output_file: str,
-                        serialization: str, rdb_username: str = None,
-                        rdb_password: str = None, rdb_host: str = None,
-                        rdb_port: str = None, rdb_name: str = None,
-                        rdb_type: str = None) -> bool:
+    def execute_mapping(self,
+                        mapping_file: str,
+                        output_file: str,
+                        serialization: str,
+                        rdb_username: str,
+                        rdb_password: str,
+                        rdb_host: str,
+                        rdb_port: int,
+                        rdb_name: str,
+                        rdb_type: str) -> bool:
         """Execute a R2RML mapping with Ontop
 
         N-Quads and N-Triples are currently supported as serialization
@@ -486,7 +517,7 @@ class OntopMaterialize(Ontop):
 
 if __name__ == '__main__':
     print(f'ℹ️  Starting up Ontop Virtualize Endpoint v{VERSION}...')
-    o = OntopVirtualize('data', 'config', True)
+    o = OntopVirtualize('data', 'config', 'log', True)
     o.wait_until_ready()
     input('ℹ️  Press any key to stop')
     o.stop()

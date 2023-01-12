@@ -9,11 +9,8 @@ Linked Data generation rules.
 """
 
 import os
-try:
-    from bench_executor import Container, Logger
-except ModuleNotFoundError:
-    from container import Container
-    from logger import Logger
+from bench_executor.container import Container
+from bench_executor.logger import Logger
 
 VERSION = '1.3.6'
 

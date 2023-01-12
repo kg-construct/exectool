@@ -49,17 +49,21 @@ network.
 import os
 import sys
 import platform
-import psutil
-from docker import DockerClient
+import psutil as ps
+from docker import DockerClient  # type: ignore
 from csv import DictWriter
 from time import time, sleep
 from datetime import datetime
 from subprocess import run, CalledProcessError
 from threading import Thread, Event
-try:
-    from bench_executor import Logger
-except ModuleNotFoundError:
-    from logger import Logger
+from typing import TYPE_CHECKING
+from bench_executor.logger import Logger
+
+if TYPE_CHECKING:
+    from psutil._common import sswap, snetio
+    from psutil._pslinux import svmem, sdiskio
+    from psutil._psaix import scputimes
+    from typing import Dict, Union, Optional
 
 #
 # Hardware and case information is logged to 'case-info.txt' on construction.
@@ -103,14 +107,18 @@ FIELDNAMES = [
 ]
 ROUND = 4
 
+step_id = 1
+
 
 def _collect_metrics(stop_event: Event, metrics_path: str,
                      sample_interval: float, initial_timestamp: float,
-                     initial_cpu: dict, initial_ram: int, initial_swap: int,
-                     initial_disk_io: dict, initial_network_io: dict):
+                     initial_cpu: scputimes, initial_ram: svmem,
+                     initial_swap: sswap, initial_disk_io: Optional[sdiskio],
+                     initial_network_io: snetio):
     """Thread function to collect a sample at specific intervals"""
     global step_id
     index = 1
+    row: Dict[str, Union[int, float]]
 
     # Create metrics file
     with open(metrics_path, 'w') as f:
@@ -154,42 +162,74 @@ def _collect_metrics(stop_event: Event, metrics_path: str,
         while not stop_event.wait(0):
             # Collect metrics
             timestamp = time()
-            cpu = psutil.cpu_times()
-            ram = psutil.virtual_memory()
-            swap = psutil.swap_memory()
-            disk_io = psutil.disk_io_counters()
-            network_io = psutil.net_io_counters()
+            cpu: scputimes = ps.cpu_times()
+            ram: svmem = ps.virtual_memory()
+            swap: sswap = ps.swap_memory()
+            disk_io: Optional[sdiskio] = ps.disk_io_counters()  # type: ignore
+            network_io: snetio = ps.net_io_counters()
 
             # Write to file
+            diff = round(timestamp - initial_timestamp, ROUND)
+            cpu_user = round(cpu.user - initial_cpu.user, ROUND)
+            cpu_system = round(cpu.system - initial_cpu.system, ROUND)
+            cpu_idle = round(cpu.idle - initial_cpu.idle, ROUND)
+            cpu_iowait = round(cpu.iowait - initial_cpu.iowait, ROUND)
+            network_recv_count = \
+                network_io.packets_recv - initial_network_io.packets_recv
+            network_sent_count = \
+                network_io.packets_sent - initial_network_io.packets_sent
+            network_recv_bytes = \
+                network_io.bytes_recv - initial_network_io.bytes_recv
+            network_sent_bytes = \
+                network_io.bytes_sent - initial_network_io.bytes_sent
+            network_errin = \
+                network_io.errin - initial_network_io.errin
+            network_errout = \
+                network_io.errout - initial_network_io.errout
+            network_dropin = \
+                network_io.dropin - initial_network_io.dropin
+            network_dropout = \
+                network_io.dropout - initial_network_io.dropout
+
             row = {
                 'index': index,
                 'step': step_id,
-                'timestamp': round(timestamp - initial_timestamp, ROUND),
+                'timestamp': diff,
                 'version': METRICS_VERSION,
-                'cpu_user': round(cpu.user - initial_cpu.user, ROUND),
-                'cpu_system': round(cpu.system - initial_cpu.system, ROUND),
-                'cpu_user_system': round((cpu.user - initial_cpu.user) + (cpu.system - initial_cpu.system), ROUND),  # noqa: E501
-                'cpu_idle': round(cpu.idle - initial_cpu.idle, ROUND),
-                'cpu_iowait': round(cpu.iowait - initial_cpu.iowait, ROUND),
+                'cpu_user': cpu_user,
+                'cpu_system': cpu_system,
+                'cpu_user_system': cpu_user + cpu_system,
+                'cpu_idle': cpu_idle,
+                'cpu_iowait': cpu_iowait,
                 'memory_ram': ram.used,
                 'memory_swap': swap.used,
                 'memory_ram_swap': ram.used + swap.used,
-                'disk_read_count': disk_io.read_count - initial_disk_io.read_count,  # noqa: E501
-                'disk_write_count': disk_io.write_count - initial_disk_io.write_count,  # noqa: E501
-                'disk_read_bytes': disk_io.read_bytes - initial_disk_io.read_bytes,  # noqa: E501
-                'disk_write_bytes': disk_io.write_bytes - initial_disk_io.write_bytes,  # noqa: E501
-                'disk_read_time': disk_io.read_time - initial_disk_io.read_time,  # noqa: E501
-                'disk_write_time': disk_io.write_time - initial_disk_io.write_time,  # noqa: E501
-                'disk_busy_time': disk_io.busy_time - initial_disk_io.busy_time,  # noqa: E501
-                'network_received_count': network_io.packets_recv - initial_network_io.packets_recv,  # noqa: E501
-                'network_sent_count': network_io.packets_sent - initial_network_io.packets_sent,  # noqa: E501
-                'network_received_bytes': network_io.bytes_recv - initial_network_io.bytes_recv,  # noqa: E501
-                'network_sent_bytes': network_io.bytes_sent - initial_network_io.bytes_sent,  # noqa: E501
-                'network_received_error': network_io.errin - initial_network_io.errin,  # noqa: E501
-                'network_sent_error': network_io.errout - initial_network_io.errout,  # noqa: E501
-                'network_received_drop': network_io.dropin - initial_network_io.dropin,  # noqa: E501
-                'network_sent_drop': network_io.dropout - initial_network_io.dropout  # noqa: E501
+                'network_received_count': network_recv_count,
+                'network_sent_count': network_sent_count,
+                'network_received_bytes': network_recv_bytes,
+                'network_sent_bytes': network_sent_bytes,
+                'network_received_error': network_errin,
+                'network_sent_error': network_errout,
+                'network_received_drop': network_dropin,
+                'network_sent_drop': network_dropout
             }
+
+            # Diskless machines will return None for diskio
+            if disk_io is not None and initial_disk_io is not None:
+                row['disk_read_count'] = \
+                   disk_io.read_count - initial_disk_io.read_count
+                row['disk_write_count'] = \
+                    disk_io.write_count - initial_disk_io.write_count
+                row['disk_read_bytes'] = \
+                    disk_io.read_bytes - initial_disk_io.read_bytes
+                row['disk_write_bytes'] = \
+                    disk_io.write_bytes - initial_disk_io.write_bytes
+                row['disk_read_time'] = \
+                    disk_io.read_time - initial_disk_io.read_time
+                row['disk_write_time'] = \
+                    disk_io.write_time - initial_disk_io.write_time
+                row['disk_busy_time'] = \
+                    disk_io.busy_time - initial_disk_io.busy_time
             writer.writerow(row)
             index += 1
 
@@ -250,9 +290,6 @@ class Collector():
         self._stop_event: Event = Event()
         self._logger = Logger(__name__, directory, verbose)
 
-        global step_id
-        step_id = 1
-
         # Only Linux is supported
         if platform.system() != 'Linux':
             msg = f'"{platform.system()} is not supported as OS'
@@ -284,24 +321,24 @@ class Collector():
             print(f'Unable to determine CPU processor name: {e}',
                   file=sys.stderr)
 
-        cpu_cores = psutil.cpu_count()
-        cpu_min_freq = psutil.cpu_freq().min
-        cpu_max_freq = psutil.cpu_freq().max
+        cpu_cores = ps.cpu_count()
+        cpu_min_freq = ps.cpu_freq().min
+        cpu_max_freq = ps.cpu_freq().max
 
         # Memory information: RAM total, SWAP total
-        memory_total = psutil.virtual_memory().total
-        swap_total = psutil.swap_memory().total
+        memory_total = ps.virtual_memory().total
+        swap_total = ps.swap_memory().total
 
         # Disk IO: name
-        disk_partitions = {}
-        for disk in psutil.disk_partitions():
+        partitions: Dict[str, int] = {}
+        for disk in ps.disk_partitions():
             # Skip Docker's overlayFS
             if disk.fstype and 'docker' not in disk.mountpoint:
-                disk_partitions[disk.mountpoint] = \
-                        psutil.disk_usage(disk.mountpoint).total
+                total = ps.disk_usage(disk.mountpoint).total
+                partitions[disk.mountpoint] = total
 
         # Network IO: name, speed, MTU
-        network_interfaces = psutil.net_if_stats()
+        network_interfaces = ps.net_if_stats()
 
         # Docker daemon: version, storage driver, cgroupfs
         client = DockerClient()
@@ -332,16 +369,17 @@ class Collector():
             f.write(f'\tRAM memory: {int(memory_total / 10 ** 6)} MB\n')
             f.write(f'\tSWAP memory: {int(swap_total / 10 ** 6)} MB\n')
             f.write('Storage\n')
-            for disk, size in disk_partitions.items():
-                f.write(f'\tDisk "{disk}": '
+            for name, size in partitions.items():
+                f.write(f'\tDisk "{name}": '
                         f'{round(size / 10 ** 9, 2)} GB\n')
             f.write('Network\n')
             for name, stats in network_interfaces.items():
                 speed = stats.speed
                 if speed == 0:
-                    speed = 'UNKNOWN'
+                    f.write(f'\tInterface "{name}"\n')
+                else:
+                    f.write(f'\tInterface "{name}": {speed} mbps\n')
 
-                f.write(f'\tInterface "{name}": {speed} mbps\n')
             f.write('\n')
             f.write('===> DOCKER <===\n')
             f.write(f'Version: {docker_info["ServerVersion"]}\n')
@@ -354,11 +392,11 @@ class Collector():
         # Set initial metric values and start collection thread
         metrics_path = os.path.join(results_run_path, METRICS_FILE_NAME)
         initial_timestamp = time()
-        initial_cpu = psutil.cpu_times()
-        initial_ram = psutil.virtual_memory().used
-        initial_swap = psutil.swap_memory().used
-        initial_disk_io = psutil.disk_io_counters()
-        initial_network_io = psutil.net_io_counters()
+        initial_cpu = ps.cpu_times()
+        initial_ram = ps.virtual_memory().used
+        initial_swap = ps.swap_memory().used
+        initial_disk_io = ps.disk_io_counters()
+        initial_network_io = ps.net_io_counters()
         self._thread: Thread = Thread(target=_collect_metrics,
                                       daemon=True,
                                       args=(self._stop_event,

@@ -13,12 +13,13 @@ based on innovative support of existing open standards
 import os
 import tempfile
 import psutil
+from typing import TYPE_CHECKING
 from threading import Thread
-try:
-    from bench_executor import Container, Logger
-except ModuleNotFoundError:
-    from container import Container
-    from logger import Logger
+from bench_executor.container import Container
+from bench_executor.logger import Logger
+
+if TYPE_CHECKING:
+    from typing import Dict
 
 VERSION = '7.2.7'
 MAX_ROWS = '10000000'
@@ -253,12 +254,12 @@ class Virtuoso(Container):
         return super().stop()
 
     @property
-    def endpoint(self):
+    def endpoint(self) -> str:
         """SPARQL endpoint URL"""
         return self._endpoint
 
     @property
-    def headers(self):
+    def headers(self) -> Dict[str, Dict[str, str]]:
         """HTTP headers of SPARQL queries for serialization formats.
 
         Only supported serialization formats are included in the dictionary.
@@ -287,7 +288,7 @@ class Virtuoso(Container):
 
 if __name__ == '__main__':
     print(f'ℹ️  Starting up Virtuoso v{VERSION}...')
-    v = Virtuoso('data', 'config', True)
+    v = Virtuoso('data', 'config', 'log', True)
     v.wait_until_ready()
     input('ℹ️  Press any key to stop')
     v.stop()

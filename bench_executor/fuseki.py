@@ -11,11 +11,12 @@ import os
 import sys
 import requests
 import psutil
-try:
-    from bench_executor import Container, Logger
-except ModuleNotFoundError:
-    from container import Container
-    from logger import Logger
+from typing import TYPE_CHECKING
+from bench_executor.container import Container
+from bench_executor.logger import Logger
+
+if TYPE_CHECKING:
+    from typing import Dict
 
 VERSION = '4.6.1'
 CMD_ARGS = '--tdb2 --update --loc /fuseki/databases/DB /ds'
@@ -92,7 +93,7 @@ class Fuseki(Container):
         return __name__.lower()
 
     @property
-    def headers(self) -> str:
+    def headers(self) -> Dict[str, Dict[str, str]]:
         """HTTP headers of SPARQL queries for serialization formats.
 
         Only supported serialization formats are included in the dictionary.
@@ -202,7 +203,7 @@ class Fuseki(Container):
 
 if __name__ == '__main__':
     print(f'ℹ️  Starting up Fuseki v{VERSION}...')
-    f = Fuseki('data', 'config', True)
+    f = Fuseki('data', 'config', 'log', True)
     f.wait_until_ready()
     input('ℹ️  Press any key to stop')
     f.stop()

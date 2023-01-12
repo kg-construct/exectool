@@ -17,13 +17,13 @@ import shutil
 from glob import glob
 from datetime import datetime
 from time import sleep
-try:
-    from bench_executor import Collector, METRICS_FILE_NAME, Stats, Logger, \
-            LOG_FILE_NAME
-except ModuleNotFoundError:
-    from collector import Collector, METRICS_FILE_NAME
-    from stats import Stats
-    from logger import Logger, LOG_FILE_NAME
+from typing import TYPE_CHECKING
+from bench_executor.collector import Collector, METRICS_FILE_NAME
+from bench_executor.stats import Stats
+from bench_executor.logger import Logger, LOG_FILE_NAME
+
+if TYPE_CHECKING:
+    from typing import List, Dict, Any
 
 METADATA_FILE = 'metadata.json'
 SCHEMA_FILE = 'metadata.schema'
@@ -57,8 +57,8 @@ class Executor:
         """
         self._main_directory = os.path.abspath(main_directory)
         self._schema = {}
-        self._resources = None
-        self._class_module_mapping = {}
+        self._resources: List[Dict[str, Any]] = []
+        self._class_module_mapping: Dict[str, Any] = {}
         self._verbose = verbose
         self._progress_cb = progress_cb
         self._logger = Logger(__name__, self._main_directory, self._verbose)
@@ -69,15 +69,11 @@ class Executor:
                                SCHEMA_FILE)) as f:
             self._schema = json.load(f)
 
-    def _init_resources(self) -> list:
+    def _init_resources(self) -> None:
         """Initialize resources of a case
 
         Resources are discovered automatically by analyzing Python modules.
         """
-        if self._resources is not None:
-            return self._resources
-        else:
-            self._resources = []
 
         # Discover all modules to import
         sys.path.append(os.path.dirname(__file__))
@@ -99,7 +95,7 @@ class Executor:
                 self._class_module_mapping[name] = imported_module
 
                 # Discover all methods and their parameters in each class
-                methods = {}
+                methods: Dict[str, List[Dict[str, str]]] = {}
                 filt = filter(lambda x: '__init__' not in x,
                               inspect.getmembers(cls, inspect.isfunction))
                 for method_name, method in filt:
@@ -109,7 +105,7 @@ class Executor:
                         if key == 'self':
                             continue
                         p = parameters[key]
-                        required = p.default == inspect.Parameter.empty
+                        required = (p.default == inspect.Parameter.empty)
                         methods[method_name].append({'name': p.name,
                                                      'required': required})
 
@@ -129,10 +125,7 @@ class Executor:
         for r in self._resources:
             names.append(r['name'])
 
-        if names:
-            return names
-        else:
-            return None
+        return names
 
     def _resources_all_commands_by_name(self, name: str) -> list:
         """Retrieve all resources' commands.
@@ -149,11 +142,9 @@ class Executor:
         """
         commands = []
         for r in filter(lambda x: x['name'] == name, self._resources):
-            commands += list(r['commands'].keys())
-        if commands:
-            return commands
-        else:
-            return None
+            commands += list(r['commands'].keys())  # type: ignore
+
+        return commands
 
     def _resources_all_parameters_by_command(self, name: str,
                                              command: str,
@@ -171,9 +162,14 @@ class Executor:
             parameters are returned.
 
         Returns
-        ------
+        -------
         parameters : list
             List of parameters of the resource's command. None if failed.
+
+        Raises
+        ------
+        KeyError : Exception
+            If the command cannot be found for the resource.
         """
         parameters = []
         for r in filter(lambda x: x['name'] == name, self._resources):
@@ -184,10 +180,12 @@ class Executor:
                             parameters.append(p['name'])
                     else:
                         parameters.append(p['name'])
+            except KeyError as e:
+                self._logger.error(f'Command "{command}" not found for '
+                                   f'resource "{name}": {e}')
+                raise e
 
-                return parameters
-            except KeyError:
-                return None
+        return parameters
 
     def _validate_case(self, case: dict, path: str) -> bool:
         """Validate a case's syntax.
@@ -216,7 +214,7 @@ class Executor:
             for step in case['steps']:
                 # Check if resource is known
                 names = self._resources_all_names()
-                if names is None or step['resource'] not in names:
+                if step['resource'] not in names:
                     msg = f'{path}: Unknown resource "{step["resource"]}"'
                     self._logger.error(msg)
                     return False

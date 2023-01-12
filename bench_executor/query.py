@@ -9,11 +9,8 @@ checks if the results are empty or not.
 import os
 import requests
 from typing import Optional, List
-from timeout_decorator import timeout, TimeoutError
-try:
-    from bench_executor import Logger
-except ModuleNotFoundError:
-    from logger import Logger
+from timeout_decorator import timeout, TimeoutError  # type: ignore
+from bench_executor.logger import Logger
 
 TIMEOUT = 1 * 3600  # 1 hour
 
@@ -61,7 +58,7 @@ class Query():
 
     @timeout(TIMEOUT)
     def _execute_with_timeout(self, query: str, sparql_endpoint: str,
-                              headers: dict = None) -> str:
+                              headers: dict = {}) -> str:
         """Execute a query with a provided timeout.
 
         Parameters
@@ -85,17 +82,14 @@ class Query():
             'maxrows': '3000000'  # Overwrite Virtuoso SPARQL limit
         }
         # Hardcoded to N-Triples
-        if headers is not None:
-            r = requests.post(sparql_endpoint, data=data, headers=headers)
-        else:
-            r = requests.post(sparql_endpoint, data=data)
+        r = requests.post(sparql_endpoint, data=data, headers=headers)
         if r.status_code != 200:
             self._logger.error('Query failed: {r.text} (HTTP {r.status_code})')
         r.raise_for_status()
         return r.text
 
     def _execute(self, query: str, sparql_endpoint: str, expect_empty: bool,
-                 headers: dict = None) -> Optional[str]:
+                 headers: dict = {}) -> Optional[str]:
         """Execute a query on a SPARQL endpoint
 
         Parameters
@@ -141,7 +135,7 @@ class Query():
 
     def execute_and_save(self, query: str, sparql_endpoint: str,
                          results_file: str, expect_empty: bool = False,
-                         headers: dict = None) -> bool:
+                         headers: dict = {}) -> bool:
         """Executes a SPARQL query and save the results.
 
         The results are saved to the `results_file` path.
@@ -196,11 +190,17 @@ class Query():
         -------
         content : str
             The content of the query file.
+
+        Raises
+        ------
+        FileNotFoundError : Exception
+            If the query file cannot be found.
         """
         path = os.path.join(self._data_path, 'shared', query_file)
         if not os.path.exists(path):
-            self._logger.error(f'Query file "{path}" does not exist')
-            return False
+            msg = f'Query file "{path}" does not exist'
+            self._logger.error(msg)
+            raise FileNotFoundError(msg)
 
         with open(path, 'r') as f:
             query = f.read()
@@ -209,7 +209,7 @@ class Query():
 
     def execute_from_file(self, query_file: str, sparql_endpoint: str,
                           expect_empty: bool = False,
-                          headers: dict = None) -> str:
+                          headers: dict = {}) -> str:
         """Executes a SPARQL query from file.
 
         The results are saved to the `results_file` path.
@@ -230,6 +230,12 @@ class Query():
         results : str
             The HTTP response as string of the SPARQL endpoint, unless it has
             no results.
+
+        Raises
+        ------
+        Exception : Exception
+            Pass through the exception from the Python's request module
+            regarding HTTP status codes.
         """
         query = self._read_query_file(query_file)
         try:
@@ -239,7 +245,7 @@ class Query():
             msg = f'Failed to execute query "{query}" on endpoint ' + \
                   f'"{sparql_endpoint}": {e}'
             self._logger.error(msg)
-            return False
+            raise e
 
         if results is not None:
             return results
@@ -250,7 +256,7 @@ class Query():
                                    sparql_endpoint: str,
                                    results_file: str,
                                    expect_empty: bool = False,
-                                   headers: dict = None) -> bool:
+                                   headers: dict = {}) -> bool:
         """Executes a SPARQL query from file and save the results.
 
         The results are saved to the `results_file` path.
@@ -272,6 +278,11 @@ class Query():
         -------
         success : bool
             Whether the execution succeeded or not.
+
+        Raises
+        ------
+        FileNotFoundError : Exception
+            If the query file cannot be found.
         """
         query = self._read_query_file(query_file)
         results = self.execute_and_save(query, sparql_endpoint, results_file,

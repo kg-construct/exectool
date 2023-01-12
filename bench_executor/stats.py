@@ -18,11 +18,9 @@ import sys
 from glob import glob
 from statistics import median
 from csv import DictWriter, DictReader
-try:
-    from bench_executor import Logger, FIELDNAMES, METRICS_FILE_NAME
-except ModuleNotFoundError:
-    from collector import FIELDNAMES, METRICS_FILE_NAME
-    from logger import Logger
+from typing import List
+from bench_executor.collector import FIELDNAMES, METRICS_FILE_NAME
+from bench_executor.logger import Logger
 
 METRICS_AGGREGATED_FILE_NAME = 'aggregated.csv'
 METRICS_SUMMARY_FILE_NAME = 'summary.csv'
@@ -104,7 +102,7 @@ class Stats():
 
         if not os.path.exists(results_path):
             msg = f'Results do not exist: {results_path}'
-            self._logger.error(msg, file=sys.stderr)
+            self._logger.error(msg)
             raise ValueError(msg)
 
     def _parse_field(self, field, value):
@@ -165,9 +163,8 @@ class Stats():
         for run_path in glob(f'{self._results_path}/run_*/'):
             # Extract run number
             try:
-                run_id = os.path.split(os.path.dirname(run_path))[-1]
-                run_id = run_id.replace('run_', '')
-                run_id = int(run_id)
+                run_folder: str = os.path.split(os.path.dirname(run_path))[-1]
+                run_id: int = int(run_folder.replace('run_', ''))
             except ValueError:
                 self._logger.error(f'Run "{run_id}" is not a number')
                 return False
@@ -220,7 +217,7 @@ class Stats():
         runs.sort(key=lambda element: element[0])
 
         # Find median for each step across runs
-        timestamps_by_step = []
+        timestamps_by_step: List[List[float]] = []
         for step_index in range(self._number_of_steps):
             timestamps_by_step.append([])
 
@@ -301,3 +298,5 @@ class Stats():
             writer.writeheader()
             for entry in summary_entries:
                 writer.writerow(entry)
+
+        return True

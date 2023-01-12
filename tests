@@ -3,36 +3,36 @@
 import os
 import sys
 import unittest
-import requests
 import warnings
-import psycopg2
-import pymysql
 import subprocess
 import atexit
 import filecmp
+import requests
+import psycopg2
+import pymysql
 from csv import DictReader
 from glob import glob
-from container import Container, ContainerManager
-from rmlmapper import RMLMapper
-from postgresql import PostgreSQL
-from mysql import MySQL
-from virtuoso import Virtuoso
-from morphkgc import MorphKGC
-from morphrdb import MorphRDB
-from sdmrdfizer import SDMRDFizer
-from ontop import OntopMaterialize, OntopVirtualize
-from fuseki import Fuseki
-from query import Query
-from yarrrml import YARRRML
-from executor import Executor
 from time import sleep
+from io import StringIO
 from rdflib import Graph
 from rdflib.compare import to_isomorphic
-from io import StringIO
-from collector import Collector, METRICS_FILE_NAME
-from stats import Stats, METRICS_AGGREGATED_FILE_NAME, \
+from bench_executor.container import Container, ContainerManager
+from bench_executor.rmlmapper import RMLMapper
+from bench_executor.postgresql import PostgreSQL
+from bench_executor.mysql import MySQL
+from bench_executor.virtuoso import Virtuoso
+from bench_executor.morphkgc import MorphKGC
+from bench_executor.morphrdb import MorphRDB
+from bench_executor.sdmrdfizer import SDMRDFizer
+from bench_executor.ontop import OntopMaterialize, OntopVirtualize
+from bench_executor.fuseki import Fuseki
+from bench_executor.query import Query
+from bench_executor.yarrrml import YARRRML
+from bench_executor.executor import Executor
+from bench_executor.collector import Collector, METRICS_FILE_NAME
+from bench_executor.stats import Stats, METRICS_AGGREGATED_FILE_NAME, \
         METRICS_SUMMARY_FILE_NAME
-from logger import Logger, LOG_FILE_NAME
+from bench_executor.logger import Logger, LOG_FILE_NAME
 
 LOG_DIR = os.path.join(os.path.dirname(__file__), 'log')
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')

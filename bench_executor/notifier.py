@@ -7,10 +7,7 @@ user remotely when the execution is finished, interrupted or failed.
 
 import smtplib
 from email.mime.text import MIMEText
-try:
-    from bench_executor import Logger
-except ModuleNotFoundError:
-    from logger import Logger
+from bench_executor.logger import Logger
 
 
 class Notifier():

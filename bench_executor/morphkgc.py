@@ -11,12 +11,13 @@ languages.
 
 import os
 import configparser
-from timeout_decorator import timeout, TimeoutError
-try:
-    from bench_executor import Container, Logger
-except ModuleNotFoundError:
-    from container import Container
-    from logger import Logger
+from timeout_decorator import timeout, TimeoutError  # type: ignore
+from typing import TYPE_CHECKING
+from bench_executor.container import Container
+from bench_executor.logger import Logger
+
+if TYPE_CHECKING:
+    from typing import Optional
 
 VERSION = '2.2.0'
 TIMEOUT = 6 * 3600  # 6 hours
@@ -94,11 +95,16 @@ class MorphKGC(Container):
 
         return False
 
-    def execute_mapping(self, mapping_file: str, output_file: str,
-                        serialization: str, rdb_username: str = None,
-                        rdb_password: str = None, rdb_host: str = None,
-                        rdb_port: int = None, rdb_name: str = None,
-                        rdb_type: str = None,
+    def execute_mapping(self,
+                        mapping_file: str,
+                        output_file: str,
+                        serialization: str,
+                        rdb_username: Optional[str] = None,
+                        rdb_password: Optional[str] = None,
+                        rdb_host: Optional[str] = None,
+                        rdb_port: Optional[int] = None,
+                        rdb_name: Optional[str] = None,
+                        rdb_type: Optional[str] = None,
                         multiple_files: bool = False) -> bool:
         """Execute a mapping file with Morph-KGC.
 
@@ -114,21 +120,21 @@ class MorphKGC(Container):
             Name of the output file to store the triples in.
         serialization : str
             Serialization format to use.
-        rdb_username : str
+        rdb_username : Optional[str]
             Username for the database, required when a database is used as
             source.
-        rdb_password : str
+        rdb_password : Optional[str]
             Password for the database, required when a database is used as
             source.
-        rdb_host : str
+        rdb_host : Optional[str]
             Hostname for the database, required when a database is used as
             source.
-        rdb_port : int
+        rdb_port : Optional[int]
             Port for the database, required when a database is used as source.
-        rdb_name : str
+        rdb_name : Optional[str]
             Database name for the database, required when a database is used as
             source.
-        rdb_type : str
+        rdb_type : Optional[str]
             Database type, required when a database is used as source.
         multiple_files : bool
             If the generated triples must be stored in multiple files, default

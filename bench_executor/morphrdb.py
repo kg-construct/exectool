@@ -11,11 +11,9 @@ the Ontology Engineering Group, which follows the R2RML specification.
 import os
 import psutil
 import configparser
-try:
-    from bench_executor import Container, Logger
-except ModuleNotFoundError:
-    from container import Container
-    from logger import Logger
+from timeout_decorator import timeout, TimeoutError  # type: ignore
+from bench_executor.container import Container
+from bench_executor.logger import Logger
 
 VERSION = '3.12.5'
 TIMEOUT = 6 * 3600  # 6 hours
@@ -61,6 +59,7 @@ class MorphRDB(Container):
         """
         return __name__.lower()
 
+    @timeout(TIMEOUT)
     def _execute_with_timeout(self, arguments) -> bool:
         """Execute a mapping with a provided timeout.
 
@@ -158,31 +157,23 @@ class MorphRDB(Container):
             'output.rdflanguage': serialization,
         }
 
-        if rdb_username is not None and rdb_password is not None \
-                and rdb_host is not None and rdb_port is not None \
-                and rdb_name is not None and rdb_type is not None:
-            config['root']['database.name[0]'] = rdb_name
-            if rdb_type == 'MySQL':
-                config['root']['database.driver[0]'] = 'com.mysql.jdbc.Driver'
-                config['root']['database.type[0]'] = 'mysql'
-                dsn = f'jdbc:mysql://{rdb_host}:{rdb_port}/{rdb_name}' + \
-                      '?allowPublicKeyRetrieval=true&useSSL=false'
-                config['root']['database.url[0]'] = dsn
-            elif rdb_type == 'PostgreSQL':
-                config['root']['database.driver[0]'] = 'org.postgresql.Driver'
-                config['root']['database.type[0]'] = 'postgresql'
-                dsn = f'jdbc:postgresql://{rdb_host}:{rdb_port}/{rdb_name}'
-                config['root']['database.url[0]'] = dsn
-            else:
-                raise ValueError(f'Unknown RDB type: "{rdb_type}"')
-            config['root']['database.user[0]'] = rdb_username
-            config['root']['database.pwd[0]'] = rdb_password
-            config['root']['no_of_database'] = '1'
+        config['root']['database.name[0]'] = rdb_name
+        if rdb_type == 'MySQL':
+            config['root']['database.driver[0]'] = 'com.mysql.jdbc.Driver'
+            config['root']['database.type[0]'] = 'mysql'
+            dsn = f'jdbc:mysql://{rdb_host}:{rdb_port}/{rdb_name}' + \
+                  '?allowPublicKeyRetrieval=true&useSSL=false'
+            config['root']['database.url[0]'] = dsn
+        elif rdb_type == 'PostgreSQL':
+            config['root']['database.driver[0]'] = 'org.postgresql.Driver'
+            config['root']['database.type[0]'] = 'postgresql'
+            dsn = f'jdbc:postgresql://{rdb_host}:{rdb_port}/{rdb_name}'
+            config['root']['database.url[0]'] = dsn
         else:
-            msg = 'Relational database parameters missing which are' + \
-                  'required for Morph-RDB'
-            self._logger.error(msg)
-            raise ValueError(msg)
+            raise ValueError(f'Unknown RDB type: "{rdb_type}"')
+        config['root']['database.user[0]'] = rdb_username
+        config['root']['database.pwd[0]'] = rdb_password
+        config['root']['no_of_database'] = '1'
 
         path = os.path.join(self._data_path, 'morphrdb')
         os.umask(0)

@@ -9,13 +9,13 @@ running containers and stop them.
 """
 
 import sys
-import docker
+import docker  # type: ignore
 from time import time, sleep
-from typing import Optional, List, Tuple
-try:
-    from bench_executor import Logger
-except ModuleNotFoundError:
-    from logger import Logger
+from typing import TYPE_CHECKING
+from bench_executor.logger import Logger
+
+if TYPE_CHECKING:
+    from typing import List, Tuple
 
 WAIT_TIME = 1  # seconds
 TIMEOUT_TIME = 600  # seconds
@@ -76,7 +76,8 @@ class Container():
     """
 
     def __init__(self, container: str, name: str, logger: Logger,
-                 ports: dict = {}, environment: dict = {}, volumes: dict = {}):
+                 ports: dict = {}, environment: dict = {},
+                 volumes: List[str] = []):
         """Creates an instance of the Container class.
 
         Parameters
@@ -89,7 +90,7 @@ class Container():
             Logger class to use for container logs.
         ports : dict
             Ports mapping of the container onto the host.
-        volumes : dict
+        volumes : list
             Volumes mapping of the container onto the host.
         """
         self._manager = ContainerManager()
@@ -173,9 +174,12 @@ class Container():
         logs : list
             The logs of the container for executing the command.
         """
-        logs = None
+        logs: List[str] = []
 
         try:
+            if self._container is None:
+                self._logger.error('Container is not initialized yet')
+                return False, []
             exit_code, output = self._container.exec_run(command)
             logs = output.decode()
             for line in logs.split('\n'):
@@ -183,11 +187,11 @@ class Container():
             if exit_code == 0:
                 return True, logs
         except docker.errors.APIError as e:
-            print(e, file=sys.stderr)
+            self._logger.error(f'Failed to execute command: {e}')
 
         return False, logs
 
-    def logs(self) -> Optional[List[str]]:
+    def logs(self) -> List[str]:
         """Retrieve the logs of the container.
 
         Returns
@@ -195,16 +199,19 @@ class Container():
         logs : list
             List of strings where each item is a single log line.
         """
-        try:
-            _logs = []
-            for line in self._container.logs(stream=True, follow=False):
-                _logs.append(line.decode())
+        logs: List[str] = []
 
-            return _logs
+        try:
+            if self._container is None:
+                self._logger.error('Container is not initialized yet')
+                return []
+
+            for line in self._container.logs(stream=True, follow=False):
+                logs.append(line.decode())
         except docker.errors.APIError as e:
             self._logger.warning(f'Retrieving container "{self._name}" logs'
                                  f'failed: {e}')
-        return None
+        return logs
 
     def run_and_wait_for_log(self, log_line: str, command: str = '') -> bool:
         """Run the container and wait for a log line to appear.
@@ -224,8 +231,12 @@ class Container():
         success : bool
             Whether the container exited with status code 0 or not.
         """
+        if self._container is None:
+            self._logger.error('Container is not initialized yet')
+            return False
+
         if not self.run(command):
-            print(f'Command "{command}" failed')
+            self._logger.error(f'Command "{command}" failed')
             return False
 
         start = time()
@@ -264,6 +275,10 @@ class Container():
        success : bool
             Whether the container exited with status code 0 or not.
         """
+        if self._container is None:
+            self._logger.error('Container is not initialized yet')
+            return False
+
         if not self.run(command):
             return False
 
