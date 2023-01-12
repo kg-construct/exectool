@@ -1204,10 +1204,6 @@ if __name__ == '__main__':
     except FileNotFoundError:
         pass
 
-    # Allow stderr logging to be silent during tests, logs are available
-    # in the log file
-    os.environ['UNITTEST'] = '1'
-
     if len(manager.list_all()) != 0:
         print('Stopping all containers before starting tests...')
         manager.stop_all()
@@ -1215,6 +1211,9 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         unittest.main()
     else:
+        # Allow stderr logging to be silent during tests, logs are available
+        # in the log file
+        os.environ['UNITTEST'] = '1'
         print('*' * 3 + ' UNIT TESTS ' + '*' * 3)
         unittest.main(defaultTest='UnitTests', exit=False)
         print('*' * 3 + ' FILE TESTS ' + '*' * 3)

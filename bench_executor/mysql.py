@@ -12,13 +12,10 @@ import os
 import pymysql
 import tempfile
 from csv import reader
-from typing import TYPE_CHECKING
+from typing import List, Tuple
 from timeout_decorator import timeout, TimeoutError  # type: ignore
 from bench_executor.container import Container
 from bench_executor.logger import Logger
-
-if TYPE_CHECKING:
-    from typing import List, Tuple
 
 VERSION = '8.0'
 HOST = 'localhost'

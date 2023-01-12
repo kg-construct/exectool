@@ -15,12 +15,9 @@ import psutil
 import configparser
 from rdflib import Graph, Namespace, RDF, URIRef
 from timeout_decorator import timeout, TimeoutError  # type: ignore
-from typing import TYPE_CHECKING
+from typing import Dict, Optional
 from bench_executor.container import Container
 from bench_executor.logger import Logger
-
-if TYPE_CHECKING:
-    from typing import Dict, Optional
 
 VERSION = '4.2.1'
 TIMEOUT = 6 * 3600  # 6 hours

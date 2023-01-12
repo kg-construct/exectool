@@ -191,7 +191,7 @@ class Stats():
                     # 5.0 is the median.
                     diff = step_end - step_begin
                     if diff == 0.0:
-                        self._logger.warning(f'Only 1 entry for step {step}'
+                        self._logger.warning(f'Only 1 entry for step {step} '
                                              f'found, falling back to median '
                                              f'timestamp instead of diff')
                         diff = step_begin

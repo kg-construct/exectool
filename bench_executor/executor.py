@@ -17,13 +17,10 @@ import shutil
 from glob import glob
 from datetime import datetime
 from time import sleep
-from typing import TYPE_CHECKING
+from typing import List, Dict, Any
 from bench_executor.collector import Collector, METRICS_FILE_NAME
 from bench_executor.stats import Stats
 from bench_executor.logger import Logger, LOG_FILE_NAME
-
-if TYPE_CHECKING:
-    from typing import List, Dict, Any
 
 METADATA_FILE = 'metadata.json'
 SCHEMA_FILE = 'metadata.schema'

@@ -11,11 +11,8 @@ running containers and stop them.
 import sys
 import docker  # type: ignore
 from time import time, sleep
-from typing import TYPE_CHECKING
+from typing import List, Tuple
 from bench_executor.logger import Logger
-
-if TYPE_CHECKING:
-    from typing import List, Tuple
 
 WAIT_TIME = 1  # seconds
 TIMEOUT_TIME = 600  # seconds
@@ -231,12 +228,12 @@ class Container():
         success : bool
             Whether the container exited with status code 0 or not.
         """
-        if self._container is None:
-            self._logger.error('Container is not initialized yet')
-            return False
-
         if not self.run(command):
             self._logger.error(f'Command "{command}" failed')
+            return False
+
+        if self._container is None:
+            self._logger.error('Container is not initialized yet')
             return False
 
         start = time()
@@ -275,11 +272,11 @@ class Container():
        success : bool
             Whether the container exited with status code 0 or not.
         """
-        if self._container is None:
-            self._logger.error('Container is not initialized yet')
+        if not self.run(command):
             return False
 
-        if not self.run(command):
+        if self._container is None:
+            self._logger.error('Container is not initialized yet')
             return False
 
         logs = self._container.logs(stream=True, follow=True)

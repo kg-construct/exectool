@@ -11,12 +11,9 @@ import os
 import sys
 import requests
 import psutil
-from typing import TYPE_CHECKING
+from typing import Dict
 from bench_executor.container import Container
 from bench_executor.logger import Logger
-
-if TYPE_CHECKING:
-    from typing import Dict
 
 VERSION = '4.6.1'
 CMD_ARGS = '--tdb2 --update --loc /fuseki/databases/DB /ds'

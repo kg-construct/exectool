@@ -13,13 +13,10 @@ based on innovative support of existing open standards
 import os
 import tempfile
 import psutil
-from typing import TYPE_CHECKING
+from typing import Dict
 from threading import Thread
 from bench_executor.container import Container
 from bench_executor.logger import Logger
-
-if TYPE_CHECKING:
-    from typing import Dict
 
 VERSION = '7.2.7'
 MAX_ROWS = '10000000'

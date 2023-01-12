@@ -10,13 +10,10 @@ from multiple originally (semi-)structured data sources.
 
 import os
 import psutil
-from typing import TYPE_CHECKING
+from typing import Optional
 from timeout_decorator import timeout, TimeoutError  # type: ignore
 from bench_executor.container import Container
 from bench_executor.logger import Logger
-
-if TYPE_CHECKING:
-    from typing import Optional
 
 VERSION = '6.0.0'
 TIMEOUT = 6 * 3600  # 6 hours

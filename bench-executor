@@ -8,7 +8,9 @@ import atexit
 from datetime import datetime
 from signal import signal, SIGINT
 from zipfile import ZipFile
-from bench_executor import Executor, Manager, Notifier
+from bench_executor.executor import Executor
+from bench_executor.container import ContainerManager as Manager
+from bench_executor.notifier import Notifier
 
 VERSION = '0.1.0'
 EXIT_CODE_UNKNOWN_COMMAND = -1

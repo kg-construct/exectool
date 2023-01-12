@@ -56,14 +56,22 @@ from time import time, sleep
 from datetime import datetime
 from subprocess import run, CalledProcessError
 from threading import Thread, Event
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, Union, Optional
 from bench_executor.logger import Logger
 
+# psutil types are platform specific, provide stubs at runtime as checking is
+# not done there
 if TYPE_CHECKING:
     from psutil._common import sswap, snetio
     from psutil._pslinux import svmem, sdiskio
     from psutil._psaix import scputimes
-    from typing import Dict, Union, Optional
+else:
+    from collections import namedtuple
+    scputimes = namedtuple('scputimes', [])
+    sswap = namedtuple('sswap', [])
+    svmem = namedtuple('svmem', [])
+    sdiskio = namedtuple('sdiskio', [])
+    snetio = namedtuple('snetio', [])
 
 #
 # Hardware and case information is logged to 'case-info.txt' on construction.
