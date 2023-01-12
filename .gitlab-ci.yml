@@ -28,32 +28,5 @@ files:
   - cd tests
   - ./file_tests
 
-rdb:
-  stage: Unit
-  script:
-  - cd tests
-  - ./rdb_tests
-
-unit:
-  stage: Unit
-  script:
-  - cd tests
-  - ./unit_tests
-
-query:
-  stage: Unit
-  script:
-  - cd tests
-  - ./query_tests
-
-triplestore:
-  stage: Unit
-  script:
-  - cd tests
-  - ./triplestore_tests
-
-integration:
-  stage: Integration
-  script:
-  - cd tests
-  - ./integration_tests
+# Other tests cannot be executed in Gitlab CI as it requires Docker volumes
+# which are not supported in Gitlab CI.
