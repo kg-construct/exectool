@@ -66,6 +66,17 @@ class Executor:
                                SCHEMA_FILE)) as f:
             self._schema = json.load(f)
 
+    @property
+    def main_directory(self) -> str:
+        """The main directory of all the cases.
+
+        Returns
+        -------
+        main_directory : str
+            The path to the main directory of the cases.
+        """
+        return self._main_directory
+
     def _init_resources(self) -> None:
         """Initialize resources of a case
 
@@ -376,7 +387,12 @@ class Executor:
                                                          directory,
                                                          self._verbose)
             if hasattr(resource, 'initialization'):
-                success = resource.initialization()
+                if not resource.initialization():
+                    self._logger.error('Failed to initialize resource '
+                                       f'{step["resource"]}')
+                    return False
+
+                self._logger.debug(f'Resource {step["resource"]} initialized')
                 self._progress_cb('Initializing', step['resource'], success)
 
         # Launch metrics collection
@@ -396,28 +412,31 @@ class Executor:
             if hasattr(resource, 'wait_until_ready'):
                 if not resource.wait_until_ready():
                     success = False
+                    self._logger.error('Waiting until resource '
+                                       f'"{step["resource"]} is ready failed')
                     self._progress_cb(step['resource'], step['name'], success)
                     break
+                self._logger.debug(f'Resource {step["resource"]} ready')
 
             # Execute command
             command = getattr(resource, step['command'])
             if not command(**step['parameters']):
                 success = False
+                msg = f'Executing command "{step["command"]}" ' + \
+                      f'failed for resource "{step["resource"]}'
                 # Some steps are non-critical like queries, they may fail but
                 # should not cause a complete case failure. Allow these
                 # failures if the may_fail key is present
                 if step.get('may_fail', False):
+                    self._logger.warning(msg)
                     self._progress_cb(step['resource'], step['name'], success)
                     continue
                 else:
+                    self._logger.error(msg)
                     self._progress_cb(step['resource'], step['name'], success)
                     break
-
-            # Store logs
-            # Needs separate process for logs and metrics collecting
-            if hasattr(resource, 'logs'):
-                for line in resource.logs():
-                    self._logger.info(line)
+            self._logger.debug(f'Command "{step["command"]}" executed on '
+                               f'resource {step["resource"]}')
 
             # Step complete
             self._progress_cb(step['resource'], step['name'], success)
@@ -434,10 +453,12 @@ class Executor:
             if resource is not None and hasattr(resource, 'stop'):
                 resource.stop()
 
+        self._logger.debug('Cleaned up all resource')
         self._progress_cb('Cleaner', 'Clean up resources', True)
 
         # Mark checkpoint if necessary
         if checkpoint and success:
+            self._logger.debug('Writing checkpoint...')
             with open(checkpoint_file, 'w') as f:
                 d = datetime.now().replace(microsecond=0).isoformat()
                 f.write(f'{d}\n')
@@ -446,6 +467,7 @@ class Executor:
         os.makedirs(os.path.join(results_run_path), exist_ok=True)
         shutil.move(os.path.join(directory, LOG_FILE_NAME),
                     os.path.join(results_run_path, LOG_FILE_NAME))
+        self._logger.debug('Copied logs to run results path')
 
         # Metrics measurements
         for metrics_file in glob(f'{data_path}/*/{METRICS_FILE_NAME}'):
@@ -454,9 +476,11 @@ class Executor:
             os.makedirs(os.path.join(results_run_path, subdir), exist_ok=True)
             shutil.move(metrics_file, os.path.join(results_run_path, subdir,
                                                    METRICS_FILE_NAME))
+        self._logger.debug('Copied metric measurements to run results path')
 
         # Results: all 'output_file' and 'result_file' values
         if success:
+            self._logger.debug('Copying generated files for run')
             for step in data['steps']:
                 subdir = step['resource'].lower().replace('_', '')
                 parameters = step['parameters']
@@ -485,10 +509,12 @@ class Executor:
 
             # Run complete, mark it
             run_checkpoint_file = os.path.join(results_run_path, '.done')
+            self._logger.debug('Writing run checkpoint...')
             with open(run_checkpoint_file, 'w') as f:
                 d = datetime.now().replace(microsecond=0).isoformat()
                 f.write(f'{d}\n')
 
+        self._logger.debug(f'Cooling down for {WAIT_TIME}s')
         self._progress_cb('Cooldown', f'Hardware cooldown period {WAIT_TIME}s',
                           True)
         sleep(WAIT_TIME)

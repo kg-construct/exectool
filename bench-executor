@@ -129,7 +129,7 @@ def execute_cases(executor: Executor, interval: float, runs: int,
 
     signal(SIGINT, signal_handler_interrupt)
 
-    cases = e.list()
+    cases = executor.list()
     cases = sorted(cases, key=lambda c: c['directory'])
     if not cases:
         print('No cases discovered!')
@@ -137,7 +137,8 @@ def execute_cases(executor: Executor, interval: float, runs: int,
 
     print(f'Executing {len(cases)} cases:')
     notifier.send('Execution STARTED',
-                  f'Executing {len(cases)} cases\nRoot: "{e.main_directory}"')
+                  f'Executing {len(cases)} cases'
+                  f'\nRoot: "{executor.main_directory}"')
     start_time = datetime.now()
     for index, case in enumerate(cases):
         data = case['data']
@@ -174,13 +175,13 @@ def execute_cases(executor: Executor, interval: float, runs: int,
                 continue
 
             try:
-                success, diff = e.run(case, interval, i, i == runs)
+                success = executor.run(case, interval, i, i == runs)
             except Exception as exception:
                 print(f'Case failure due to exception: {exception}',
                       file=sys.stderr)
                 notifier.send('Execution FAILED',
                               'Execution failed due to exception\n'
-                              f'Root: {e.main_directory}\n'
+                              f'Root: {executor.main_directory}\n'
                               f'Exception: {exception})')
                 sys.exit(EXIT_CODE_FAILED_CASE)
 
@@ -191,7 +192,7 @@ def execute_cases(executor: Executor, interval: float, runs: int,
             if stop:
                 notifier.send('Execution INTERRUPTED',
                               'Execution was interrupted by the user\n'
-                              f'Root: {e.main_directory}')
+                              f'Root: {executor.main_directory}')
                 sys.exit(EXIT_CODE_INTERRUPTED)
 
     # Exit with error code when we have a failed case
@@ -200,7 +201,7 @@ def execute_cases(executor: Executor, interval: float, runs: int,
         for index, f in enumerate(failures):
             msg += f'{index+1 : >4}. {f : <76}\n'
         print(msg, file=sys.stderr)
-        msg += f'\nRoot: "{e.main_directory}"'
+        msg += f'\nRoot: "{executor.main_directory}"'
         notifier.send('Execution FAILED', msg)
         sys.exit(EXIT_CODE_FAILED_CASE)
     else:
@@ -208,7 +209,7 @@ def execute_cases(executor: Executor, interval: float, runs: int,
         progress = _format_progress(len(cases), len(cases), start_time)
         msg = f'{text : <89} {progress : <13}'
         print(msg, file=sys.stderr)
-        msg = f'{text : <89}\nRoot: "{e.main_directory}"'
+        msg = f'{text : <89}\nRoot: "{executor.main_directory}"'
         notifier.send('Execution FINISHED', msg)
 
 

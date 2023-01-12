@@ -27,6 +27,9 @@ class ContainerManager():
 
         self._client = docker.from_env()
 
+    def __del__(self):
+        self._client.close()
+
     def list_all(self):
         """List all available containers."""
         return self._client.containers.list(all=True)
@@ -108,6 +111,9 @@ class Container():
         # create network if not exist
         self._manager.create_network(NETWORK_NAME)
 
+    def __del__(self):
+        self._client.close()
+
     @property
     def started(self) -> bool:
         """Indicates if the container is already started"""
@@ -151,9 +157,9 @@ class Container():
             self._started = (self._container is not None)
             return True
         except docker.errors.APIError as e:
-            print(e, file=sys.stderr)
+            self._logger.error(f'Failed to start container: {e}')
 
-        print(f'Starting container "{self._name}" failed!', file=sys.stderr)
+        self._logger.error(f'Starting container "{self._name}" failed!')
         return False
 
     def exec(self, command: str) -> Tuple[bool, List[str]]:
@@ -187,28 +193,6 @@ class Container():
             self._logger.error(f'Failed to execute command: {e}')
 
         return False, logs
-
-    def logs(self) -> List[str]:
-        """Retrieve the logs of the container.
-
-        Returns
-        -------
-        logs : list
-            List of strings where each item is a single log line.
-        """
-        logs: List[str] = []
-
-        try:
-            if self._container is None:
-                self._logger.error('Container is not initialized yet')
-                return []
-
-            for line in self._container.logs(stream=True, follow=False):
-                logs.append(line.decode())
-        except docker.errors.APIError as e:
-            self._logger.warning(f'Retrieving container "{self._name}" logs'
-                                 f'failed: {e}')
-        return logs
 
     def run_and_wait_for_log(self, log_line: str, command: str = '') -> bool:
         """Run the container and wait for a log line to appear.
@@ -244,16 +228,15 @@ class Container():
                 self._logger.debug(line)
 
                 if time() - start > TIMEOUT_TIME:
-                    print(f'Starting container "{self._name}" timed out!',
-                          file=sys.stderr)
+                    msg = f'Starting container "{self._name}" timed out!'
+                    self._logger.error(msg)
                     return False
 
                 if log_line in line:
                     sleep(WAIT_TIME)
                     return True
 
-        print(f'Waiting for container "{self._name}" failed!',
-              file=sys.stderr)
+        self._logger.error(f'Waiting for container "{self._name}" failed!')
         return False
 
     def run_and_wait_for_exit(self, command: str = '') -> bool:
@@ -279,15 +262,21 @@ class Container():
             self._logger.error('Container is not initialized yet')
             return False
 
+        status_code = self._container.wait()['StatusCode']
+        if status_code == 0:
+            return True
+
         logs = self._container.logs(stream=True, follow=True)
         if logs is not None:
             for line in logs:
                 line = line.decode().strip()
-                self._logger.debug(line)
+                if status_code == 0:
+                    self._logger.debug(line)
+                else:
+                    self._logger.error(line)
 
-        if self._container.wait()['StatusCode'] == 0:
-            return True
-
+        self._logger.error('Command failed while waiting for exit with status '
+                           f'code: {status_code}')
         return False
 
     def stop(self) -> bool:
@@ -302,6 +291,12 @@ class Container():
         """
         try:
             if self._container is not None:
+                logs = self._container.logs()
+                if logs is not None:
+                    logs = logs.decode()
+                    for line in logs.split('\n'):
+                        self._logger.debug(line)
+
                 self._container.stop()
                 self._container.remove(v=True)
             return True

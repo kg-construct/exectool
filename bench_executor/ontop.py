@@ -187,6 +187,7 @@ class Ontop(Container):
         """
         # Generate INI configuration file since no CLI is available
         config = configparser.ConfigParser()
+        config['root'] = {}
         if rdb_type == 'MySQL':
             dsn = f'jdbc:mysql://{rdb_host}:{rdb_port}/{rdb_name}'
             config['root']['jdbc.url'] = dsn
@@ -199,11 +200,8 @@ class Ontop(Container):
             msg = f'Unknown RDB type: "{rdb_type}"'
             self._logger.error(msg)
             raise ValueError(msg)
-
-        config['root'] = {
-            'jdbc.user': rdb_username,
-            'jdbc.password': rdb_password
-        }
+        config['root']['jdbc.user'] = rdb_username
+        config['root']['jdbc.password'] = rdb_password
 
         path = os.path.join(self._data_path, self.root_mount_directory)
         os.makedirs(path, exist_ok=True)
@@ -336,7 +334,6 @@ class OntopVirtualize(Ontop):
 
     def execute_mapping(self,
                         mapping_file: str,
-                        output_file: str,
                         serialization: str,
                         rdb_username: str,
                         rdb_password: str,

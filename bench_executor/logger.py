@@ -35,12 +35,18 @@ class Logger:
         """
         self._logger = logging.getLogger(name)
 
+        # Configure logging level
         level = logging.INFO
         if verbose:
             level = logging.DEBUG
         self._logger.setLevel(level)
-        self._logger.handlers = []
 
+        # Disable default handlers
+        handlers = self._logger.handlers
+        for h in handlers:
+            self._logger.removeHandler(h)
+
+        # Configure handlers
         directory = os.path.abspath(directory)
         os.makedirs(directory, exist_ok=True)
         log_file = logging.FileHandler(os.path.join(directory, LOG_FILE_NAME))
@@ -60,6 +66,16 @@ class Logger:
 
         level_name = logging.getLevelName(self._logger.level)
         self._logger.info(f'Logger ({level_name}) initialized for {name}')
+
+    def __del__(self):
+        """Close any handlers if needed"""
+        handlers = self._logger.handlers
+        for h in handlers:
+            try:
+                h.close()
+            except AttributeError:
+                pass
+            self._logger.removeHandler(h)
 
     def debug(self, msg):
         """Log a message with level DEBUG."""

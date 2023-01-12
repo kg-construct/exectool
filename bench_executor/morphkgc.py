@@ -69,7 +69,11 @@ class MorphKGC(Container):
             Whether the execution was successfull or not.
         """
         cmd = 'python3 -m morph_kgc /data/config_morphkgc.ini'
-        return self.run_and_wait_for_exit(cmd)
+        success = self.run_and_wait_for_exit(cmd)
+
+        print(success)
+
+        return success
 
     def execute(self, arguments: list) -> bool:
         """Execute Morph-KGC with given arguments.
@@ -89,6 +93,8 @@ class MorphKGC(Container):
         except TimeoutError:
             msg = f'Timeout ({TIMEOUT}s) reached for Morph-KGC'
             self._logger.warning(msg)
+
+        print('TIMED OUT!!')
 
         return False
 

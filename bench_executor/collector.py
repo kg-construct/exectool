@@ -56,7 +56,7 @@ from time import time, sleep
 from datetime import datetime
 from subprocess import run, CalledProcessError
 from threading import Thread, Event
-from typing import TYPE_CHECKING, Dict, Union, Optional
+from typing import TYPE_CHECKING, Dict, Union, Optional, List
 from bench_executor.logger import Logger
 
 # psutil types are platform specific, provide stubs at runtime as checking is
@@ -81,10 +81,10 @@ else:
 # interfaces, etc. individual devices are not logged.
 #
 
-CASE_INFO_FILE_NAME = 'case-info.txt'
-METRICS_FILE_NAME = 'metrics.csv'
-METRICS_VERSION = 2
-FIELDNAMES = [
+CASE_INFO_FILE_NAME: str = 'case-info.txt'
+METRICS_FILE_NAME: str = 'metrics.csv'
+METRICS_VERSION: int = 2
+FIELDNAMES: List[str] = [
     'index',
     'step',
     'timestamp',
@@ -113,9 +113,9 @@ FIELDNAMES = [
     'network_received_drop',
     'network_sent_drop'
 ]
-ROUND = 4
+ROUND: int = 4
 
-step_id = 1
+step_id: int = 1
 
 
 def _collect_metrics(stop_event: Event, metrics_path: str,
@@ -303,6 +303,10 @@ class Collector():
             msg = f'"{platform.system()} is not supported as OS'
             print(msg, file=sys.stderr)
             raise ValueError(msg)
+
+        # Initialize step ID
+        global step_id
+        step_id = 1
 
         # System information: OS, kernel, architecture
         system_hostname = 'UNKNOWN'

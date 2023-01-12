@@ -34,9 +34,12 @@ from bench_executor.stats import Stats, METRICS_AGGREGATED_FILE_NAME, \
         METRICS_SUMMARY_FILE_NAME
 from bench_executor.logger import Logger, LOG_FILE_NAME
 
-LOG_DIR = os.path.join(os.path.dirname(__file__), 'log')
-DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
-CONFIG_DIR = os.path.join(os.path.dirname(__file__), 'config')
+LOG_DIR = os.path.join(os.path.dirname(__file__), 'bench_executor',
+                       'log')
+DATA_DIR = os.path.join(os.path.dirname(__file__), 'bench_executor',
+                        'data')
+CONFIG_DIR = os.path.join(os.path.dirname(__file__), 'bench_executor',
+                          'config')
 CASE_INFO_FILE_NAME = 'case-info.txt'
 CHECKPOINT_FILE_NAME = '.done'
 EXIT_CODE_INTERRUPTED = -4
@@ -98,15 +101,6 @@ class UnitTests(unittest.TestCase):
         c = Container('alpine:edge', 'test_docker_run_and_wait_for_exit',
                       logger, {'80/tcp': '8082/tcp'})
         self.assertTrue(c.run_and_wait_for_exit('sleep 5'))
-        c.stop()
-
-    def test_docker_logs(self):
-        logger = Logger('test_docker_logs', LOG_DIR, True)
-        c = Container('nginx:alpine', 'test_docker_logs', logger,
-                      {'80/tcp': '8083/tcp'})
-        self.assertTrue(c.run_and_wait_for_log('start worker process'))
-        self.assertIsNotNone(c.logs())
-        self.assertTrue(len(c.logs()) > 0)
         c.stop()
 
     def test_postgresql(self):
@@ -346,7 +340,6 @@ class UnitTests(unittest.TestCase):
                 if t > timestamp:
                     timestamp = t
                 else:
-                    print(t, s, i)
                     self.assertTrue(False, 'Timestamp must always increment')
 
     def test_stats_generation(self):
@@ -652,13 +645,7 @@ class RDBTests(unittest.TestCase):
         QUERY = 'PREFIX foaf: <http://xmlns.com/foaf/0.1/> ' + \
                 'CONSTRUCT WHERE { ?s foaf:name ?o1 . }'
         ontop = OntopVirtualize(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
-        try:
-            os.remove(os.path.join(DATA_DIR, 'shared',
-                                   'ontopendpoint_mysql.nt'))
-        except FileNotFoundError:
-            pass
         self.assertTrue(ontop.execute_mapping('mapping.r2rml.ttl',
-                                              'ontopendpoint_mysql.nt',
                                               'ntriples', 'root', 'root',
                                               'MySQL', '3306', 'db', 'MySQL'))
         # Verify loaded data
@@ -674,13 +661,7 @@ class RDBTests(unittest.TestCase):
         QUERY = 'PREFIX foaf: <http://xmlns.com/foaf/0.1/> ' + \
                 'CONSTRUCT WHERE { ?s foaf:name ?o1 . }'
         ontop = OntopVirtualize(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
-        try:
-            os.remove(os.path.join(DATA_DIR, 'shared',
-                                   'ontopendpoint_postgresql.nt'))
-        except FileNotFoundError:
-            pass
         self.assertTrue(ontop.execute_mapping('mapping.r2rml.ttl',
-                                              'ontopendpoint_postgresql.nt',
                                               'ntriples', 'root', 'root',
                                               'PostgreSQL', '5432', 'db',
                                               'PostgreSQL'))
@@ -810,13 +791,7 @@ class QueryTests(unittest.TestCase):
         mysql.load('student.csv', 'student')
 
         ontop = OntopVirtualize(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
-        try:
-            os.remove(os.path.join(DATA_DIR, 'shared',
-                                   'ontopendpoint_mysql.nt'))
-        except FileNotFoundError:
-            pass
         self.assertTrue(ontop.execute_mapping('mapping.r2rml.ttl',
-                                              'ontopendpoint_mysql.nt',
                                               'ntriples', 'root', 'root',
                                               'MySQL', '3306', 'db', 'MySQL'))
 
@@ -1136,7 +1111,7 @@ class IntegrationTests(unittest.TestCase):
              f'{BASE_URL}/ontopendpoint/fuseki/'
              'transform-postgresql-to-ntriples']
         # We expect 28 cases
-        self.assertEqual(len(iris), 28)
+        self.assertEqual(len(iris), 28, iris)
         self.assertListEqual(sorted(e), sorted(iris))
 
     def test_executor_run(self):

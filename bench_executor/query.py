@@ -129,10 +129,6 @@ class Query():
 
         return results
 
-    def logs(self) -> Optional[List[str]]:
-        """Obsolete method, deprecated"""
-        return []
-
     def execute_and_save(self, query: str, sparql_endpoint: str,
                          results_file: str, expect_empty: bool = False,
                          headers: dict = {}) -> bool:
