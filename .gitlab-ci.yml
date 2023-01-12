@@ -1,0 +1,63 @@
+image: "docker:20.10.22-dind"
+services:
+  - docker:20.10.22-dind
+
+before_script:
+  - apk update
+  - apk add python3 py3-pip postgresql-dev gcc python3-dev musl-dev linux-headers
+  - docker info
+  - python --version
+  - pip install -r requirements.txt
+
+stages:
+  - Linting
+  - Unit
+  - File
+  - RDB
+  - Query
+  - Triplestore
+  - Integration
+
+linting:
+  stage: Linting
+  script:
+  - pip3 install mypy flake8 
+  - pip3 install types-PyMySQL types-html5lib types-jsonschema types-psutil types-psycopg2 types-requests
+  - cd tests
+  - ./linting
+
+files:
+  stage: File
+  script:
+  - cd tests
+  - ./file_tests
+
+rdb:
+  stage: RDB
+  script:
+  - cd tests
+  - ./rdb_tests
+
+unit:
+  stage: Unit
+  script:
+  - cd tests
+  - ./unit_tests
+
+integration:
+  stage: Integration
+  script:
+  - cd tests
+  - ./integration_tests
+
+query:
+  stage: Query
+  script:
+  - cd tests
+  - ./query_tests
+
+triplestore:
+  stage: Triplestore
+  script:
+  - cd tests
+  - ./triplestore_tests
