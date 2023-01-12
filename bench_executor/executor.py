@@ -26,6 +26,7 @@ METADATA_FILE = 'metadata.json'
 SCHEMA_FILE = 'metadata.schema'
 CONFIG_DIR = os.path.join(os.path.dirname(__file__), 'config')
 WAIT_TIME = 15  # seconds
+CHECKPOINT_FILE_NAME = '.done'
 
 
 # Dummy callback in case no callback was provided
@@ -319,7 +320,7 @@ class Executor:
             Whether the cleaning of the case succeeded or not.
         """
         # Checkpoints
-        checkpoint_file = os.path.join(case['directory'], '.done')
+        checkpoint_file = os.path.join(case['directory'], CHECKPOINT_FILE_NAME)
         if os.path.exists(checkpoint_file):
             os.remove(checkpoint_file)
 
@@ -365,8 +366,9 @@ class Executor:
         directory = case['directory']
         data_path = os.path.join(directory, 'data')
         results_run_path = os.path.join(directory, 'results', f'run_{run}')
-        checkpoint_file = os.path.join(directory, '.done')
-        run_checkpoint_file = os.path.join(results_run_path, '.done')
+        checkpoint_file = os.path.join(directory, CHECKPOINT_FILE_NAME)
+        run_checkpoint_file = os.path.join(results_run_path,
+                                           CHECKPOINT_FILE_NAME)
         active_resources = []
 
         # Make sure we start with a clean setup before the first run
@@ -508,7 +510,8 @@ class Executor:
                         self._logger.warning(msg)
 
             # Run complete, mark it
-            run_checkpoint_file = os.path.join(results_run_path, '.done')
+            run_checkpoint_file = os.path.join(results_run_path,
+                                               CHECKPOINT_FILE_NAME)
             self._logger.debug('Writing run checkpoint...')
             with open(run_checkpoint_file, 'w') as f:
                 d = datetime.now().replace(microsecond=0).isoformat()

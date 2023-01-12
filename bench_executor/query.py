@@ -8,7 +8,7 @@ checks if the results are empty or not.
 
 import os
 import requests
-from typing import Optional, List
+from typing import Optional
 from timeout_decorator import timeout, TimeoutError  # type: ignore
 from bench_executor.logger import Logger
 

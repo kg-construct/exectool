@@ -8,7 +8,6 @@ The Containermanager class allows to create container networks, list all
 running containers and stop them.
 """
 
-import sys
 import docker  # type: ignore
 from time import time, sleep
 from typing import List, Tuple
