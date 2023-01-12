@@ -20,6 +20,7 @@ TIMEOUT = 6 * 3600  # 6 hours
 R2RML = Namespace('http://www.w3.org/ns/r2rml#')
 RML = Namespace('http://semweb.mmlab.be/ns/rml#')
 D2RQ = Namespace('http://www.wiwiss.fu-berlin.de/suhl/bizer/D2RQ/0.1#')
+IMAGE = 'blindreviewing/sdm-rdfizer:v{VERSION}'
 
 
 class SDMRDFizer(Container):
@@ -46,8 +47,7 @@ class SDMRDFizer(Container):
 
         os.umask(0)
         os.makedirs(os.path.join(self._data_path, 'sdmrdfizer'), exist_ok=True)
-        super().__init__(f'blindreviewing/sdm-rdfizer:v{VERSION}',
-                         'SDM-RDFizer', self._logger,
+        super().__init__(IMAGE, 'SDM-RDFizer', self._logger,
                          volumes=[f'{self._data_path}/sdmrdfizer:/data',
                                   f'{self._data_path}/shared:/data/shared'])
 

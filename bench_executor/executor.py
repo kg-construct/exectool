@@ -423,7 +423,7 @@ class Executor:
             if not command(**step['parameters']):
                 success = False
                 msg = f'Executing command "{step["command"]}" ' + \
-                      f'failed for resource "{step["resource"]}'
+                      f'failed for resource "{step["resource"]}"'
                 # Some steps are non-critical like queries, they may fail but
                 # should not cause a complete case failure. Allow these
                 # failures if the may_fail key is present

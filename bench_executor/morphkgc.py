@@ -94,8 +94,6 @@ class MorphKGC(Container):
             msg = f'Timeout ({TIMEOUT}s) reached for Morph-KGC'
             self._logger.warning(msg)
 
-        print('TIMED OUT!!')
-
         return False
 
     def execute_mapping(self,
@@ -111,9 +109,18 @@ class MorphKGC(Container):
                         multiple_files: bool = False) -> bool:
         """Execute a mapping file with Morph-KGC.
 
-        N-Quads and N-Triples are currently supported as serialization
-        format for Morph-KGC. Morph-KGC can generate all triples in a single
-        file or spread it among multiple files.
+        Morph-KGC can transform SQL relational databases (MySQL, PostgreSQL,
+        Oracle, Microsoft SQL Server, MariaDB, SQLite), tabular (CSV, TSV,
+        Excel, Parquet, Feather, ORC, Stata, SAS, SPSS, ODS) and
+        hierarchical files (JSON, XML).
+
+        Morph-KGC currently only supports N-Quads and N-Triples in RDF and
+        RDF-Star. RDF and RDF-Star output is done automatically, you can use
+        the same serialization format (`ntriples`, `nquads`) for both RDF
+        and RDF-Star output.
+
+        Morph-KGC can generate all triples in a single file or spread it
+        among multiple files.
 
         Parameters
         ----------
