@@ -301,7 +301,7 @@ class Collector():
         # Only Linux is supported
         if platform.system() != 'Linux':
             msg = f'"{platform.system()} is not supported as OS'
-            print(msg, file=sys.stderr)
+            self._logger.error(msg)
             raise ValueError(msg)
 
         # Initialize step ID
@@ -330,8 +330,8 @@ class Collector():
                     cpu_name = line.split(':')[1].strip()
                     break
         except CalledProcessError as e:
-            print(f'Unable to determine CPU processor name: {e}',
-                  file=sys.stderr)
+            self._logger.warning('Unable to determine CPU processor name: '
+                                 f'{e}')
 
         cpu_cores = ps.cpu_count()
         cpu_min_freq = ps.cpu_freq().min

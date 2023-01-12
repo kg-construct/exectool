@@ -151,7 +151,7 @@ class Fuseki(Container):
         path = os.path.join(self._data_path, 'shared', rdf_file)
 
         if not os.path.exists(path):
-            print(f'RDF file "{rdf_file}" does not exist', file=sys.stderr)
+            self._logger.error(f'RDF file "{rdf_file}" does not exist')
             return False
 
         # Load directory with data with HTTP post
@@ -163,7 +163,7 @@ class Fuseki(Container):
             self._logger.debug(f'Loaded triples: {r.text}')
             r.raise_for_status()
         except Exception as e:
-            print(f'Failed to load RDF: "{e}" into Fuseki', file=sys.stderr)
+            self._logger.error(f'Failed to load RDF: "{e}" into Fuseki')
             return False
 
         return True

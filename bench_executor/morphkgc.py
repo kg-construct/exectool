@@ -71,8 +71,6 @@ class MorphKGC(Container):
         cmd = 'python3 -m morph_kgc /data/config_morphkgc.ini'
         success = self.run_and_wait_for_exit(cmd)
 
-        print(success)
-
         return success
 
     def execute(self, arguments: list) -> bool:

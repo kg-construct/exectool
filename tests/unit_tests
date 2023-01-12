@@ -22,11 +22,11 @@ from bench_executor.collector import Collector, METRICS_FILE_NAME  # noqa: E402
 from bench_executor.stats import Stats, METRICS_AGGREGATED_FILE_NAME, \
         METRICS_SUMMARY_FILE_NAME  # noqa: E402
 
-LOG_DIR = os.path.join(os.path.dirname(__file__), 'bench_executor',
+LOG_DIR = os.path.join(os.path.dirname(__file__), '..', 'bench_executor',
                        'log')
-DATA_DIR = os.path.join(os.path.dirname(__file__), 'bench_executor',
+DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'bench_executor',
                         'data')
-CONFIG_DIR = os.path.join(os.path.dirname(__file__), 'bench_executor',
+CONFIG_DIR = os.path.join(os.path.dirname(__file__), '..', 'bench_executor',
                           'config')
 CASE_INFO_FILE_NAME = 'case-info.txt'
 
@@ -373,5 +373,4 @@ if __name__ == '__main__':
         print('Stopping all containers before starting tests...')
         manager.stop_all()
 
-    if len(sys.argv) > 1:
-        unittest.main()
+    unittest.main()
