@@ -47,7 +47,6 @@ network.
 """
 
 import os
-import sys
 import platform
 import psutil as ps
 from docker import DockerClient  # type: ignore

@@ -8,7 +8,6 @@ service, as a Java web application (WAR file), and as a standalone server.
 """
 
 import os
-import sys
 import requests
 import psutil
 from typing import Dict
