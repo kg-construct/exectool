@@ -166,7 +166,6 @@ class FileTests(unittest.TestCase):
         self.assertEqual(len(g), 3)
         sdmrdfizer.stop()
 
-    @unittest.skip('Broken again')
     def test_sdmrdfizer_json(self):
         sdmrdfizer = SDMRDFizer(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         try:
@@ -184,7 +183,7 @@ class FileTests(unittest.TestCase):
         self.assertEqual(len(g), 3)
         sdmrdfizer.stop()
 
-    @unittest.skip('Broken again')
+    @unittest.skip('Broken')
     def test_sdmrdfizer_xml(self):
         sdmrdfizer = SDMRDFizer(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         try:

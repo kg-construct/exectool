@@ -354,6 +354,7 @@ class Collector():
         # Docker daemon: version, storage driver, cgroupfs
         client = DockerClient()
         docker_info = client.info()
+        client.close()
 
         # Write machine information to disk
         case_info_file = os.path.join(self._data_path, CASE_INFO_FILE_NAME)

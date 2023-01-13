@@ -220,22 +220,33 @@ class Container():
             return False
 
         start = time()
+        found_line = False
         logs = self._container.logs(stream=True, follow=True)
+        lines = []
         if logs is not None:
             for line in logs:
                 line = line.decode().strip()
+                lines.append(line)
                 self._logger.debug(line)
 
                 if time() - start > TIMEOUT_TIME:
                     msg = f'Starting container "{self._name}" timed out!'
                     self._logger.error(msg)
-                    return False
+                    break
 
                 if log_line in line:
-                    sleep(WAIT_TIME)
-                    return True
+                    found_line = True
+                    break
 
+            logs.close()
+            if found_line:
+                sleep(WAIT_TIME)
+                return True
+
+        # Logs are collected on success, log them on failure
         self._logger.error(f'Waiting for container "{self._name}" failed!')
+        for line in lines:
+            self._logger.error(line)
         return False
 
     def run_and_wait_for_exit(self, command: str = '') -> bool:
@@ -262,17 +273,17 @@ class Container():
             return False
 
         status_code = self._container.wait()['StatusCode']
-        if status_code == 0:
-            return True
-
         logs = self._container.logs(stream=True, follow=True)
         if logs is not None:
             for line in logs:
                 line = line.decode().strip()
-                if status_code == 0:
-                    self._logger.debug(line)
-                else:
+                # On success, logs are collected when the container is stopped.
+                if status_code != 0:
                     self._logger.error(line)
+            logs.close()
+
+        if status_code == 0:
+            return True
 
         self._logger.error('Command failed while waiting for exit with status '
                            f'code: {status_code}')

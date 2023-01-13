@@ -15,7 +15,7 @@ from typing import Optional
 from bench_executor.container import Container
 from bench_executor.logger import Logger
 
-VERSION = '4.6.3.4'
+VERSION = '4.6.6.5'
 TIMEOUT = 6 * 3600  # 6 hours
 R2RML = Namespace('http://www.w3.org/ns/r2rml#')
 RML = Namespace('http://semweb.mmlab.be/ns/rml#')
