@@ -36,8 +36,9 @@ class Logger:
         self._logger = logging.getLogger(name)
 
         # Configure logging level
+        self._verbose = verbose
         level = logging.INFO
-        if verbose:
+        if self._verbose:
             level = logging.DEBUG
         self._logger.setLevel(level)
 
@@ -76,6 +77,17 @@ class Logger:
             except AttributeError:
                 pass
             self._logger.removeHandler(h)
+
+    @property
+    def verbose(self) -> bool:
+        """Verbose logging enabled.
+
+        Returns
+        -------
+        verbose : bool
+            Verbose logging enabled or not.
+        """
+        return self._verbose
 
     def debug(self, msg):
         """Log a message with level DEBUG."""

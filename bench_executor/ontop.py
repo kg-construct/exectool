@@ -19,7 +19,7 @@ from typing import Dict, Optional
 from bench_executor.container import Container
 from bench_executor.logger import Logger
 
-VERSION = '4.2.1'
+VERSION = '5.0.0'
 TIMEOUT = 6 * 3600  # 6 hours
 R2RML = Namespace('http://www.w3.org/ns/r2rml#')
 
@@ -56,7 +56,14 @@ class Ontop(Container):
         # Set Java heap to 1/2 of available memory instead of the default 1/4
         max_heap = int(psutil.virtual_memory().total * (1/2))
 
-        environment = {'ONTOP_JAVA_ARGS': f'-Xmx{max_heap} -Xms{max_heap}'}
+        # Configure logging
+        log_level = 'info'
+        if self._logger.verbose:
+            log_level = 'debug'
+        self._logger.info(f'Initialized Ontop logger at "{log_level}" level')
+
+        environment = {'ONTOP_JAVA_ARGS': f'-Xmx{max_heap} -Xms{max_heap}',
+                       'ONTOP_LOG_LEVEL': log_level}
         super().__init__(f'blindreviewing/ontop:v{VERSION}', name,
                          self._logger,
                          ports={'8888': '8888'},
@@ -127,7 +134,9 @@ class Ontop(Container):
         success : bool
             Whether the execution succeeded or not.
         """
+
         cmd = f'/ontop/ontop {self._mode} {" ".join(arguments)}'
+        self._logger.info(f'Executing Ontop with command: {cmd}')
         if self._mode == 'endpoint':
             log_line = 'OntopEndpointApplication - Started ' + \
                        'OntopEndpointApplication'
@@ -312,25 +321,8 @@ class OntopVirtualize(Ontop):
         self._data_path = os.path.abspath(data_path)
         self._config_path = os.path.abspath(config_path)
         self._logger = Logger(__name__, directory, verbose)
-        super().__init__('Ontop-Virtualize', data_path, self._logger,
+        super().__init__('Ontop-Virtualize', self._data_path, self._logger,
                          'endpoint')
-
-    def wait_until_ready(self, command: str = '') -> bool:
-        """Wait until Ontop endpoint is ready to execute SPARQL queries.
-
-        Parameters
-        ----------
-        command : str
-            Command to execute in the Ontop container, optionally, defaults to
-            no command.
-
-        Returns
-        -------
-        success : bool
-            Whether the Ontop endpoint was initialized successfull or not.
-        """
-        return self.run_and_wait_for_log('Ontop has completed the setup',
-                                         command=command)
 
     def execute_mapping(self,
                         mapping_file: str,
@@ -420,7 +412,7 @@ class OntopMaterialize(Ontop):
         self._logger = Logger(__name__, directory, verbose)
         os.makedirs(os.path.join(self._data_path, 'ontopmaterialize'),
                     exist_ok=True)
-        super().__init__('Ontop-Materialize', data_path, self._logger,
+        super().__init__('Ontop-Materialize', self._data_path, self._logger,
                          'materialize')
 
     @timeout(TIMEOUT)
@@ -507,12 +499,3 @@ class OntopMaterialize(Ontop):
             self._logger.warning(msg)
 
         return False
-
-
-if __name__ == '__main__':
-    print(f'ℹ️  Starting up Ontop Virtualize Endpoint v{VERSION}...')
-    o = OntopVirtualize('data', 'config', 'log', True)
-    o.wait_until_ready()
-    input('ℹ️  Press any key to stop')
-    o.stop()
-    print('ℹ️  Stopped')

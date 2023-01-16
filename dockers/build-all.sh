@@ -13,7 +13,7 @@ VIRTUOSO_VERSION='7.2.7'
 FUSEKI_VERSION='4.6.1'
 MORPHKGC_VERSION='2.2.0'
 MORPHRDB_VERSION='3.12.5'
-ONTOP_VERSION='4.2.1'
+ONTOP_VERSION='5.0.0'
 RMLMAPPER_VERSION='6.0.0'
 RMLMAPPER_BUILD='363'
 SDMRDFIZER_VERSION='4.6.3.4'
@@ -77,7 +77,7 @@ cd ..
 # Ontop
 echo "*** Building Ontop $ONTOP_VERSION ... ***"
 cd Ontop
-docker build --no-cache -f "Dockerfile.source" \
+docker build --no-cache \
     --build-arg ONTOP_VERSION=$ONTOP_VERSION \
     -t blindreviewing/ontop:v$ONTOP_VERSION .
 docker push blindreviewing/ontop:v$ONTOP_VERSION

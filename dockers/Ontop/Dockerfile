@@ -9,7 +9,7 @@ ARG ONTOP_VERSION
 # Install latest updates and dependencies
 RUN apt-get update
 RUN apt-get upgrade -y
-RUN apt-get install -y openjdk-8-jdk less vim wget unzip
+RUN apt-get install -y openjdk-11-jdk less vim wget unzip
 
 # Download Ontop release
 RUN wget -O ontop.zip https://github.com/ontop/ontop/releases/download/ontop-${ONTOP_VERSION}/ontop-cli-${ONTOP_VERSION}.zip
