@@ -239,6 +239,7 @@ class Stats():
         # for that step
         aggregated_entries = []
         summary_entries = []
+        index_number = 1
         for step_index, step_timestamps in enumerate(timestamps_by_step):
             # We ensure that the number of runs is always uneven so the median
             # is always a measured data point instead of the average of 2 data
@@ -249,9 +250,16 @@ class Stats():
                                            f'run_{median_run_id}')
             median_step_data = self._parse_v2(median_run_path,
                                               step=step_index + 1)
-            aggregated_entries += median_step_data
 
-            # Summary data of a step: diff per step
+            # Rewrite indexes to match new number of samples
+            for entry in median_step_data:
+                entry['index'] = index_number
+
+                aggregated_entries.append(entry)
+                index_number += 1
+
+        # Summary data of a step: diff per step
+        for step_index, step_timestamps in enumerate(timestamps_by_step):
             summary = {}
             for field in FIELDNAMES:
                 # Report max memory peak for this step
