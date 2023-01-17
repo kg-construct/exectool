@@ -3,6 +3,7 @@
 import os
 import sys
 import atexit
+import shutil
 import unittest
 import subprocess
 from glob import glob
@@ -149,6 +150,7 @@ class FileTests(unittest.TestCase):
         self.assertEqual(len(g), 3)
         morphkgc.stop()
 
+    @unittest.skip('Container unavailable')
     def test_sdmrdfizer_csv(self):
         sdmrdfizer = SDMRDFizer(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         try:
@@ -166,6 +168,7 @@ class FileTests(unittest.TestCase):
         self.assertEqual(len(g), 3)
         sdmrdfizer.stop()
 
+    @unittest.skip('Container unavailable')
     def test_sdmrdfizer_json(self):
         sdmrdfizer = SDMRDFizer(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         try:
@@ -183,7 +186,7 @@ class FileTests(unittest.TestCase):
         self.assertEqual(len(g), 3)
         sdmrdfizer.stop()
 
-    @unittest.skip('Broken')
+    @unittest.skip('Container unavailable')
     def test_sdmrdfizer_xml(self):
         sdmrdfizer = SDMRDFizer(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         try:
