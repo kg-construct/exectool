@@ -107,14 +107,17 @@ class Stats():
 
     def _parse_field(self, field, value):
         """Parse the field of the metrics field in a Python data type."""
-        if field in FIELDNAMES_FLOAT:
-            return float(value)
-        elif field in FIELDNAMES_INT:
-            return int(value)
-        else:
-            msg = f'Field "{field}" type is unknown'
-            self._logger.error(msg, file=sys.stderr)
-            raise ValueError(msg)
+        try:
+            if field in FIELDNAMES_FLOAT:
+                return float(value)
+            elif field in FIELDNAMES_INT:
+                return int(value)
+            else:
+                msg = f'Field "{field}" type is unknown'
+                self._logger.error(msg)
+                raise ValueError(msg)
+        except TypeError:
+            return -1
 
     def _parse_v2(self, run_path, fields=FIELDNAMES, step=None):
         """Parse the CSV metrics file in v2 format."""
@@ -130,18 +133,27 @@ class Stats():
         with open(metrics_file, 'r') as f:
             reader = DictReader(f)
             for line in reader:
+                corrupt: bool = False
+
                 # Skip steps we don't want to parse
-                if step is not None and \
-                   step != self._parse_field('step', line['step']):
+                if step is not None and step != self._parse_field('step', line['step']):
                     continue
 
                 # Filter on field names
                 filtered = {key: line[key] for key in fields}
                 entry = {}
                 for key, value in filtered.items():
-                    entry[key] = self._parse_field(key, value)
+                    v = self._parse_field(key, value)
+                    if v == -1:
+                        corrupt = True
+                        msg = f'Corrupt entry {key} with value {value} in {metrics_file}, skipped'
+                        self._logger.info(msg)
+                        break
 
-                data.append(entry)
+                    entry[key] = v
+
+                if not corrupt:
+                    data.append(entry)
 
         return data
 
@@ -261,6 +273,12 @@ class Stats():
         # Summary data of a step: diff per step
         for step_index, step_timestamps in enumerate(timestamps_by_step):
             summary = {}
+            median_run_id = timestamps_by_step[step_index] \
+                            .index(median(step_timestamps)) + 1
+            median_run_path = os.path.join(self._results_path,
+                                           f'run_{median_run_id}')
+            median_step_data = self._parse_v2(median_run_path,
+                                              step=step_index + 1)
             for field in FIELDNAMES:
                 # Report max memory peak for this step
                 if 'memory' in field:
