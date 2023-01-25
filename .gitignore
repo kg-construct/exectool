@@ -1,26 +1,6 @@
 # Project specific ignores
-bench_executor/data/hwinfo.txt
-bench_executor/data/rmlmapper/
-bench_executor/data/postgresql/
-bench_executor/data/virtuoso/
-bench_executor/data/mysql/
-bench_executor/data/morphkgc/
-bench_executor/data/morphrdb/
-bench_executor/data/ontopendpoint/
-bench_executor/data/ontopmaterialize/
-bench_executor/data/ontopvirtualize/
-bench_executor/data/sdmrdfizer/
-bench_executor/data/morphkgcoptimized/
-bench_executor/data/query/
+bench_executor/data/
 bench_executor/log
-bench_executor/data/test-cases/*/data
-bench_executor/data/test-cases/*/*/data
-bench_executor/data/test-cases/*/*/*/data
-bench_executor/data/test-cases/*/results
-bench_executor/data/test-cases/*/*/results
-bench_executor/data/test-cases/*/*/*/results
-bench_executor/data/test-cases/morphkgcoptimized/*
-bench_executor/data/shared/mapping_yarrrml*
 *.zip
 *tmp_student.csv
 *.done
