@@ -18,7 +18,7 @@ echo "OK!"
 
 # Static code analysis
 echo "*** MODULE STATIC CODE ANALYSIS ***"
-mypy bench_executor
+mypy bench_executor --check-untyped-defs
 
 echo "*** CLI STATIC CODE ANALYSIS ***"
-mypy bench-executor
+mypy bench-executor --check-untyped-defs

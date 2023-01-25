@@ -425,7 +425,7 @@ class Collector():
     @property
     def name(self):
         """Name of the class: Collector"""
-        return self.__name__
+        return self.__class__.__name__
 
     def next_step(self):
         """Increment the step number by one.

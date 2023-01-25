@@ -14,7 +14,6 @@ be used to compare various cases with each other.
 """
 
 import os
-import sys
 from glob import glob
 from statistics import median
 from csv import DictWriter, DictReader
@@ -136,7 +135,8 @@ class Stats():
                 corrupt: bool = False
 
                 # Skip steps we don't want to parse
-                if step is not None and step != self._parse_field('step', line['step']):
+                if step is not None and \
+                   step != self._parse_field('step', line['step']):
                     continue
 
                 # Filter on field names
@@ -146,7 +146,8 @@ class Stats():
                     v = self._parse_field(key, value)
                     if v == -1:
                         corrupt = True
-                        msg = f'Corrupt entry {key} with value {value} in {metrics_file}, skipped'
+                        msg = f'Corrupt entry {key} with value {value} in ' + \
+                              f'{metrics_file}, skipped'
                         self._logger.info(msg)
                         break
 
@@ -274,7 +275,7 @@ class Stats():
         for step_index, step_timestamps in enumerate(timestamps_by_step):
             summary = {}
             median_run_id = timestamps_by_step[step_index] \
-                            .index(median(step_timestamps)) + 1
+                .index(median(step_timestamps)) + 1
             median_run_path = os.path.join(self._results_path,
                                            f'run_{median_run_id}')
             median_step_data = self._parse_v2(median_run_path,
