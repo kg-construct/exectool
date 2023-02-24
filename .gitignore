@@ -8,6 +8,7 @@ bench_executor/log
 *metrics.jsonl
 *results.nt
 *stats.csv
+downloads
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

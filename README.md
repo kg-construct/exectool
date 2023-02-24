@@ -1,18 +1,18 @@
-# bench-excutor
+# EXEC (EXperiment ExeCutor)
 
-Bench-executor is a simple tool to execute benchmarks on tools which are running
-in Docker.
+EXEC (EXperiment ExeCutor) is a simple tool to execute benchmarks
+on tools which are running in Docker. EXEC exposes a CLI interface `exectool`.
 
 ## How to use?
 
 You can list all options and arguments with `--help`
 
 ```
-usage: bench-executor [-h] [--version] [--root MAIN_DIRECTORY] [--runs NUMBER_OF_RUNS] [--interval INTERVAL]
+usage: exectool [-h] [--version] [--root MAIN_DIRECTORY] [--runs NUMBER_OF_RUNS] [--interval INTERVAL]
                       [--verbose] [--fail-fast] [--wait-for-user]
                       command
 
-Copyright by (c) ANONYMOUS (2022), available under GPLv3 license
+Copyright by (c) Dylan Van Assche (2022-2023), available under MIT license
 
 positional arguments:
   command               Command to execute, available commands: "list", "run"
@@ -80,14 +80,14 @@ Real examples can be found under [bench_executor/data/test-cases/](bench_executo
 You can list all cases from a certain root folder with:
 
 ```
-bench-executor list
+exectool list
 ```
 
 By default, the root directory is set to the current working directory.
 If you want to set a different one, use the `--root` argument:
 
 ```
-bench-executor list --root=/path/to/your/cases
+exectool list --root=/path/to/your/cases
 ```
 
 ### Running all cases
@@ -95,14 +95,14 @@ bench-executor list --root=/path/to/your/cases
 Running all cases under a root directory is similar to listing them:
 
 ```
-bench-executor run
+exectool run
 ```
 
 If you want to specify the number of runs, metrics collection interval, 
 and the root directory:
 
 ```
-bench-executor list --root=/path/to/your/cases --runs=5 --interval 1.0
+exectool list --root=/path/to/your/cases --runs=5 --interval 1.0
 ```
 
 This will execute all cases at `/path/to/your/cases`,
@@ -115,7 +115,7 @@ If you want to pause the execution of your case after each step,
 you can add the `--wait-for-user` argument when running the cases:
 
 ```
-bench-executor run --wait-for-user
+exectool run --wait-for-user
 ```
 
 This way, you can debug resources when they are not working properly or testing
@@ -125,7 +125,7 @@ If you want to make sure the executor exits immediately when a case failed,
 add the `--fail-fast` argument:
 
 ```
-bench-executor run --fail-fast
+exectool run --fail-fast
 ```
 
 ### Cleaning all cases
@@ -134,7 +134,7 @@ Sometimes you want to start from a clean slate, you can clean all cases under
 the given root directory with:
 
 ```
-bench-executor clean
+exectool clean
 ```
 
 All collected metrics and log files will be deleted, be careful!
@@ -182,6 +182,6 @@ cd bench_executor
 
 ## License
 
-Licensed under the GPLv3 license
-Copyright (c) by ANONYMOUS (2022)
+Licensed under the MIT license
+Copyright (c) by Dylan Van Assche (2022-2023)
 

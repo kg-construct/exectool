@@ -9,7 +9,7 @@ flake8 bench_executor
 echo "OK!"
 
 echo "*** CLI PEP8 ***"
-flake8 bench-executor
+flake8 exectool
 echo "OK!"
 
 echo "*** TESTS PEP8 ***"
@@ -21,4 +21,4 @@ echo "*** MODULE STATIC CODE ANALYSIS ***"
 mypy bench_executor --check-untyped-defs
 
 echo "*** CLI STATIC CODE ANALYSIS ***"
-mypy bench-executor --check-untyped-defs
+mypy exectool --check-untyped-defs

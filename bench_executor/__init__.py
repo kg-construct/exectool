@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-bench-executor module allows you to execute cases in multiple runs and
+bench_executor module allows you to execute cases in multiple runs and
 automatically collect metrics.
 """
 
