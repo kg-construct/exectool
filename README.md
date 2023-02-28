@@ -145,18 +145,6 @@ All collected metrics and log files will be deleted, be careful!
 
 **Ubuntu 22.04 LTS**
 
-Ubuntu 22.04 LTS or later is required because this is the first LTS version
-with default CGroupFSv2 support. This tool will not function when not using the
-GroupFSv2 SystemD driver in Docker! Patches are welcome to support other 
-CGroupFS configurations.
-
-You can check the CGroupFS driver with `docker info`:
-
-```
-Cgroup Driver: systemd
-Cgroup Version: 2
-```
-
 1. Install dependencies
 
 ```
