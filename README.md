@@ -130,13 +130,6 @@ exectool run --wait-for-user
 This way, you can debug resources when they are not working properly or testing
 your setup.
 
-If you want to make sure the executor exits immediately when a case failed,
-add the `--fail-fast` argument:
-
-```
-exectool run --fail-fast
-```
-
 ### Cleaning all cases
 
 Sometimes you want to start from a clean slate, you can clean all cases under 
