@@ -167,7 +167,7 @@ Do not forget to logout so the user groups are properly updated!
 ```
 # Run all tests
 cd bench_executor
-./tests
+./tests/unit_tests
 ```
 
 ## License
