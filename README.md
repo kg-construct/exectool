@@ -173,4 +173,4 @@ cd bench_executor
 ## License
 
 Licensed under the [MIT license](./LICENSE)<br>
-Copyright (c) by Dylan Van Assche (2022-2023)
+Written by Dylan Van Assche (dylan.vanassche@ugent.be)
