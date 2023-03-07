@@ -260,7 +260,7 @@ def generate_statistics(executor: Executor):
 
         # Skip already generated stats
         if os.path.exists(os.path.join(case['directory'], 'results',
-                                       'aggregated.json')):
+                                       'aggregated.csv')):
             continue
 
         success = e.stats(case)
