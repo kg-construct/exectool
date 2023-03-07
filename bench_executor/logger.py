@@ -60,7 +60,7 @@ class Logger:
         # log file anyway
         if os.environ.get('UNITTEST') is None:
             log_console = logging.StreamHandler(sys.stderr)
-            log_console.setLevel(logging.WARNING)
+            log_console.setLevel(level)
             format_console = logging.Formatter(LOGGER_FORMAT_CONSOLE)
             log_console.setFormatter(format_console)
             self._logger.addHandler(log_console)
