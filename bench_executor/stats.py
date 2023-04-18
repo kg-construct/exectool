@@ -23,17 +23,20 @@ from bench_executor.logger import Logger
 
 METRICS_AGGREGATED_FILE_NAME = 'aggregated.csv'
 METRICS_SUMMARY_FILE_NAME = 'summary.csv'
+FIELDNAMES_STRING = ['name']
 FIELDNAMES_FLOAT = ['timestamp', 'cpu_user', 'cpu_system', 'cpu_idle',
                     'cpu_iowait', 'cpu_user_system']
-FIELDNAMES_INT = ['index', 'step', 'version', 'memory_ram', 'memory_swap',
-                  'memory_ram_swap', 'disk_read_count', 'disk_write_count',
-                  'disk_read_bytes', 'disk_write_bytes', 'disk_read_time',
-                  'disk_write_time', 'disk_busy_time',
+FIELDNAMES_INT = ['run', 'index', 'step', 'version', 'memory_ram',
+                  'memory_swap', 'memory_ram_swap', 'disk_read_count',
+                  'disk_write_count', 'disk_read_bytes', 'disk_write_bytes',
+                  'disk_read_time', 'disk_write_time', 'disk_busy_time',
                   'network_received_count', 'network_sent_count',
                   'network_received_bytes', 'network_sent_bytes',
                   'network_received_error', 'network_sent_error',
                   'network_received_drop', 'network_sent_drop']
 FIELDNAMES_SUMMARY = [
+    'name',
+    'run',
     'number_of_samples',
     'step',
     'duration',
@@ -111,6 +114,8 @@ class Stats():
                 return float(value)
             elif field in FIELDNAMES_INT:
                 return int(value)
+            elif field in FIELDNAMES_STRING:
+                return str(value)
             else:
                 msg = f'Field "{field}" type is unknown'
                 self._logger.error(msg)
@@ -140,7 +145,11 @@ class Stats():
                     continue
 
                 # Filter on field names
-                filtered = {key: line[key] for key in fields}
+                filtered: dict = {}
+                for key in fields:
+                    if key in line:
+                        filtered[key] = line[key]
+
                 entry = {}
                 for key, value in filtered.items():
                     v = self._parse_field(key, value)
@@ -182,7 +191,8 @@ class Stats():
                 self._logger.error(f'Run "{run_id}" is not a number')
                 return False
 
-            # Extract steps and timestamps of this run
+            # Extract steps and timestamps of this run.
+            # v3 is the same as v2 with an additional field
             data = self._parse_v2(run_path, fields=['step', 'timestamp'])
 
             # Calculate timestamp diff for each step
@@ -281,6 +291,10 @@ class Stats():
             median_step_data = self._parse_v2(median_run_path,
                                               step=step_index + 1)
             for field in FIELDNAMES:
+                # Some fields are not present on v2 while they are in v3+
+                if field not in median_step_data[0]:
+                    continue
+
                 # Report max memory peak for this step
                 if 'memory' in field:
                     values = []
@@ -289,7 +303,7 @@ class Stats():
                     summary[f'{field}_min'] = min(values)
                     summary[f'{field}_max'] = max(values)
                 # Leave some fields like they are
-                elif field in ['version', 'step']:
+                elif field in ['version', 'step', 'name', 'run']:
                     summary[field] = median_step_data[0][field]
                 # All other fields are accumulated data values for which we
                 # report the diff for the step

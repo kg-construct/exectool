@@ -7,6 +7,7 @@ for provenance reasons when comparing results from cases.
 The following metrics are collected:
 
 **General**
+- `name`: name of the case being executed.
 - `index`: incremental index for each collected sample.
 - `step`: Number of the step of a collected sample.
 - `timestamp`: The time when the sample was collected.
@@ -82,8 +83,10 @@ else:
 
 CASE_INFO_FILE_NAME: str = 'case-info.txt'
 METRICS_FILE_NAME: str = 'metrics.csv'
-METRICS_VERSION: int = 2
+METRICS_VERSION: int = 3
 FIELDNAMES: List[str] = [
+    'name',
+    'run',
     'index',
     'step',
     'timestamp',
@@ -117,7 +120,7 @@ ROUND: int = 4
 step_id: int = 1
 
 
-def _collect_metrics(stop_event: Event, metrics_path: str,
+def _collect_metrics(stop_event: Event, name: str, run: int, metrics_path: str,
                      sample_interval: float, initial_timestamp: float,
                      initial_cpu: scputimes, initial_ram: svmem,
                      initial_swap: sswap, initial_disk_io: Optional[sdiskio],
@@ -125,7 +128,7 @@ def _collect_metrics(stop_event: Event, metrics_path: str,
     """Thread function to collect a sample at specific intervals"""
     global step_id
     index = 1
-    row: Dict[str, Union[int, float]]
+    row: Dict[str, Union[int, float, str]]
 
     # Create metrics file
     with open(metrics_path, 'w') as f:
@@ -134,6 +137,8 @@ def _collect_metrics(stop_event: Event, metrics_path: str,
 
         # Initial values
         row = {
+            'name': name,
+            'run': run,
             'index': index,
             'step': step_id,
             'timestamp': 0.0,
@@ -199,6 +204,8 @@ def _collect_metrics(stop_event: Event, metrics_path: str,
                 network_io.dropout - initial_network_io.dropout
 
             row = {
+                'name': name,
+                'run': run,
                 'index': index,
                 'step': step_id,
                 'timestamp': diff,
@@ -247,9 +254,9 @@ def _collect_metrics(stop_event: Event, metrics_path: str,
 class Collector():
     """Collect metrics samples at a given interval for a run of a case."""
 
-    def __init__(self, results_run_path: str, sample_interval: float,
-                 number_of_steps: int, run_id: int, directory: str,
-                 verbose: bool):
+    def __init__(self, name: str, results_run_path: str,
+                 sample_interval: float, number_of_steps: int, run_id: int,
+                 directory: str, verbose: bool):
         """
         Create an instance of the Collector class.
 
@@ -258,6 +265,7 @@ class Collector():
         metrics. The file describes:
 
         - **Case**:
+            - Name.
             - Timestamp when started.
             - Directory of the case.
             - Number of the run.
@@ -360,6 +368,7 @@ class Collector():
         case_info_file = os.path.join(self._data_path, CASE_INFO_FILE_NAME)
         with open(case_info_file, 'w') as f:
             f.write('===> CASE <===\n')
+            f.write(f'Name: {name}\n')
             f.write(f'Timestamp: {datetime.utcnow().isoformat()}\n')
             f.write(f'Directory: {directory}\n')
             f.write(f'Run: {run_id}\n')
@@ -412,6 +421,8 @@ class Collector():
         self._thread: Thread = Thread(target=_collect_metrics,
                                       daemon=True,
                                       args=(self._stop_event,
+                                            name,
+                                            run_id,
                                             metrics_path,
                                             sample_interval,
                                             initial_timestamp,

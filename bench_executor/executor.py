@@ -398,8 +398,9 @@ class Executor:
                 self._progress_cb('Initializing', step['resource'], success)
 
         # Launch metrics collection
-        collector = Collector(results_run_path, interval, len(data['steps']),
-                              run, directory, self._verbose)
+        collector = Collector(data['name'], results_run_path, interval,
+                              len(data['steps']), run, directory,
+                              self._verbose)
 
         # Execute steps
         for index, step in enumerate(data['steps']):
