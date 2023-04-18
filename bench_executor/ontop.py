@@ -15,7 +15,7 @@ import psutil
 import configparser
 from rdflib import Graph, Namespace, RDF, URIRef
 from timeout_decorator import timeout, TimeoutError  # type: ignore
-from typing import Dict, Optional
+from typing import Dict, Optional, cast
 from bench_executor.container import Container
 from bench_executor.logger import Logger
 
@@ -239,6 +239,10 @@ class Ontop(Container):
                                                 R2RML.TriplesMap)):
             subject_map_iri = g.value(triples_map_iri, R2RML.subjectMap)
 
+            if subject_map_iri is None:
+                self._logger.warning("Subject Map not present in Triples Map")
+                break
+
             iter_pom = g.triples((triples_map_iri,
                                   R2RML.predicateObjectMap,
                                   None))
@@ -258,7 +262,8 @@ class Ontop(Container):
 
                 # Retrieve the ObjectMap rr:constant value and add it as
                 # rr:class to the Subject Map is present
-                rdf_type_value = g.value(object_map_iri, R2RML.constant)
+                rdf_type_value = cast(URIRef,
+                                      g.value(object_map_iri, R2RML.constant))
                 if rdf_type_value is not None:
                     iri = URIRef(rdf_type_value.toPython())
                     g.add((subject_map_iri, R2RML['class'], iri))
