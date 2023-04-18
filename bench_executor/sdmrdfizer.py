@@ -210,8 +210,14 @@ class SDMRDFizer(Container):
                 d2rq_rdb_iri = BNode()
                 logical_table_iri = g.value(triples_map_iri,
                                             R2RML.logicalTable)
+                if logical_table_iri is None:
+                    break
+
                 table_name_literal = g.value(logical_table_iri,
                                              R2RML.tableName)
+                if table_name_literal is None:
+                    break
+
                 g.add((d2rq_rdb_iri, D2RQ.jdbcDSN, Literal(dsn)))
                 g.add((d2rq_rdb_iri, D2RQ.jdbcDriver, Literal(driver)))
                 g.add((d2rq_rdb_iri, D2RQ.username, Literal(rdb_username)))
