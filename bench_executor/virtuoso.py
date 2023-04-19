@@ -130,7 +130,7 @@ class Virtuoso(Container):
         """
         return self.run_and_wait_for_log('Server online at', command=command)
 
-    def load(self, rdf_file: str) -> bool:
+    def load(self, rdf_file: str, rdf_dir: str) -> bool:
         """Load an RDF file into Virtuoso.
 
         Currently, only N-Triples files are supported.
@@ -139,15 +139,19 @@ class Virtuoso(Container):
         ----------
         rdf_file : str
             Name of the RDF file to load.
+        rdf_dir : str
+            Name of the directory where RDF file(s) are stored.
+            Default root of the data directory.
 
         Returns
         -------
         success : bool
             Whether the loading was successfull or not.
         """
-        return self.load_parallel(rdf_file, 1)
+        return self.load_parallel(rdf_file, 1, rdf_dir)
 
-    def load_parallel(self, rdf_file: str, cores: int) -> bool:
+    def load_parallel(self, rdf_file: str, cores: int,
+                      rdf_dir: str = '') -> bool:
         """Load an RDF file into Virtuoso in parallel.
 
         Currently, only N-Triples files are supported.
@@ -158,6 +162,9 @@ class Virtuoso(Container):
             Name of the RDF file to load.
         cores : int
             Number of CPU cores for loading.
+        rdf_dir : str
+            Name of the directory where RDF file(s) are stored.
+            Default root of the data directory.
 
         Returns
         -------
@@ -174,8 +181,9 @@ class Virtuoso(Container):
             return False
 
         # Load directory with data
+        directory = f'/usr/share/proj/{rdf_dir}'
         success, logs = self.exec('isql -U dba -P root '
-                                  'exec="ld_dir(\'/usr/share/proj/\','
+                                  f'exec="ld_dir(\'{directory}\','
                                   f'\'{rdf_file}\', '
                                   '\'http://example.com/graph\');"')
         for line in logs:
