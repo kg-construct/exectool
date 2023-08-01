@@ -24,21 +24,33 @@ class IntegrationTests(unittest.TestCase):
         iris = [x['data']['@id'] for x in cases]
         BASE_URL = 'http://example.com/test-cases'
         e = [f'{BASE_URL}/rmlmapper/fuseki/transform-csv-to-ntriples',
+             f'{BASE_URL}/rmlmapper/fuseki/transform-json-to-ntriples',
+             f'{BASE_URL}/rmlmapper/fuseki/transform-xml-to-ntriples',
              f'{BASE_URL}/rmlmapper/fuseki/transform-mysql-to-ntriples',
              f'{BASE_URL}/rmlmapper/fuseki/transform-postgresql-to-ntriples',
              f'{BASE_URL}/rmlmapper/virtuoso/transform-csv-to-ntriples',
+             f'{BASE_URL}/rmlmapper/virtuoso/transform-xml-to-ntriples',
+             f'{BASE_URL}/rmlmapper/virtuoso/transform-json-to-ntriples',
              f'{BASE_URL}/rmlmapper/virtuoso/transform-mysql-to-ntriples',
              f'{BASE_URL}/rmlmapper/virtuoso/transform-postgresql-to-ntriples',
              f'{BASE_URL}/sdmrdfizer/fuseki/transform-csv-to-ntriples',
+             f'{BASE_URL}/sdmrdfizer/fuseki/transform-xml-to-ntriples',
+             f'{BASE_URL}/sdmrdfizer/fuseki/transform-json-to-ntriples',
              f'{BASE_URL}/sdmrdfizer/fuseki/transform-mysql-to-ntriples',
              f'{BASE_URL}/sdmrdfizer/fuseki/transform-postgresql-to-ntriples',
              f'{BASE_URL}/sdmrdfizer/virtuoso/transform-csv-to-ntriples',
+             f'{BASE_URL}/sdmrdfizer/virtuoso/transform-xml-to-ntriples',
+             f'{BASE_URL}/sdmrdfizer/virtuoso/transform-json-to-ntriples',
              f'{BASE_URL}/sdmrdfizer/virtuoso/transform-mysql-to-ntriples',
              f'{BASE_URL}/sdmrdfizer/virtuoso/transform-postgresql-to-ntriples',   # noqa: E501
              f'{BASE_URL}/morphkgc/fuseki/transform-csv-to-ntriples',
+             f'{BASE_URL}/morphkgc/fuseki/transform-xml-to-ntriples',
+             f'{BASE_URL}/morphkgc/fuseki/transform-json-to-ntriples',
              f'{BASE_URL}/morphkgc/fuseki/transform-mysql-to-ntriples',
              f'{BASE_URL}/morphkgc/fuseki/transform-postgresql-to-ntriples',
              f'{BASE_URL}/morphkgc/virtuoso/transform-csv-to-ntriples',
+             f'{BASE_URL}/morphkgc/virtuoso/transform-xml-to-ntriples',
+             f'{BASE_URL}/morphkgc/virtuoso/transform-json-to-ntriples',
              f'{BASE_URL}/morphkgc/virtuoso/transform-mysql-to-ntriples',
              f'{BASE_URL}/morphkgc/virtuoso/transform-postgresql-to-ntriples',
              f'{BASE_URL}/morphrdb/fuseki/transform-mysql-to-ntriples',
@@ -55,8 +67,7 @@ class IntegrationTests(unittest.TestCase):
              f'{BASE_URL}/ontopendpoint/fuseki/transform-mysql-to-ntriples',
              f'{BASE_URL}/ontopendpoint/fuseki/'
              'transform-postgresql-to-ntriples']
-        # We expect 28 cases
-        self.assertEqual(len(iris), 28, iris)
+        self.assertEqual(len(iris), len(e), iris)
         self.assertListEqual(sorted(e), sorted(iris))
 
     def test_executor_run(self):
