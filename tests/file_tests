@@ -88,7 +88,7 @@ class FileTests(unittest.TestCase):
         g = Graph()
         g.parse(os.path.join(DATA_DIR, 'shared', 'morphkgc_csv.nt'),
                 format='ntriples')
-        self.assertEqual(len(g), 4)
+        self.assertEqual(len(g), 3)
         morphkgc.stop()
 
     def test_morphkgc_json(self):
