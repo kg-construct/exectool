@@ -11,7 +11,7 @@ RUN java -version
 
 # Copy jar
 RUN mkdir rmlmapper
-COPY *.jar rmlmapper/
+COPY *.jar rmlmapper/rmlmapper.jar
 
 # Expose data folder
 RUN mkdir /data
