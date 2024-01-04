@@ -164,6 +164,7 @@ def execute_cases(executor: Executor, interval: float, runs: int,
                                                f'run_{i}', '.done')
 
             print(f'      ==> Run #{i} <==')
+            os.system('rm /tmp/*state*')
             if os.path.exists(run_checkpoint_file):
                 print('        ⏩ SKIPPED RUN')
                 continue
