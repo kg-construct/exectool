@@ -9,8 +9,6 @@ You can list all options and arguments with `--help`
 
 ```
 usage: exectool [-h] [--version] [--root MAIN_DIRECTORY] [--runs NUMBER_OF_RUNS] [--interval INTERVAL] [--verbose] [--wait-for-user]
-                [--smtp-server SMTP_SERVER] [--smtp-port SMTP_PORT] [--smtp-username SMTP_USERNAME] [--smtp-password SMTP_PASSWORD]
-                [--smtp-sender SMTP_SENDER] [--smtp-receiver SMTP_RECEIVER]
                 command
 
 Copyright by (c) Dylan Van Assche (2022-2024), available under the MIT license
@@ -28,18 +26,6 @@ options:
   --interval INTERVAL   Measurement sample interval for metrics, default 0.1s
   --verbose             Turn on verbose output
   --wait-for-user       Show a prompt when a step is executed before going to the next one
-  --smtp-server SMTP_SERVER
-                        SMTP server to use for sending e-mails
-  --smtp-port SMTP_PORT
-                        SMTP port to use for sending e-mails
-  --smtp-username SMTP_USERNAME
-                        Username to authenticate with SMTP server for sending e-mails
-  --smtp-password SMTP_PASSWORD
-                        Password to authenticate with SMTP server for sending e-mails
-  --smtp-sender SMTP_SENDER
-                        Sender's e-mailaddress for sending e-mails
-  --smtp-receiver SMTP_RECEIVER
-                        Receiver's e-mailaddress for sending emails
 ```
 
 ### Generating cases
