@@ -13,7 +13,6 @@ import psutil
 import subprocess
 from typing import Optional
 from timeout_decorator import timeout, TimeoutError  # type: ignore
-from bench_executor.container import Container
 from bench_executor.logger import Logger
 
 VERSION = '6.2.1'
