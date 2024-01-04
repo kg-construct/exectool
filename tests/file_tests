@@ -6,7 +6,7 @@ import unittest
 import subprocess
 from rdflib import Graph
 sys.path.append('../')
-from bench_executor.rmlmapper import RMLMapper  # noqa: E402
+from bench_executor.rmlmapper_docker import RMLMapperDocker  # noqa: E402
 from bench_executor.morphkgc import MorphKGC  # noqa: E402
 from bench_executor.sdmrdfizer import SDMRDFizer  # noqa: E402
 from bench_executor.container import ContainerManager  # noqa: E402
@@ -21,7 +21,7 @@ CONFIG_DIR = os.path.join(os.path.dirname(__file__), '..', 'bench_executor',
 
 class FileTests(unittest.TestCase):
     def test_rmlmapper_csv(self):
-        rmlmapper = RMLMapper(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
+        rmlmapper = RMLMapperDocker(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared', 'rmlmapper_csv.nt'))
         except FileNotFoundError:
@@ -40,7 +40,7 @@ class FileTests(unittest.TestCase):
         rmlmapper.stop()
 
     def test_rmlmapper_json(self):
-        rmlmapper = RMLMapper(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
+        rmlmapper = RMLMapperDocker(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared', 'rmlmapper_json.nt'))
         except FileNotFoundError:
@@ -57,7 +57,7 @@ class FileTests(unittest.TestCase):
         rmlmapper.stop()
 
     def test_rmlmapper_xml(self):
-        rmlmapper = RMLMapper(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
+        rmlmapper = RMLMapperDocker(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared', 'rmlmapper_xml.nt'))
         except FileNotFoundError:

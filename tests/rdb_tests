@@ -8,7 +8,7 @@ from rdflib import Graph
 sys.path.append('../')
 from bench_executor.postgresql import PostgreSQL  # noqa: E402
 from bench_executor.mysql import MySQL  # noqa: E402
-from bench_executor.rmlmapper import RMLMapper  # noqa: E402
+from bench_executor.rmlmapper_docker import RMLMapperDocker  # noqa: E402
 from bench_executor.ontop import OntopMaterialize, \
         OntopVirtualize  # noqa: E402
 from bench_executor.sdmrdfizer import SDMRDFizer  # noqa: E402
@@ -41,7 +41,7 @@ class RDBTests(unittest.TestCase):
         cls._postgresql.stop()
 
     def test_rmlmapper_mysql(self):
-        rmlmapper = RMLMapper(DATA_DIR, CONFIG_DIR, LOG_DIR, True)
+        rmlmapper = RMLMapperDocker(DATA_DIR, CONFIG_DIR, LOG_DIR, True)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared', 'rmlmapper_mysql.nt'))
         except FileNotFoundError:
@@ -62,7 +62,7 @@ class RDBTests(unittest.TestCase):
         rmlmapper.stop()
 
     def test_rmlmapper_postgresql(self):
-        rmlmapper = RMLMapper(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
+        rmlmapper = RMLMapperDocker(DATA_DIR, CONFIG_DIR, LOG_DIR, False)
         try:
             os.remove(os.path.join(DATA_DIR, 'shared',
                                    'rmlmapper_postgresql.nt'))
