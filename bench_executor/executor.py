@@ -500,7 +500,7 @@ class Executor:
                 if parameters.get('output_file', False) \
                         and not parameters.get('multiple_files', False):
                     output_dir = os.path.join(results_run_path, subdir)
-                    for f in glob(os.path.join(directory, 'data',
+                    for f in glob(os.path.join(str(directory), 'data',
                                                'shared', '*.nt')):
                         p = os.path.join(output_dir, os.path.basename(f))
                         try:

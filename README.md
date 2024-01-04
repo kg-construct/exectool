@@ -13,7 +13,7 @@ usage: exectool [-h] [--version] [--root MAIN_DIRECTORY] [--runs NUMBER_OF_RUNS]
                 [--smtp-sender SMTP_SENDER] [--smtp-receiver SMTP_RECEIVER]
                 command
 
-Copyright by (c) Dylan Van Assche (2022-2023), available under the MIT license
+Copyright by (c) Dylan Van Assche (2022-2024), available under the MIT license
 
 positional arguments:
   command               Command to execute, available commands: "list", "run"
