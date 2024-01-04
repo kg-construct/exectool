@@ -15,7 +15,7 @@ from timeout_decorator import timeout, TimeoutError  # type: ignore
 from bench_executor.container import Container
 from bench_executor.logger import Logger
 
-VERSION = '6.2.1'
+VERSION = '6.0.0'
 TIMEOUT = 6 * 3600  # 6 hours
 
 
@@ -74,7 +74,7 @@ class RMLMapperDocker(Container):
 
         # Execute command
         cmd = f'java -Xmx{max_heap} -Xms{max_heap}' + \
-              ' -jar rmlmapper/rmlmapper.jar'
+              ' -jar /rmlmapper/rmlmapper.jar'
         if self._verbose:
             cmd += ' -vvvvvvvvvvvvv'
         cmd += f' {" ".join(arguments)}'
