@@ -361,7 +361,8 @@ def progress_cb(resource: str, name: str, success: bool):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Copyright by (c) '
-                                                 'Dylan Van Assche (2023), '
+                                                 'Dylan Van Assche '
+                                                 '(2022-2024), '
                                                  'available under the MIT '
                                                  'license',
                                      epilog='Please cite our paper if you '
