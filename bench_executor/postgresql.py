@@ -306,9 +306,4 @@ class PostgreSQL(Container):
 
 
 if __name__ == '__main__':
-    print(f'ℹ️  Starting up PostgreSQL v{VERSION}...')
-    p = PostgreSQL('data', 'config', 'log', True)
-    p.wait_until_ready()
-    input('ℹ️  Press any key to stop')
-    p.stop()
-    print('ℹ️  Stopped')
+    print('Use "postgresql" CLI tool to run PostgreSQL standalone.')
