@@ -96,7 +96,6 @@ class Executor:
             module_name = os.path.splitext(m)[0]
             parent_module = os.path.split(os.path.dirname(__file__))[-1]
             import_name = '.'.join([parent_module, module_name])
-            print(import_name)
             imported_module = importlib.import_module(import_name)
             for name, cls in inspect.getmembers(imported_module,
                                                 inspect.isclass):
