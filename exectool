@@ -2,10 +2,12 @@
 
 import os
 import sys
+import errno
 import tarfile
 import argparse
 import subprocess
 import requests
+from glob import glob
 from datetime import datetime
 from signal import signal, SIGINT
 from zipfile import ZipFile
@@ -156,7 +158,15 @@ def execute_cases(executor: Executor, interval: float, runs: int):
                                                f'run_{i}', '.done')
 
             print(f'      ==> Run #{i} <==')
-            os.system('rm /tmp/*state*')
+
+            # Remove state file from temporary directory for RML-LDES
+            for state_file in glob('/tmp/*state*'):
+                try:
+                    os.remove(state_file)
+                except OSError as e:
+                    if e.errno != errno.ENOENT:
+                        raise
+
             if os.path.exists(run_checkpoint_file):
                 print('        ⏩ SKIPPED RUN')
                 continue
