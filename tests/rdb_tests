@@ -14,6 +14,7 @@ from bench_executor.ontop import OntopMaterialize, \
 from bench_executor.sdmrdfizer import SDMRDFizer  # noqa: E402
 from bench_executor.morphrdb import MorphRDB  # noqa: E402
 from bench_executor.morphkgc import MorphKGC  # noqa: E402
+from bench_executor.rmlstreamer import RMLStreamer  # noqa: E402
 from bench_executor.query import Query  # noqa: E402
 
 LOG_DIR = os.path.join(os.path.dirname(__file__), '..', 'bench_executor',
@@ -292,6 +293,54 @@ class RDBTests(unittest.TestCase):
         self.assertEqual(len(g), 3)
 
         morphrdb.stop()
+
+    @unittest.skip('RMLStreamer v2.5.0 has MySQL driver issues')
+    def test_rmlstreamer_mysql(self):
+        rmlstreamer = RMLStreamer(DATA_DIR, CONFIG_DIR, LOG_DIR, True)
+        try:
+            os.remove(os.path.join(DATA_DIR, 'shared',
+                                   'rmlstreamer_mysql.nt'))
+        except FileNotFoundError:
+            pass
+
+        self.assertTrue(rmlstreamer.execute_mapping('mapping.r2rml.ttl',
+                                                    'rmlstreamer_mysql.nt',
+                                                    'ntriples', 'root', 'root',
+                                                    'MySQL', '3306', 'db',
+                                                    'MySQL'))
+
+        self.assertTrue(os.path.exists(os.path.join(DATA_DIR, 'shared',
+                                                    'rmlstreamer_mysql.nt')))
+        g = Graph()
+        g.parse(os.path.join(DATA_DIR, 'shared', 'rmlstreamer_mysql.nt'),
+                format='ntriples')
+        self.assertEqual(len(g), 3)
+
+        rmlstreamer.stop()
+
+    def test_rmlstreamer_postgresql(self):
+        rmlstreamer = RMLStreamer(DATA_DIR, CONFIG_DIR, LOG_DIR, True)
+        try:
+            os.remove(os.path.join(DATA_DIR, 'shared',
+                                   'rmlstreamer_mysql.nt'))
+        except FileNotFoundError:
+            pass
+
+        self.assertTrue(rmlstreamer.execute_mapping('mapping.r2rml.ttl',
+                                                    'rmlstreamer_postgresql.nt',
+                                                    'ntriples', 'root', 'root',
+                                                    'PostgreSQL', '5432', 'db',
+                                                    'PostgreSQL'))
+
+        print(os.path.join(DATA_DIR, 'shared', 'rmlstreamer_postgresql.nt'))
+        self.assertTrue(os.path.exists(os.path.join(DATA_DIR, 'shared',
+                                                    'rmlstreamer_postgresql.nt')))
+        g = Graph()
+        g.parse(os.path.join(DATA_DIR, 'shared', 'rmlstreamer_postgresql.nt'),
+                format='ntriples')
+        self.assertEqual(len(g), 3)
+
+        rmlstreamer.stop()
 
 
 if __name__ == '__main__':
