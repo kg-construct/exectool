@@ -18,6 +18,7 @@ RMLMAPPER_VERSION='6.0.0'
 RMLMAPPER_BUILD='363'
 SDMRDFIZER_VERSION='4.6.6.5'
 YARRRML_VERSION='1.3.6'
+RMLSTREAMER_VERSION='2.5.0'
 
 # MySQL
 echo "*** Building MySQL $MYSQL_VERSION ... ***"
@@ -108,3 +109,12 @@ docker build --build-arg YARRRML_VERSION=$YARRRML_VERSION \
 # docker push blindreviewing/yarrrml:v$YARRRML_VERSION
 cd ..
 
+# RMLStreamer
+echo "*** Building RMLStreamer $RMLSTREAMER_VERSION ... ***"
+cd RMLMapper
+docker build --build-arg RMLSTREAMER_VERSION=$RMLSTREAMER_VERSION \
+    --build-arg USER_ID="$(id -u)" \
+    --build-arg GROUP_ID="$(id -g)" \
+    -t blindreviewing/rmlstreamer:v$RMLSTREAMER_VERSION .
+# docker push blindreviewing/rmlstreamer:v$RMLSTREAMER_VERSION
+cd ..
