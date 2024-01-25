@@ -42,6 +42,8 @@ class RMLMapper():
         self._logger = Logger(__name__, directory, verbose)
         self._verbose = verbose
 
+        os.makedirs(os.path.join(self._data_path, 'rmlmapper'), exist_ok=True)
+
     @property
     def root_mount_directory(self) -> str:
         """Subdirectory in the root directory of the case for RMLMapper.
