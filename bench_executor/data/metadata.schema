@@ -17,7 +17,7 @@
          "type": "string"
       },
       "steps": {
-         "description": "Short description of the case",
+         "description": "Steps to execute of the case",
          "type": "array",
          "items": {
             "type": "object",
