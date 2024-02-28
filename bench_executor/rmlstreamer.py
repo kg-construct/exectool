@@ -242,8 +242,11 @@ class RMLStreamer(Container):
                 raise
 
         with open(output_path, 'a') as out_file:
-            for gen_file in glob(os.path.join(self._data_path, 'rmlstreamer',
-                                              'output', '.*')):
+            files = list(glob(os.path.join(self._data_path, 'rmlstreamer',
+                                           'output', '.*')))
+            files += list(glob(os.path.join(self._data_path, 'rmlstreamer',
+                                            'output', '*')))
+            for gen_file in files:
                 with open(gen_file, 'r') as f:
                     out_file.write(f.read())
 
