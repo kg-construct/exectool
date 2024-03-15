@@ -164,7 +164,7 @@ class SDMRDFizer(Container):
             'mapping': f'/data/shared/{os.path.basename(mapping_file)}'
         }
 
-        if serialization == 'ntriples':
+        if serialization == 'ntriples' or serialization == 'nquads':
             config['datasets']['output_format'] = 'n-triples'
         elif serialization == 'turtle':
             config['datasets']['output_format'] = 'turtle'
